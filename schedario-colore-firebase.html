@@ -138,6 +138,49 @@
     .floating-save-label { font-size: 9px; }
   }
 
+  /* Schermata "Chi sei?" mostrata all'apertura, finché non si sceglie nome + codice. */
+  .login-gate {
+    position: fixed; inset: 0; z-index: 100;
+    background: var(--bg, #faf6f3);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .login-gate[hidden] { display: none; }
+  .login-gate-box {
+    background: #fff; border-radius: var(--radius); border: 1px solid var(--line, #e3d9d3);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    padding: 28px 24px; width: 100%; max-width: 320px;
+    display: flex; flex-direction: column; align-items: center; gap: 16px;
+    text-align: center;
+  }
+  .login-gate-title { font-size: 19px; font-weight: 700; color: var(--ink); }
+  .login-gate-names { display: flex; gap: 12px; width: 100%; }
+  .login-gate-name-btn {
+    flex: 1; padding: 14px 10px; font-size: 16px; font-weight: 600;
+    border-radius: var(--radius); border: 1px solid var(--line, #e3d9d3);
+    background: #fff; color: var(--ink); cursor: pointer;
+  }
+  .login-gate-name-btn:hover, .login-gate-name-btn.selected {
+    background: var(--berry); border-color: var(--berry); color: #fff;
+  }
+  .login-gate-pin-area {
+    display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%;
+  }
+  .login-gate-pin-label { font-size: 14px; color: var(--ink); }
+  .login-gate-pin-input {
+    width: 100%; text-align: center; font-size: 22px; letter-spacing: 6px;
+    padding: 10px; border-radius: var(--radius); border: 1px solid var(--line, #e3d9d3);
+    font-family: inherit;
+  }
+  .login-gate-pin-confirm {
+    width: 100%; padding: 12px; font-size: 15px; font-weight: 600;
+    border-radius: var(--radius); border-color: var(--berry);
+    background: var(--berry); color: #fff; cursor: pointer;
+  }
+  .login-gate-pin-confirm:hover { filter: brightness(1.08); }
+  .login-gate-pin-error { font-size: 13px; color: #A8433C; }
+  .login-gate-pin-error[hidden] { display: none; }
+
   .import-label {
     font-family: inherit; font-size: 14px; cursor: pointer;
     border-radius: var(--radius); border: 1px solid transparent;
@@ -533,6 +576,21 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
+<div class="login-gate" id="loginGate">
+  <div class="login-gate-box">
+    <div class="login-gate-title">Chi sei?</div>
+    <div class="login-gate-names">
+      <button type="button" class="login-gate-name-btn" data-name="Erica">Erica</button>
+      <button type="button" class="login-gate-name-btn" data-name="Sara">Sara</button>
+    </div>
+    <div class="login-gate-pin-area" id="loginGatePinArea" hidden>
+      <div class="login-gate-pin-label" id="loginGatePinLabel"></div>
+      <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" class="login-gate-pin-input" id="loginGatePinInput" placeholder="Codice">
+      <button type="button" class="login-gate-pin-confirm" id="loginGatePinConfirm">Entra</button>
+      <div class="login-gate-pin-error" id="loginGatePinError" hidden>Codice non corretto, riprova.</div>
+    </div>
+  </div>
+</div>
 <div class="app">
   <div class="storage-error-banner" id="storageErrorBanner" hidden>
     <span class="storage-error-icon">⚠</span>
@@ -618,8 +676,68 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-05.3-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-05.4-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
+
+  // --- Schermata "Chi sei?" -----------------------------------------------------
+  // Non è una vera autenticazione: serve solo a far scegliere il nome e a evitare
+  // che qualcuno apra l'app per errore. L'archivio clienti resta unico e condiviso
+  // tra Erica e Sara. Una volta inserito il codice giusto su un dispositivo, quel
+  // dispositivo se lo ricorda e non lo richiede più.
+  const LOGIN_PINS = { "Erica": "2609", "Sara": "1410" };
+  const LOGIN_REMEMBER_KEY = "schedario-colore:operatore";
+
+  function currentOperator() {
+    try { return localStorage.getItem(LOGIN_REMEMBER_KEY) || null; } catch (e) { return null; }
+  }
+
+  function showLoginGate() {
+    return new Promise((resolve) => {
+      const remembered = currentOperator();
+      if (remembered && LOGIN_PINS[remembered]) {
+        resolve(remembered);
+        return;
+      }
+      const gate = document.getElementById('loginGate');
+      const nameBtns = document.querySelectorAll('.login-gate-name-btn');
+      const pinArea = document.getElementById('loginGatePinArea');
+      const pinLabel = document.getElementById('loginGatePinLabel');
+      const pinInput = document.getElementById('loginGatePinInput');
+      const pinConfirm = document.getElementById('loginGatePinConfirm');
+      const pinError = document.getElementById('loginGatePinError');
+      let chosenName = null;
+
+      function tryUnlock() {
+        pinError.hidden = true;
+        const entered = (pinInput.value || '').trim();
+        if (chosenName && LOGIN_PINS[chosenName] && entered === LOGIN_PINS[chosenName]) {
+          try { localStorage.setItem(LOGIN_REMEMBER_KEY, chosenName); } catch (e) { /* ignorato: al massimo richiederà di nuovo il codice */ }
+          gate.hidden = true;
+          resolve(chosenName);
+        } else {
+          pinError.hidden = false;
+          pinInput.value = '';
+          pinInput.focus();
+        }
+      }
+
+      nameBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          chosenName = btn.dataset.name;
+          nameBtns.forEach(b => b.classList.toggle('selected', b === btn));
+          pinLabel.textContent = 'Codice di ' + chosenName;
+          pinArea.hidden = false;
+          pinError.hidden = true;
+          pinInput.value = '';
+          pinInput.focus();
+        });
+      });
+      pinConfirm.addEventListener('click', tryUnlock);
+      pinInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); tryUnlock(); }
+      });
+    });
+  }
 
   // --- Configurazione Firebase -------------------------------------------------
   // SOSTITUISCI questi valori con quelli copiati dalla console Firebase
@@ -2680,9 +2798,14 @@
     storageErrorCloseBtn.addEventListener('click', hideStorageError);
   }
 
-  // I dati vivono nel database dell'app (restano anche chiudendo e riaprendo,
-  // su qualunque dispositivo): li carichiamo prima di disegnare la pagina.
-  bootstrapStorage().then(() => {
+  // Prima si sceglie chi sta usando l'app (schermata "Chi sei?"), poi si caricano
+  // i dati, che vivono nel database dell'app (restano anche chiudendo e riaprendo,
+  // su qualunque dispositivo, e sono condivisi tra Erica e Sara).
+  const loginGateEl = document.getElementById('loginGate');
+  showLoginGate().then(() => {
+    if (loginGateEl) loginGateEl.hidden = true;
+    return bootstrapStorage();
+  }).then(() => {
     activeId = clients.length ? clients[0].id : null;
     renderAll();
     if (activeId) loadClientFoto(activeId);
