@@ -107,6 +107,37 @@
   button.danger { color: #A8433C; }
   button.small { padding: 5px 10px; font-size: 13px; }
 
+  /* Tasto "Salva" fisso di lato: resta visibile mentre si scorre la scheda cliente. */
+  .floating-save-btn {
+    position: fixed;
+    right: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: var(--berry);
+    border-color: var(--berry);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+  }
+  .floating-save-btn:hover { filter: brightness(1.08); }
+  .floating-save-btn:active { transform: translateY(-50%) scale(0.95); }
+  .floating-save-btn[hidden] { display: none; }
+  .floating-save-icon { font-size: 18px; line-height: 1; }
+  .floating-save-label { font-size: 10px; line-height: 1; font-weight: 600; }
+  @media (max-width: 640px) {
+    .floating-save-btn { right: 10px; width: 50px; height: 50px; }
+    .floating-save-icon { font-size: 16px; }
+    .floating-save-label { font-size: 9px; }
+  }
+
   .import-label {
     font-family: inherit; font-size: 14px; cursor: pointer;
     border-radius: var(--radius); border: 1px solid transparent;
@@ -513,7 +544,7 @@
       <img class="brand-logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKUAAACgCAYAAABt5qxpAAAfCElEQVR4nO2deZwdRbXHv3MnySQkhCAQwhogIATc2EFRiLIaeMoiivDYUQSEJyIi6uOpT0QFWURwAzcU4YHbQ0VkUR6LoIjsKLJDArKENcts9/3xq0Od7um7zMy9d+7M1O/z6c/tW1VdXV196tQ5p06fgsag5M63BE4DbgaeAcrheB64Gvg4sJEr39mgNiSMEXQ0sK6tgQOAlYDHgAeBRcBUYF3grcA8YAKwFPgZcDpwu2tHuYHtSRjHmALsC/wHsEmNsrOAk4AXEAEuA04JeR00dpC0A8ba87Q9OoCJwGbA+i69hLjhBDQ1+3PDusCVxKn90lBXibH3Isfa87Q9PLF1UvsFdIRrrPylZAmz3npGA6YA64XzUrWCCc3BYInICG8CUoj6EWF+1uWPZhgRvhPYKpeW0MYwwtsAeBXoA3qBNyGCHe0v0cSYLwMzGZuiyZiETeVnE6fxK0LaaOeW1v73IsL0aQltDOMeGwLdaBrvA97o8otgnHRCjWOk5dMOoAu4CVjdpSVUwUhPkf3h9+/AnURi2y+k+/YZEZYQR+1H0321oy+U7XDXthKdyOy1AHi/S0uoggm1izQdnYiAbgU2D2k7AicjwuskEqER8fJIFn09sA6wKjLSgwzzzyED/j/C8Uy4B0TCN+WqFbgL2BU4s4X3HLVoB6I0PBJ+y2g6n4mIyQhxXWA39HK3AFars95FiAtfBfwvIpC+kNfpzpuJhcDG4bwV90sYJmxgHIsIsif8zgnpOwKXIQ29nDt6Q/nugqOHyA3t6EPr7+8jTuUlmjet27Mdhjj45PA/yZVtDntxn0KE042I5zjgV2SJqocoL/aEo4+BxOqJ1hOpz/sz8B7XjmbIevZsJ4d7Lh/+J6Jsc9iLu5BIeJ7DmULTR1Z58Uc38kJaCPwLeKWgjNXdHeqxtJ8RV14ara0boV8KLAYmhf+JKKugHTqnA728e5Di0k9WEbFzz8keAm5AppZ7gCeBl5Cm24mUnploTX5L4B1IDrUB4LXyTkTQxwEX0TiPJatnYmjfU8jU1dGAuhOaCONMOxBlvrwMaOeLgR8CO6F15cFiLvAZpI3nZVL7fzaRmIYrZ9oA2DXUfX4uPaEN4Z0zriUSSTl33gt8E3FRD/NA6iQa4f1RcmX8jDAFOAL4Z+5edr8rgGmh7FAJ0z/bTaHed7t2J7Qp8kqAEUW/O78F2MZd08nQ5T4zvhumA6cSOaXJm2VESCu6ew4WJjseF+r7J9K8x6LP6JiBEcdBDCRIm7LPRPKYlW+U2cZzMYBtkR0zT5i3AK8LZSZSH8zHFGA+MgOVgcNDWpq62xTGebYkasK2WmME+ZFQpoPmTXeeOKchJcebkcqIWE1sMHGgiNPlufAHkAxcRgqZFzES2gwm600DHiCrzBi3PCCUzcuCzYIn+s8TObYR5rOIo3vYYMkPmBWArxFl1afRStRYcMUbs7CXeC7Z1Rv7PTLk1ztdNgqeIx9JHCg2/ZaBPyIOuErB9esDJyJTlZV/BpmhIBFk28Je+hZklRn7PTvkt5ogPWwKnkfk5PaBm/9U+E/Az9Fa+h3AEpdfRuvr9hFd0rbbGMYtriISo3Gk22kP/0eIhDkDOIPs6lC1Jc0yIs6ziMuJiSDbGPZy3kZ8uabY9BKnuXZ5ib4d6wNfRCtHlYjyISSSvMFdl6bsIaJVXMlcxC5B34ibb+MEtOZ9WDjvLbx6ZGDKiXdz2xBp46uG/88hG+S9iEtauVb6aiYMAUb4s4CXyXLKJbS/dpo391SCmX0SRgG8T2F+vfnikNcu03Y15Jcu7Uj2x1EII7jLEXf0PpDvorkG8oSEATAOMhl4nKwJ6DGSJ3ZCAZotAxmxrQ+sEc5NAfgDMk53kpSCBIdmE6XV/3pEoP6jqRvDb+KSCRm0SltcJ/yaJznA3S4tIeE1tIooVw2/RpQ96BMBS0tIeA2tIsppuf8vo29qIBFlQg6tNvYaAS4LR0LCALSKKNtp+TChzdEqolwUfr3dcnKFsgnjHK0iyidz/5dHrmGQTEIJOTSbKE2GfCj8mgfNBGCtkJaIMiGDVhHlP9DqjXcFs8CoiSgTMmg2UfYjonsSfV4AkVDflvufkAC0Rqa0Kft6sgT4DmA5xDkTt0xoKcwtbSeig695Cu3GwOAACQlNh4Uq6QIeJvtN9eWhTPKnTGg5jBP+J9kYlMuIHkTpU4KElsI+GZiF1rw9t7wolBmJKXysyrIldyRUgRHdqURu2ReOt4a8Vk7j6YUlvDZFr4BMRJ5b3oXC57UqGIHdY7kW3KuVsIF2ANpw4O259IQCGCfcm8gt7cvG80Jes8O22Av6BAq5MpY0f+vfm1GffjP8H+wzjjsitg66gBhE3wjz6JDXLMK0zl6DGN1iHtkvKiuF+rMoa0UvzH96Wyl/QpV8X4e1oZ4AsaVcOat7C+A0YLarD3deq61WLh/k1e6RT6ukqPpnqhRK0ffNiMn41imT0bYhRpitCAVoA+ITKFBVP/CjXF6+rUWd3eF+i+TgWvmlXFlfplp9/vpKfVONy9Wq2/fPDlXqqQf+XtUGYj1pLYHnWA8TCdO+B/+QK9fIRhqR3Y1iTi5AXvArhfyJaFcJ30ZQEP990b47a7u6DLORSLJXKJvP3wA4BA24jXLtMWyCAjaArBQ7AdszkIP7a96MwhPu7tpt+ECow57F6pkenuPQXFvteW2TrflI5l6eOAiWQ9u7zHTXTQJWDnV15dowB/hoOF8b2IWBLoubAseE9q7ICMPv9/0IAwnzK8SOagTXtPvNQ9uHdAD/E+61L9pW70AUUtrKroxC/j2FAqBaZDVzJulCuz48g5Q3EwnmE1/Y+Shy2x3u2c4iTrurIm7djQbLZ1CgVqvrWrQFiyecdUL6AhTPqIx8VldEG9/fGtI+HspbDPb3A38lhi58Fe2HaX17IlHWfzHUvQjFnf8q+la/m7ipwEfCvRaFtkwP6SsC3w31PwB82D3PYcRVvO+Hvr0l5D3i+nbEYLLjHPTSLFiBTeXXI25gGE7scyO0y1C4mE5gz3Cvu4BPIw5lZaeENj2K3Ow6kTL2L8QZO1B8yqXAW8J1xwMvEDcP+HF4jneG/+sRB6DJzzOA/wpp9yCC3hhx1hdD+t6uXSsh4vgLGkCT0AZVj6BvoTZGik4fccYBOCHUtUm456Xh/5dC/iRkmvsVEmuOQwN4R0RkKxJ3utgqXDMV2JoYXKLLpdv9HkcM5lvIW2yDUOZC4AkiDcwN5X/LCMFPJ4YpiHNZ/HOLorsUbeI+y5W1kWaCczUu6pWGGYhr2W65uxNHsAU5tY49PqRv7+qa7Noxn2z0YWuDTe9bkY2XZNPW4YhgvOa/UXjmq3Ntv4i4JaDhzFDvhi5teWRqszacHcp8OPwvhfvu6q75t3DPM3Pt+1a4dnMG4rfhGr9jx6oh7XGy0/fqIf3vLm2F8LtxuMcvEec8BjgqpPWMhDnE7xy7PuqonRFR2PbI/egBzSH4RMQ5foA2eLqLgd/9+L10IBKbxcEE2AdxsunA7xAB/RVxur0Rp7Jdcz+IprF7iNx5KXHq3y+UvcXduw9xjA5EtP3AbcQ9ykvA/4X82YjTPRN+bWeJzvDbg6ZEPzN0oc1On0WyuD3vyyF/YmhD3v5aQtOpx8RwbW+unAV8XZ44mC1K3iQGMoCugjTcM/USo6C8HNL2IMb1nEbcVe4QYEmridIecA6aLvdDI7QfTRu/RqGby0gDPJD4UlZBU8LH0PR0JXrB96Mp1Yip6J6rI8I7DilX1wI/RTLWjohD74fMKN2oo1cP13cQXe6MQ/egKd1rwWWiHNkd7mMzgh8gLxEHSZ9Ltzr6yA5cuy/oRa+CZL38fY3wi2JjWtlOYH9gO+I02uPqMSYA2cFs7S8ym1Xyh7VrfWQUG2zrhfTL0e4ZGbSSKK2jDwVORzJKL4qSey7iQB4HI4XgSMR1ZhH3aNwuHCDTzhNos9Dn0fQM4rqzUAes4+r9CRIH7gz/b0SEshFaAbk2pC9GnTgXybZdxDCGEFejNkXcdnLIX+au70fTrHHJTkS0JSSr2gd1Hl7LtnPzOe0L9c4Mz/R3164+d02+jr7QDz9CsufX0SyxA1J6vCJpShFk97L0/yu5G+btl/7cCNvq60cixA2Is9sg6KFFsAf4gmvcP9DGSoYig3kJacWHohdfHsKxBCkCtxFDxVibbOT/GL3Y77h8E/j/QJzSQBxmGlIQyogwZrv81RCX3S3kP0mUpUCmjzLRVALi4r3A78N/I4wvohd1iOuPW0O7fkaWgDZE1gKAb+Su6wzPv8CV3yvUc3L4b+/oinDtHq6syYrXh3Ye7fLWJGrOHuuFsne6NLvHoeGaZ4lLoYbdW8EpO1HjTkDmDtCUuyviFoYe9IBbIUF6M2Qe8Pa3x1DQ/j8h7jYHEcF09MDdIX0h8CAK+3xPuP8jiCuujaa/V9FAWAmFiO5EdsRzEPGejV7M9sDfkJA/C3HUrZFCcCxyvfsz8Av08rZHBPlbRGQ7IQI/HhHr94Dr0BKgraxsQBQzVgvtWwFxwxKKdjw9PNvXkPK0Jxqo14Z+mIHsgK8Lz1hChDE99O3sUOZsxG3XIsrGNpXejzh9CZmA5oW2HR36/j5ERKchZaUXDYTecJ/1EeEvc880M9z7WcQgSkhcOgHNQn9AA+EpxKSep8kwTrQtkT2/RHY6nYvkx+uQEpLndDci+XNbhu5A8R2k7V6PzDibhfQZiEv+EZk7bkWmEgszsx8ibGvLnYggDTsggjQT1qOIWEDPPg2JIE8j885jyDzSRZRH54VnvxHJyr9AnPlToU03INn5U+6+x6BBZ+26mWgIPz133adD+lHoxb+CBsRMtFPHEnfPDvSZyj9D+kIiV7RZ6zdIYVmGxIGtkLL2MCKubZDSenVox41IqbR6jBGuhcxzi4i20UtogQHd1jVt6u0H3oteyhHANUTZzB+3A58ku/phyId39mvSnbn8orVWHwihlimJUM+66IX4vPyKzlq5fI9JiAg6q5SpF6b4TSa7ulJPndPImm1KxCnfX99FDEpWhFXIMojVyYoSRe2oJG+ujDh7Pt5UU2AjYh8iQT4CfA4pJnlC7EHT3O5khei8TXIwsBe4HxqFN4Y2zM3l5xUEQ96Wam2xY1KurZbmFY18HZWeo+j+ldo1O/c/vxxbdJ3Pz7ehVOHcylZqY6219Go25KIl5Ka7LprichVxhzEzV5SJHLIXGYm3yF3fiJ1rrVPmIvnQdg5bM+TXU7+ZWwbbWUUvZzgdbgRwMpKHPx/aNRiPqnwbKrWpVnvrrafeNmX6txmKjnGHHjQFmIZtN16GpoeJSAb5PJLLfBkj4uHCbHj3heMpIkEOpg4z6ZSRMnEA8avMKeEAtXsiEuqPyF0/XNhLm4WmTjORDYYY8u2o1K5a7a23nnrQqP6pCM/O5yMloT93mBllr9x1zXJZslE8lejxnueUXkSwo6gewrV7IA29jAbUF5CJ6MtIg703d43J1pX8GP3z52Xi/P0nI+WoSC7Oixd5Rxb/nPn6xySM665AXD/1Kwx2fI3oTdJo17Qi+JdZRJSV7l+LA52DZoMTcumrIm3aE2S99dcySFdDrX4c6nO2HI2Yvk0m6EVeJhcQHQwsvx+ZDQ5EMiYMXEobKkyxGEoQVlvtmICcF3YM9ZyPzES2JusxMaRNDdetiAh+Qrj2aWQGMg7dj5wbjkGD4XZE0E8QB8WuyDHhYGBL5BrWiWydV5JdUpyNBoJ539gyZn9ox8HIrNOD7LnfR2v2/cjsczwKmfN8yLP6mzqFthJGkCDfOlNe7Ltu74Z2cyjXKI9yu++biRt1FnGDapwSZPy+Cdnf7gttfQWZOYoEeBvI3w1lT8rl+1UU0DLpUkSIp4VrHkQ20k7kZGKK37mIaBcTZxZbWelAItFTIf0rId1MMW9A9sW7kHHdZqh9Q/4cZHm4DvgsWlErI4df395RDU8A55D1yPFTtjkdPEtjY1IacRxDXAevlyjNprgc4jiXuPLmM7hz+J9/WXbfC4nuV4ejpbNT0SqOmTbeEsp4+dkcXg8K/9dDDiVLiEb9qWgZsZ/4XXxXaO8ZaNB/zrVvOlpJ+Yu7zzykSM4KZe4mruuDlLNe4tYxzRaj6sZQp2+b1iYjB4c9iS5KoBfSjYj1WDSaV0Jc7XqyIQGHCptW301cM64XNlX1I7vo3ehZlqJVm22oPZ3ZS9yY6FCwNuKC9mwnhXp2Q84HIGPxUqKtcSFZfwCQyeci1K/eSL0YLUH62cacXFYjcukuxBGvC/93QqssTyPxagJ6X0sQozAxoy2m8aEQpRHkNGTsnodGrslaJfSwe6Llpf3RaO1AMuUfGT6n7Az32h519oMhfbAdugwtP0L0pFk3tK+Wt4qZrC5A0zLh2nPC+aTQvoXIY93MU92I6F4K5cwM1oEGxitkZeR8XxXZJXcN9ZsvZ0/4NVexHVF//Ritrtk7/AJR5II2IEgY2vfAZUSQv0GL83mCXIy4wjXh/2+QEN+LVlZORURUpETUA3uBZaRQ3BLqttE/2OfpQ9Pr/mhN15bX6nWhmko0Iy0ATnHp09BLv73K9eWC82rEUZQ3g2j2KrlyRtCrhPSnkHNJW2MwcoQ94ES0gO8J0jqqGwnO1xA9x41LlJEcc76791A45kREfCcime3MkF5rlHfmzk3zPg/ZGM9AmqvJXUsons7M1le0lrsMcSLQFP0C8toxZaVImShql1+e9GKRN2H580Wor+cTZfgycQXrpZB/YEGbra5RB3sRED84MrZvWrYX6G2Ksc78Yci3725McyxRv9bny+4b6rna5VVru+Hh0G7zj9w01PPV8H8yMsP0EleivKOBRyU7pW/nxaH+h5CYY8T8HuKKD8g8ZJ8KGLYL9V8Y/vtvh3rQoDR8ItxnEXoH1h/vR9aFHYhWkZOI3/Osi1bUzBmi7WyW1WAE+RWyBGkPWiY6rXqZx0bzKmhq86P3LLIcwFY6/LqrXwkxHIuIZikyg3izVB5Wz3JIhLA2n4w08E1c2t+QK9X3wv8FyOwzOXePTZAG/VAodxsiMAuX7ddy1yfrfPI0UlSWIRe4achkZPkfQ4rQOkST0wPIs2oCGijXh/Tr0VeSHYjI7nD1LEDWjgeIXkAXufzFxE+CTR5uG5NQPSPDZLUDkU3NpmyIstz5yF/PBGsPM5K/A3G2iYioJyHj7klI+amFzZG8ZlPhh5CfZDUjvE2/K4f7LAltXgF9o3MrmrL3RC/xS8hEdAGS005DfolGkP1IqdgNKSs9iINNRvbBC4iyst17TTRgt0aD404kKtyH5NcTEZH0hXadF9q7D/LBnBL66xSkXc9FytA0RFhnh7athLj2duGaG4D/Ds9lbToCWRtWQ4sZP0TmsLbQuuuFvYw3oo7znj7eKF7LtcxG4Xw0TZWJH8SXkUnnKOQptCqaXmcimfEwpOUvc+Vt6hruilSzp6tq9Tfy3sO5z6iask3Y7kKj2xOiGclfRGYUqC0sGwFtioy8+enfjheRGcWEd5/3NNLgYXDTTZGjgneA8I4SHS6t6JlKDKyrmnODF038eaV2ebHFH9bWSvf0CliRMgZZ5lHJ8aStYR1xOgOJx84PzpWtBeuESUhgN7ms1rEIOXnMztWTMI5gL/2tiFvZWrbnlr8OZYZi6zRMRUEAvo3ku8eRDLQQffB1Gfq2Y7a7JhHkOISfPv5G8bT9CnHlYyg2Lm+H85iC7HrTGTj1NN1VPqF9YcRyDAOnbSNOW7VohKJhclIRwVVyik0YRzAh+XXIc8UC5ZeJ3j+PE+O/NJpzdeSOhITXuKRFsijikh8JZZrxfU9CQgbGnVYhhl425ca45CNI7msGl0xIAAZ+C1xGS2grkt3I01Yovk4MvTFqVgASRieMS05FMqNp2aZxm61wZZK8l9AimHz4QbLyo5crLSJZshMmtAQ2jV9L1hXN5Mky8oKpZF9MSGgojCA3QN4oRR993c8Ib76TMH7gvZf3IsbMNtjnCr8k6wGdkNBUGFHap6VFU/f2oUwiyoSWYW2iv2J/7nchcdeGNH0nNB3GJbdD7mR52yTIe+dVoh0zIaGpMKK06dkTnZ1buJXEJRNaAlsu3ML9J3d+W/hNXDKhZViDuAdgXp5cStzWLbmPJbQEJfR13HSyERWMKy4Mh09LSGgqSihAE2RDqBgBPo6WGZMDRkLLUKJ4WxBPlFYuIaElKBE/kS1Cfr/EhISmo0R2t9Y8nmthWxISgOyOU0VE+WoL25KQAIgoq0XcWtrCtiQkACLKaptwDiWoaULCsFArPuRgtlhLGB46ye4rPm5Ry9QzuUZ+QuOwHNW3Xhk3qPXwaeQ2HybLzwA2zKWNS5SoHnB+lVY1ZBzDCHAW0c9g3BPl4nBetIy4WpW8hMbACHAOcfOrcY0S8hDKwzrKtotLWnjzYH39BioH/R9XKKHY15Dlhp4olyPrQZTQWFi/b05arABElOZ0Uc6lg+KPG7dMRNkc2Ccom6FId+MeJeIWcnn0IdvZ3PA/EWXjYYN/HbTxwOOVi44flIB7w3me6IxzblshP2H4sM9R3o76+4mQPq4VyxKKLV5moM3SiNA2LUrKTuNh39fPR/29wKWPa8wgbmzuQ7bYud9EM3HLxsH6chqKB/ociv3p88YlSmhTS5vCPTe0DTWnoe/CU3CrxsKm7u1RPNB7qLxJ6biCTdl/InJID/u/R4X8hOGhTAy/eGdISwM/YBeysYPyU/hTxHXwcT21NAjGDFYjft58UEhLseQDZiC5Ji9X+oBX+5LdYjlh6LA+/CTq226i6W1cewgZbLr4BXF3sSKi/H0olzpteLDw3F1o6+N+JE+mzascbNQeyMBQgH4a7yXur53knqHD+nt/Yt9+I5c37mGjcyUUbL9oCk9xzxsH8/a/k9jPu4S81K8O1hk/oHi7Y9tT51Xk8zfUPRnHO/Jc0lZx7DupNH07GFHacldeC/eE+u1QNk01g4MN5OXQltLWx18P+ak/C2Dxz29j4A4RfgfbbmATkmw5WBjRnUIc5P3IZQ1SXxaiHoXH0n4XyqaOrA+2erMB8vQ3grzB5ScUwEwVk5E7m991rJLdEhJh1gMb8NegvrP48vvk8hMKYJ1zBJW5pW23vBBp7H7bk4SBsD79KJEg+5G/wUSSclMTJoxPAu6jNrf8abgujfRi2CzyFuRs0UtUGPcPeanv6oB1pDlhFHFLr40fHsqnzs3CBvjyaMc2W04sA3eg/kozzCBghHkFtVd5lgJb5a4b7/A+Aj8nDmLrx51DXuqvQcC0xfWAV1Bn5ld5vD3zMWKcy9TRMQbTVxlIkJeHvNRPQ4B12rEUr/Lk5cu/EMMKjudpyQjy48R+M+XwRWAt0orYsGCEeRX1yZdXISVpvHa6EeRRZA3k1j9HhPzEJYcBm8bXQN8kV9LGPWH+mhjpYbx0vpchjyYOYE+QPw/5SSFsAIywdiY7+mtxTPNUH+svwdtpP0WWIG0AP0qy6TYcRljHkzVtVCPMW4nRNcYqYdqA7QDOJUuQZp3oBrbJlU9oEIywzqd+wnyUGMxgLHlW++l6VeBKss/tp+2DQrmxOjBHFN4ryGxv1QjTlKKlwJGuntH+cjy3exfwCAOtE9Yvnw3lRvsztzVMq+4CrqY2YXql6GIUGBRGp2zl48N3AV9k4AD0/XFmKJsIsgUwYppKNBVVI0zvm/kk8O+urk7anzjzX3DOQz6n9mx97ty45Xmh7FgSWdoeRkiTgMuorZXnucmVxD3GoT2Js0SWGNcDLmSg3JwfeGeE8okgRwCeiEzztJWLerhmL/q0wm9YalPkSL1Mk5v9s60JnEZ2T3T/jP780+GaRJAjCL9y8zEip6y0JFnENRcjDrRlru5OWsNBjRDz5ppNkFxoQRqKVrTsOZcQxZIJJIIccXiZaxckN9YznRd9B3Q1erkrk4Xdw9y9hvrSbRBZXfl6ZiCP+l+RlZPzDilefnyAaIdMSk2bwV7ImkSXtyLuUg9xPg38BDnCzq5yT09g1Y5qRus1gPcB3ycOKM8JK4WxKQOXoJUa//wJbQb/8j+Kwgzai6wma/oXnifQxcAtwFnAfsCbGPrWHjPC9R8ATkcfbr1UoQ15YvTy8rNE5+b8cycME82QfUwG7AfWR0rC3iHNgs7XkhONg0LxC38WRYJbgL4VehYFd/W77k4EpiNOtro78qKBtatMsYLS7/JA3PEkZDQvEYk2YRTAT2d7EG17lThirem9ZxDX1MORrb5Kcm9f7n5/Bt5d4fkSRhH8ys0E4FDgbgYqDNUUokqEakTTU8dh4kOt+9gA8OXuBg4hcsrRuBqVUAA/BU9C0Wuvpz5ZrtlHP8Wc+yZkCeiq8BwJYwBFYV7eBnwTyYX5qXMwHG4oRGifKfi8fwHfA3bItTMZw8c4jDj9S14R2QcvRspLNRnPCNWINU+wltZXcE1RvU8BlyLzk9+1t6idCS3ASHe4GcL7XNryaEu4twNbo0CtaxC/fxkOehHR34s2H7gBKWAvuDLGzftIGBGMNFEajCsZR/SYipwhNkJxweegLwJnIrvjFLJyXzda9luEpuMnUWyk+8PxIDIfeRhHNG6aMIL4fyST2C4DHAFPAAAAAElFTkSuQmCC" alt="Acconciature la Fenice">
       <div>
         <h1>Schedario Colore</h1>
-        <div class="sub">Ogni scheda resta salvata solo su questo dispositivo/browser.</div>
+        <div class="sub">Ogni scheda resta salvata in automatico, su qualunque dispositivo.</div>
       </div>
     </div>
     <div class="top-actions">
@@ -570,6 +601,9 @@
 
     <main class="panel sheet" id="sheetPanel"></main>
   </div>
+  <button type="button" class="floating-save-btn" id="floatingSaveBtn" title="Salva scheda" hidden>
+    <span class="floating-save-icon">💾</span><span class="floating-save-label">Salva</span>
+  </button>
 </div>
 
 <div class="img-modal" id="imgModal" hidden>
@@ -1715,6 +1749,8 @@
 
   function renderSheet() {
     const panel = document.getElementById('sheetPanel');
+    const floatingSave = document.getElementById('floatingSaveBtn');
+    if (floatingSave) floatingSave.hidden = true; // riappare solo per una vera scheda cliente, più sotto
 
     if (viewingNotes) {
       panel.innerHTML = `
@@ -1762,7 +1798,7 @@
                 <span>+ Aggiungi</span>
               </label>
             </div>
-            <p class="hint">Restano salvate solo su questo dispositivo/browser, come le schede clienti.</p>
+            <p class="hint">Restano salvate in automatico, come le schede clienti.</p>
           </div>
           <div class="field">
             <label class="label-legend-style">Procedimento</label>
@@ -1920,6 +1956,7 @@
       return;
     }
     ensureBaseline(c);
+    if (floatingSave) floatingSave.hidden = false; // c'è una vera scheda cliente aperta: mostra il tasto laterale
 
     panel.innerHTML = `
       <div class="sheet-head">
@@ -2041,7 +2078,7 @@
               <span>+ Aggiungi</span>
             </label>
           </div>
-          <p class="hint">Le foto restano salvate solo su questo dispositivo/browser, come il resto della scheda.</p>
+          <p class="hint">Le foto restano salvate in automatico, come il resto della scheda.</p>
         </div>
       </fieldset>
 
@@ -2577,6 +2614,13 @@
   document.getElementById('imgModalClose').addEventListener('click', closeImageModal);
   imgModal.addEventListener('click', (e) => { if (e.target === imgModal) closeImageModal(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !imgModal.hidden) closeImageModal(); });
+
+  // Tasto "Salva" fisso di lato: richiama semplicemente il Salva della scheda aperta
+  // (quello in fondo alla scheda), così la logica di salvataggio resta unica.
+  document.getElementById('floatingSaveBtn').addEventListener('click', () => {
+    const realSaveBtn = document.getElementById('saveBtn');
+    if (realSaveBtn) realSaveBtn.click();
+  });
 
   // Check "Fatto" al centro dello schermo, quando si preme il pulsante Salva della scheda.
   const centerToast = document.getElementById('centerToast');
