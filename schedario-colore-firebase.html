@@ -2615,6 +2615,28 @@
   imgModal.addEventListener('click', (e) => { if (e.target === imgModal) closeImageModal(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !imgModal.hidden) closeImageModal(); });
 
+  // Prima lettera maiuscola in automatico, in tutti i campi di testo dove si scrive
+  // (eccetto il nome cliente, che ha già la sua trasformazione, e la ricerca).
+  function capitalizeFirstLetter(el) {
+    const val = el.value;
+    if (!val) return;
+    const first = val.charAt(0);
+    const capped = first.toUpperCase();
+    if (first === capped) return;
+    const pos = el.selectionStart;
+    el.value = capped + val.slice(1);
+    if (pos !== null && el === document.activeElement) {
+      try { el.setSelectionRange(pos, pos); } catch (e2) { /* alcuni input non supportano setSelectionRange */ }
+    }
+  }
+  document.addEventListener('input', (e) => {
+    const el = e.target;
+    const isTextField = (el.tagName === 'INPUT' && (el.type === 'text' || !el.type)) || el.tagName === 'TEXTAREA';
+    if (!isTextField) return;
+    if (el.id === 'f-nome' || el.id === 'searchAppInput') return;
+    capitalizeFirstLetter(el);
+  });
+
   // Tasto "Salva" fisso di lato: richiama semplicemente il Salva della scheda aperta
   // (quello in fondo alla scheda), così la logica di salvataggio resta unica.
   document.getElementById('floatingSaveBtn').addEventListener('click', () => {
