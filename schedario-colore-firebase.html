@@ -2317,6 +2317,23 @@
           cl[target][key].min = e.target.value;
         });
       });
+      // Premendo Invio nella cella dei minuti, aggiunge in automatico la parola "minuti".
+      el.addEventListener('keydown', e => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        let val = e.target.value.trim();
+        if (val && !/\sminuti$/i.test(val)) {
+          val = val + ' minuti';
+          e.target.value = val;
+          const key = e.target.dataset.key;
+          const target = e.target.dataset.line === 'time' ? 'tempiTime' : 'tempiGreen';
+          touch(cl => {
+            cl[target][key] = cl[target][key] || { on: false, min: '' };
+            cl[target][key].min = val;
+          });
+        }
+        e.target.blur();
+      });
     });
 
 
