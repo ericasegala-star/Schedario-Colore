@@ -784,7 +784,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-06.1-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-06.2-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -3030,6 +3030,37 @@
   });
   document.getElementById('imgModalClose').addEventListener('click', closeImageModal);
   imgModal.addEventListener('click', (e) => { if (e.target === imgModal) closeImageModal(); });
+
+  // Scorrendo col dito (o il mouse) sulla foto, si girano le pagine come in un libro:
+  // verso sinistra = pagina successiva, verso destra = pagina precedente.
+  (function () {
+    let swipeStartX = null;
+    let swipeStartY = null;
+    const SWIPE_MIN_PX = 40; // sotto questa soglia non è uno scorrimento, solo un tocco
+    function swipeStart(x, y) { swipeStartX = x; swipeStartY = y; }
+    function swipeEnd(x, y) {
+      if (swipeStartX === null) return;
+      const dx = x - swipeStartX;
+      const dy = y - swipeStartY;
+      swipeStartX = null;
+      swipeStartY = null;
+      if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < Math.abs(dy)) return; // scorrimento troppo verticale o troppo corto
+      if (dx < 0) imgModalNext.click(); else imgModalPrev.click();
+    }
+    imgModalImg.addEventListener('touchstart', (e) => {
+      const t = e.changedTouches[0];
+      swipeStart(t.clientX, t.clientY);
+    }, { passive: true });
+    imgModalImg.addEventListener('touchend', (e) => {
+      const t = e.changedTouches[0];
+      swipeEnd(t.clientX, t.clientY);
+    }, { passive: true });
+    let mouseSwiping = false;
+    imgModalImg.addEventListener('mousedown', (e) => { e.preventDefault(); mouseSwiping = true; swipeStart(e.clientX, e.clientY); }); // preventDefault: altrimenti il browser trascinerebbe l'immagine invece di farci sfogliare
+    document.addEventListener('mouseup', (e) => { if (mouseSwiping) { mouseSwiping = false; swipeEnd(e.clientX, e.clientY); } });
+    imgModalImg.addEventListener('dragstart', (e) => e.preventDefault());
+  })();
+
   document.addEventListener('keydown', (e) => {
     if (imgModal.hidden) return;
     if (e.key === 'Escape') { closeImageModal(); return; }
