@@ -566,12 +566,20 @@
     display: flex; flex-direction: column; align-items: center; gap: 10px;
     perspective: 1400px;
   }
-  .img-modal-page img {
+  .img-modal-page img, .img-modal-procedimento {
     background: #fff; backface-visibility: hidden;
     transform-origin: left center;
     animation: pageTurnNext 0.3s ease;
   }
-  .img-modal-page.flip-prev img { animation-name: pageTurnPrev; transform-origin: right center; }
+  .img-modal-page.flip-prev img, .img-modal-page.flip-prev .img-modal-procedimento { animation-name: pageTurnPrev; transform-origin: right center; }
+  .img-modal-procedimento {
+    width: min(560px, 90vw); height: min(420px, 60vh);
+    padding: 20px; border: none; border-radius: 4px;
+    font-family: inherit; font-size: 15px; line-height: 1.5; color: #2a2a2a;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    resize: none;
+  }
+  .img-modal-procedimento[hidden] { display: none; }
   @keyframes pageTurnNext {
     from { opacity: 0.35; transform: rotateY(-78deg); }
     to { opacity: 1; transform: rotateY(0deg); }
@@ -759,6 +767,7 @@
   <button type="button" class="img-modal-nav img-modal-prev" id="imgModalPrev" aria-label="Pagina precedente" hidden>‹</button>
   <div class="img-modal-page" id="imgModalPage">
     <img id="imgModalImg" src="" alt="">
+    <textarea class="img-modal-procedimento" id="imgModalProcedimento" placeholder="Scrivi qui il procedimento…" hidden></textarea>
     <div class="img-modal-page-comment" id="imgModalCommentArea" hidden>
       <input type="text" id="imgModalCommentInput" placeholder="Commento…">
     </div>
@@ -775,7 +784,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-05.4-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-06.1-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -864,7 +873,7 @@
 
   // Copie in memoria: sono quello che il resto dell'app legge e disegna subito.
   let clients = [];
-  let ispirazioneCache = { procedimento: "", libri: [] };
+  let ispirazioneCache = { libri: [] };
   let pendingIspirazioneUploadLibroId = null; // quale libro riceverà le foto scelte dall'input condiviso
   let appuntiCache = { time: [], green: [], gloss: [] };
 
@@ -982,17 +991,10 @@
     });
   }
 
-  // Ispirazione: il testo del procedimento vive in un unico documento; i "libri" di
-  // foto, ciascuno con un titolo e le proprie foto, vivono in "app/ispirazione/libri/<libroId>"
-  // e "app/ispirazione/libri/<libroId>/foto/<fotoId>".
+  // Ispirazione: i "libri" di foto, ciascuno con un titolo, le proprie foto e un
+  // procedimento (scritto come ultima "pagina" del libro, quando lo si sfoglia), vivono
+  // in "app/ispirazione/libri/<libroId>" e "app/ispirazione/libri/<libroId>/foto/<fotoId>".
   function loadIspirazione() { return ispirazioneCache; }
-  function saveIspirazione(data) {
-    ispirazioneCache = data;
-    if (!db) { showStorageError(); return Promise.resolve(false); }
-    return db.doc('app/ispirazione').set({ procedimento: data.procedimento || '' })
-      .then(() => { hideStorageError(); return true; })
-      .catch(() => { showStorageError(); return false; });
-  }
   function loadIspirazioneLibri() {
     if (!db) return;
     db.collection('app/ispirazione/libri').orderBy('createdAt', 'asc').get().then(snap => {
@@ -1010,12 +1012,16 @@
   }
   function createIspirazioneLibro() {
     const id = uid();
-    const libro = { id, titolo: '', foto: [], createdAt: Date.now() };
+    const libro = { id, titolo: '', procedimento: '', foto: [], createdAt: Date.now() };
     ispirazioneCache.libri.push(libro);
     if (!db) { showStorageError(); return Promise.resolve(libro); }
-    return db.doc('app/ispirazione/libri/' + id).set({ titolo: '', createdAt: libro.createdAt })
+    return db.doc('app/ispirazione/libri/' + id).set({ titolo: '', procedimento: '', createdAt: libro.createdAt })
       .then(() => { hideStorageError(); return libro; })
       .catch(() => { showStorageError('Non sono riuscita a creare il nuovo libro. Riprova tra poco.'); return libro; });
+  }
+  function saveIspirazioneLibroProcedimento(libroId, procedimento) {
+    if (!db) return;
+    db.doc('app/ispirazione/libri/' + libroId).update({ procedimento }).then(hideStorageError).catch(() => {});
   }
   function saveIspirazioneLibroTitolo(libroId, titolo) {
     if (!db) return;
@@ -1094,14 +1100,12 @@
         clients = snap.docs.map(d => clientFromDbDoc(d.id, d.data()));
         clients.forEach(c => { lastWrittenUpdatedAt[c.id] = c.updatedAt || Date.now(); });
         return Promise.all([
-          db.doc('app/ispirazione').get(),
           db.doc('appunti/time').get(),
           db.doc('appunti/green').get(),
           db.doc('appunti/gloss').get()
         ]);
-      }).then(([ins, aTime, aGreen, aGloss]) => {
-        const insData = ins.exists ? ins.data() : null;
-        ispirazioneCache = { procedimento: (insData && insData.procedimento) || "", libri: [] };
+      }).then(([aTime, aGreen, aGloss]) => {
+        ispirazioneCache = { libri: [] };
         appuntiCache = {
           time: normalizeAppuntiList(aTime.exists ? aTime.data().list : []),
           green: normalizeAppuntiList(aGreen.exists ? aGreen.data().list : []),
@@ -2040,7 +2044,7 @@
 
     if (viewingIspirazione) {
       const canEdit = canEditIspirazione();
-      if (floatingSave) floatingSave.hidden = !canEdit; // il tasto laterale salva il procedimento: solo per chi può modificare
+      if (floatingSave) floatingSave.hidden = true; // qui ogni cosa si salva già da sola (nomi, foto, procedimento nel libro)
       const ins = loadIspirazione();
       panel.innerHTML = `
         <div class="sheet-head">
@@ -2061,11 +2065,7 @@
               </button>
               <input type="file" id="ins-foto-input" accept="image/*" multiple hidden>` : ''}
             </div>
-            <p class="hint">${canEdit ? 'Clicca su "+ Aggiungi libro" per crearne uno nuovo. Clicca su un libro vuoto per aggiungere le foto, su uno pieno per sfogliarlo. Restano salvate in automatico, come le schede clienti.' : 'Clicca su un libro per sfogliarlo.'}</p>
-          </div>
-          <div class="field">
-            <label class="label-legend-style">Procedimento</label>
-            <textarea id="ins-procedimento" placeholder="Scrivi qui il procedimento…" ${canEdit ? '' : 'readonly'}>${escapeHtml(ins.procedimento)}</textarea>
+            <p class="hint">${canEdit ? 'Clicca su "+ Aggiungi libro" per crearne uno nuovo. Clicca su un libro vuoto per aggiungere le foto, su uno pieno per sfogliarlo: il procedimento si scrive nell\'ultima pagina del libro. Restano salvate in automatico, come le schede clienti.' : 'Clicca su un libro per sfogliarlo.'}</p>
           </div>
         </fieldset>
         <div class="sheet-footer">
@@ -2434,17 +2434,6 @@
       bookAddBtn.addEventListener('click', () => {
         if (!canEditIspirazione()) return;
         createIspirazioneLibro().then(() => renderSheet());
-      });
-    }
-
-    const procField = document.getElementById('ins-procedimento');
-    if (procField) {
-      procField.addEventListener('input', () => {
-        if (!canEditIspirazione()) return; // chi può solo vedere non modifica il procedimento
-        const ins = loadIspirazione();
-        ins.procedimento = procField.value;
-        saveIspirazione(ins);
-        ispirazioneNotify('Salvato.');
       });
     }
   }
@@ -2919,14 +2908,18 @@
   const imgModalCommentArea = document.getElementById('imgModalCommentArea');
   const imgModalCommentInput = document.getElementById('imgModalCommentInput');
   const imgModalRemove = document.getElementById('imgModalRemove');
+  const imgModalProcedimento = document.getElementById('imgModalProcedimento');
 
   // Stato della visualizzazione "a libro" (solo per le foto di Ispirazione, che si possono
-  // sfogliare pagina per pagina); per una singola foto (es. prima/dopo di una scheda cliente,
-  // o la ruota di Ostwald) queste parti restano semplicemente nascoste.
+  // sfogliare pagina per pagina, con il procedimento del libro come ultima pagina); per una
+  // singola foto (es. prima/dopo di una scheda cliente, o la ruota di Ostwald) queste parti
+  // restano semplicemente nascoste.
   let bookPhotos = [];
   let bookIndex = 0;
   let bookOnChange = null; // richiamata quando una foto viene eliminata dal libro, per aggiornare la copertina dietro
-  let bookLibroId = null; // a quale libro appartengono le foto che si stanno sfogliando
+  let bookLibroId = null; // a quale libro appartengono le foto (e il procedimento) che si stanno sfogliando
+
+  function bookTotalPages() { return bookPhotos.length + 1; } // +1 per la pagina del procedimento
 
   function openImageModal(src, alt) {
     bookPhotos = [];
@@ -2937,6 +2930,8 @@
     imgModalPageCount.hidden = true;
     imgModalCommentArea.hidden = true;
     imgModalRemove.hidden = true;
+    imgModalProcedimento.hidden = true;
+    imgModalImg.hidden = false;
     imgModalImg.src = src;
     imgModalImg.alt = alt || '';
     imgModal.hidden = false;
@@ -2950,34 +2945,50 @@
   }
 
   function renderBookPage(direction) {
-    const f = bookPhotos[bookIndex];
-    if (!f) { closeImageModal(); return; }
-    imgModalImg.src = f.dataUrl;
-    imgModalImg.alt = f.name || '';
-    imgModalCommentInput.value = f.commento || '';
-    imgModalPageCount.textContent = (bookIndex + 1) + ' / ' + bookPhotos.length;
+    const onProcedimentoPage = bookIndex === bookPhotos.length;
+    const canEdit = canEditIspirazione();
+    imgModalPageCount.textContent = (bookIndex + 1) + ' / ' + bookTotalPages();
     imgModalPrev.disabled = bookIndex === 0;
-    imgModalNext.disabled = bookIndex === bookPhotos.length - 1;
+    imgModalNext.disabled = bookIndex === bookTotalPages() - 1;
+
+    if (onProcedimentoPage) {
+      const ins = loadIspirazione();
+      const libro = ins.libri.find(l => l.id === bookLibroId);
+      imgModalImg.hidden = true;
+      imgModalCommentArea.hidden = true;
+      imgModalRemove.hidden = true;
+      imgModalProcedimento.hidden = false;
+      imgModalProcedimento.readOnly = !canEdit;
+      imgModalProcedimento.value = (libro && libro.procedimento) || '';
+    } else {
+      const f = bookPhotos[bookIndex];
+      if (!f) { closeImageModal(); return; }
+      imgModalProcedimento.hidden = true;
+      imgModalImg.hidden = false;
+      imgModalImg.src = f.dataUrl;
+      imgModalImg.alt = f.name || '';
+      imgModalCommentArea.hidden = false;
+      imgModalCommentInput.readOnly = !canEdit;
+      imgModalCommentInput.value = f.commento || '';
+      imgModalRemove.hidden = !canEdit;
+    }
+
     imgModalPage.classList.remove('flip-prev');
-    void imgModalImg.offsetWidth; // forza il reflow, così l'animazione riparte ad ogni pagina
+    void imgModalPage.offsetWidth; // forza il reflow, così l'animazione riparte ad ogni pagina
     if (direction === 'prev') imgModalPage.classList.add('flip-prev');
   }
 
   // Apre il "libro" di Ispirazione: photos è l'elenco delle foto, index la pagina di partenza,
   // onChange viene richiamata se si elimina una pagina (per aggiornare la copertina dietro al
-  // modale), libroId dice a quale libro appartengono (serve per salvare commento/eliminazione).
+  // modale), libroId dice a quale libro appartengono (serve per salvare commento/procedimento/eliminazione).
   function openBookModal(photos, index, onChange, libroId) {
     bookPhotos = photos;
     bookIndex = index || 0;
     bookOnChange = onChange || null;
     bookLibroId = libroId || null;
-    const canEdit = canEditIspirazione();
     imgModalPrev.hidden = false;
     imgModalNext.hidden = false;
     imgModalPageCount.hidden = false;
-    imgModalCommentArea.hidden = false;
-    imgModalCommentInput.readOnly = !canEdit; // chi può solo vedere legge il commento ma non lo modifica
-    imgModalRemove.hidden = !canEdit; // e non può eliminare la foto
     renderBookPage();
     imgModal.hidden = false;
   }
@@ -2986,7 +2997,7 @@
     if (bookIndex > 0) { bookIndex--; renderBookPage('prev'); }
   });
   imgModalNext.addEventListener('click', () => {
-    if (bookIndex < bookPhotos.length - 1) { bookIndex++; renderBookPage('next'); }
+    if (bookIndex < bookTotalPages() - 1) { bookIndex++; renderBookPage('next'); }
   });
   imgModalCommentInput.addEventListener('input', () => {
     if (!canEditIspirazione()) return;
@@ -2994,6 +3005,14 @@
     if (!f || !bookLibroId) return;
     f.commento = imgModalCommentInput.value;
     updateIspirazioneFotoCommento(bookLibroId, f.id, imgModalCommentInput.value);
+    ispirazioneNotify('Salvato.');
+  });
+  imgModalProcedimento.addEventListener('input', () => {
+    if (!canEditIspirazione() || !bookLibroId) return;
+    const ins = loadIspirazione();
+    const libro = ins.libri.find(l => l.id === bookLibroId);
+    if (libro) libro.procedimento = imgModalProcedimento.value;
+    saveIspirazioneLibroProcedimento(bookLibroId, imgModalProcedimento.value);
     ispirazioneNotify('Salvato.');
   });
   imgModalRemove.addEventListener('click', () => {
@@ -3006,8 +3025,7 @@
     deleteIspirazioneFotoDoc(bookLibroId, f.id);
     bookPhotos = bookPhotos.filter(x => x.id !== f.id);
     if (bookOnChange) bookOnChange();
-    if (!bookPhotos.length) { closeImageModal(); return; }
-    if (bookIndex >= bookPhotos.length) bookIndex = bookPhotos.length - 1;
+    if (bookIndex > bookPhotos.length) bookIndex = bookPhotos.length;
     renderBookPage();
   });
   document.getElementById('imgModalClose').addEventListener('click', closeImageModal);
@@ -3042,18 +3060,10 @@
     capitalizeFirstLetter(el);
   });
 
-  // Tasto "Salva" fisso di lato: su una scheda cliente richiama il Salva della scheda
-  // (quello in fondo alla scheda); su Ispirazione salva il procedimento, che altrimenti
-  // si salva solo in automatico mentre si scrive.
+  // Tasto "Salva" fisso di lato: richiama il Salva della scheda cliente aperta (quello in
+  // fondo alla scheda). Non compare in Ispirazione, dove ormai tutto si salva da solo
+  // (nomi, foto, e il procedimento scritto nell'ultima pagina del libro).
   document.getElementById('floatingSaveBtn').addEventListener('click', () => {
-    if (viewingIspirazione) {
-      const procField = document.getElementById('ins-procedimento');
-      const ins = loadIspirazione();
-      if (procField) ins.procedimento = procField.value;
-      saveIspirazione(ins);
-      ispirazioneNotify('Salvato.');
-      return;
-    }
     const realSaveBtn = document.getElementById('saveBtn');
     if (realSaveBtn) realSaveBtn.click();
   });
