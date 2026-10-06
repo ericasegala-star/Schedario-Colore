@@ -307,6 +307,36 @@
   .foto-add:hover { border-color: var(--berry); color: var(--berry); }
   .foto-add input { display: none; }
 
+  /* "Libro" di Ispirazione: una copertina da sfogliare (o cliccare per aggiungere foto)
+     invece della griglia di foto, con una cella per il nome in basso. */
+  .ins-book-area { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+  .ins-book-cover {
+    position: relative; width: 130px; height: 190px;
+    border-radius: 3px 10px 10px 3px;
+    background: linear-gradient(135deg, var(--berry), #7a2630);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.25), inset -5px 0 0 rgba(0,0,0,0.25);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    transform: perspective(600px) rotateY(-4deg);
+    transition: transform 0.15s;
+  }
+  .ins-book-cover:hover { transform: perspective(600px) rotateY(-9deg); }
+  .ins-book-cover-clickarea { position: relative; flex: 1; cursor: pointer; display: flex; }
+  .ins-book-cover-spine { position: absolute; left: 0; top: 0; bottom: 0; width: 10px; background: rgba(0,0,0,0.25); }
+  .ins-book-cover-face {
+    position: relative; flex: 1; margin-left: 10px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px; padding: 10px; text-align: center;
+  }
+  .ins-book-cover-face img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.5; }
+  .ins-book-cover-count { position: relative; z-index: 1; color: #fff; font-size: 12px; background: rgba(0,0,0,0.3); padding: 2px 9px; border-radius: 10px; }
+  .ins-book-cover-title {
+    margin: 0 10px 10px 20px; padding: 7px 6px; border: none; border-radius: 4px;
+    background: #ffe9f0; color: #1a1a1a; font-weight: 700; font-size: 12px;
+    text-align: center; text-transform: uppercase; font-family: inherit;
+  }
+  .ins-book-cover-title::placeholder { color: #b98b96; text-transform: none; font-weight: 400; }
+
   .version-list { display: flex; flex-direction: column; gap: 8px; }
   .version-block { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
   .version-item {
@@ -518,6 +548,51 @@
   }
   .img-modal-close:hover { background: rgba(255,255,255,0.22); }
 
+  /* Visualizzazione "a pagine di libro" per le foto di Ispirazione. */
+  .img-modal-page {
+    position: relative; max-width: 100%; max-height: 100%;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+  }
+  .img-modal-page img {
+    background: #fff; animation: pageInNext 0.18s ease;
+  }
+  .img-modal-page.flip-prev img { animation-name: pageInPrev; }
+  @keyframes pageInNext {
+    from { opacity: 0; transform: translateX(16px) scale(0.98); }
+    to { opacity: 1; transform: translateX(0) scale(1); }
+  }
+  @keyframes pageInPrev {
+    from { opacity: 0; transform: translateX(-16px) scale(0.98); }
+    to { opacity: 1; transform: translateX(0) scale(1); }
+  }
+  .img-modal-nav {
+    position: fixed; top: 50%; transform: translateY(-50%);
+    width: 48px; height: 48px; border-radius: 50%;
+    background: rgba(255,255,255,0.14); border: none; color: #fff;
+    font-size: 26px; line-height: 1; cursor: pointer;
+  }
+  .img-modal-nav:hover { background: rgba(255,255,255,0.26); }
+  .img-modal-nav:disabled { opacity: 0.3; cursor: default; }
+  .img-modal-nav[hidden] { display: none; }
+  .img-modal-prev { left: 16px; }
+  .img-modal-next { right: 16px; }
+  .img-modal-page-count {
+    color: #fff; font-size: 13px; background: rgba(0,0,0,0.3); padding: 3px 10px; border-radius: 10px;
+  }
+  .img-modal-page-count[hidden] { display: none; }
+  .img-modal-page-comment { width: 100%; max-width: 420px; }
+  .img-modal-page-comment[hidden] { display: none; }
+  .img-modal-page-comment input {
+    width: 100%; padding: 8px 10px; border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.92); font-family: inherit; font-size: 14px; text-align: center;
+  }
+  .img-modal-page-remove {
+    position: absolute; top: 8px; right: 8px; z-index: 1; width: 28px; height: 28px; border-radius: 50%;
+    background: rgba(0,0,0,0.45); color: #fff; border: none; font-size: 16px; line-height: 1; cursor: pointer;
+  }
+  .img-modal-page-remove:hover { background: #A8433C; }
+  .img-modal-page-remove[hidden] { display: none; }
+
   .center-toast {
     position: fixed; top: 50%; left: 50%; z-index: 1100;
     transform: translate(-50%, -50%) scale(0.92);
@@ -666,7 +741,16 @@
 
 <div class="img-modal" id="imgModal" hidden>
   <button type="button" class="img-modal-close" id="imgModalClose" aria-label="Chiudi">×</button>
-  <img id="imgModalImg" src="" alt="">
+  <button type="button" class="img-modal-nav img-modal-prev" id="imgModalPrev" aria-label="Pagina precedente" hidden>‹</button>
+  <div class="img-modal-page" id="imgModalPage">
+    <button type="button" class="img-modal-page-remove" id="imgModalRemove" title="Rimuovi questa foto" hidden>×</button>
+    <img id="imgModalImg" src="" alt="">
+    <div class="img-modal-page-comment" id="imgModalCommentArea" hidden>
+      <input type="text" id="imgModalCommentInput" placeholder="Commento…">
+    </div>
+    <div class="img-modal-page-count" id="imgModalPageCount" hidden></div>
+  </div>
+  <button type="button" class="img-modal-nav img-modal-next" id="imgModalNext" aria-label="Pagina successiva" hidden>›</button>
 </div>
 
 <div class="center-toast" id="centerToast">
@@ -759,7 +843,7 @@
 
   // Copie in memoria: sono quello che il resto dell'app legge e disegna subito.
   let clients = [];
-  let ispirazioneCache = { foto: [], procedimento: "" };
+  let ispirazioneCache = { foto: [], procedimento: "", titolo: "" };
   let appuntiCache = { time: [], green: [], gloss: [] };
 
   // Tiene traccia dell'ultima modifica già scritta per ciascuna scheda, così un
@@ -882,7 +966,7 @@
   function saveIspirazione(data) {
     ispirazioneCache = data;
     if (!db) { showStorageError(); return Promise.resolve(false); }
-    return db.doc('app/ispirazione').set({ procedimento: data.procedimento || '' })
+    return db.doc('app/ispirazione').set({ procedimento: data.procedimento || '', titolo: data.titolo || '' })
       .then(() => { hideStorageError(); return true; })
       .catch(() => { showStorageError(); return false; });
   }
@@ -973,7 +1057,7 @@
         ]);
       }).then(([ins, aTime, aGreen, aGloss]) => {
         const insData = ins.exists ? ins.data() : null;
-        ispirazioneCache = { foto: [], procedimento: (insData && insData.procedimento) || "" };
+        ispirazioneCache = { foto: [], procedimento: (insData && insData.procedimento) || "", titolo: (insData && insData.titolo) || "" };
         appuntiCache = {
           time: normalizeAppuntiList(aTime.exists ? aTime.data().list : []),
           green: normalizeAppuntiList(aGreen.exists ? aGreen.data().list : []),
@@ -1903,21 +1987,23 @@
         <fieldset>
           <div class="field">
             <label class="label-legend-style">Foto dei tuoi lavori</label>
-            <div class="foto-grid" id="insFotoGrid">
-              ${ins.foto.map(f => `
-                <div class="foto-card">
-                  <div class="foto-thumb">
-                    <img src="${f.dataUrl}" data-id="${f.id}" class="ins-foto-open" alt="${escapeHtml(f.name || '')}">
-                    <button type="button" class="ins-foto-remove" data-id="${f.id}" title="Rimuovi foto">×</button>
+            <div class="ins-book-area" id="insFotoGrid">
+              <div class="ins-book-cover">
+                <div class="ins-book-cover-clickarea" id="insBookCoverClick" title="${ins.foto.length ? 'Sfoglia le foto' : 'Clicca per aggiungere le foto'}">
+                  <div class="ins-book-cover-spine"></div>
+                  <div class="ins-book-cover-face">
+                    ${ins.foto.length ? `<img src="${ins.foto[0].dataUrl}" alt="">` : ''}
+                    <div class="ins-book-cover-count">${ins.foto.length ? ins.foto.length + ' foto' : 'Nessuna foto'}</div>
                   </div>
-                  <input type="text" class="ins-foto-comment" data-id="${f.id}" placeholder="Commento…" value="${escapeHtml(f.commento || '')}">
-                </div>`).join('')}
+                </div>
+                <input type="text" class="ins-book-cover-title" id="insBookTitle" placeholder="Nome…" value="${escapeHtml(ins.titolo || '')}">
+              </div>
               <label class="foto-add">
                 <input type="file" id="ins-foto-input" accept="image/*" multiple>
                 <span>+ Aggiungi</span>
               </label>
             </div>
-            <p class="hint">Restano salvate in automatico, come le schede clienti.</p>
+            <p class="hint">Clicca sul libro per aggiungere le prime foto, poi per sfogliarle. Restano salvate in automatico, come le schede clienti.</p>
           </div>
           <div class="field">
             <label class="label-legend-style">Procedimento</label>
@@ -2245,28 +2331,35 @@
       });
     }
 
-    document.querySelectorAll('.ins-foto-comment').forEach(input => {
-      input.addEventListener('input', () => {
-        const id = input.dataset.id;
+    const bookClickArea = document.getElementById('insBookCoverClick');
+    if (bookClickArea) {
+      bookClickArea.addEventListener('click', () => {
         const ins = loadIspirazione();
-        const f = ins.foto.find(x => x.id === id);
-        if (f) { f.commento = input.value; updateIspirazioneFotoCommento(id, input.value); ispirazioneNotify('Salvato.'); }
+        if (ins.foto.length) {
+          openBookModal(ins.foto, 0, () => { renderSheet(); });
+        } else {
+          const fi = document.getElementById('ins-foto-input');
+          if (fi) fi.click(); // libro vuoto: cliccandoci sopra si apre direttamente la scelta foto
+        }
       });
-    });
+    }
 
-    document.querySelectorAll('.ins-foto-remove').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.dataset.id;
+    const bookTitleInput = document.getElementById('insBookTitle');
+    if (bookTitleInput) {
+      bookTitleInput.addEventListener('click', e => e.stopPropagation());
+      bookTitleInput.addEventListener('input', () => {
+        const pos = bookTitleInput.selectionStart;
+        const upper = bookTitleInput.value.toUpperCase();
+        if (upper !== bookTitleInput.value) {
+          bookTitleInput.value = upper;
+          try { bookTitleInput.setSelectionRange(pos, pos); } catch (e2) { /* alcuni input non supportano setSelectionRange */ }
+        }
         const ins = loadIspirazione();
-        ins.foto = ins.foto.filter(f => f.id !== id);
-        deleteIspirazioneFotoDoc(id);
-        renderSheet();
+        ins.titolo = bookTitleInput.value;
+        saveIspirazione(ins);
+        ispirazioneNotify('Salvato.');
       });
-    });
-
-    document.querySelectorAll('.ins-foto-open').forEach(img => {
-      img.addEventListener('click', () => openImageModal(img.src, img.alt));
-    });
+    }
 
     const procField = document.getElementById('ins-procedimento');
     if (procField) {
@@ -2742,7 +2835,29 @@
   // Modal foto: apre l'immagine ingrandita in un popup dentro la pagina, invece che in una nuova scheda/finestra.
   const imgModal = document.getElementById('imgModal');
   const imgModalImg = document.getElementById('imgModalImg');
+  const imgModalPage = document.getElementById('imgModalPage');
+  const imgModalPrev = document.getElementById('imgModalPrev');
+  const imgModalNext = document.getElementById('imgModalNext');
+  const imgModalPageCount = document.getElementById('imgModalPageCount');
+  const imgModalCommentArea = document.getElementById('imgModalCommentArea');
+  const imgModalCommentInput = document.getElementById('imgModalCommentInput');
+  const imgModalRemove = document.getElementById('imgModalRemove');
+
+  // Stato della visualizzazione "a libro" (solo per le foto di Ispirazione, che si possono
+  // sfogliare pagina per pagina); per una singola foto (es. prima/dopo di una scheda cliente,
+  // o la ruota di Ostwald) queste parti restano semplicemente nascoste.
+  let bookPhotos = [];
+  let bookIndex = 0;
+  let bookOnChange = null; // richiamata quando una foto viene eliminata dal libro, per aggiornare la copertina dietro
+
   function openImageModal(src, alt) {
+    bookPhotos = [];
+    bookOnChange = null;
+    imgModalPrev.hidden = true;
+    imgModalNext.hidden = true;
+    imgModalPageCount.hidden = true;
+    imgModalCommentArea.hidden = true;
+    imgModalRemove.hidden = true;
     imgModalImg.src = src;
     imgModalImg.alt = alt || '';
     imgModal.hidden = false;
@@ -2750,10 +2865,73 @@
   function closeImageModal() {
     imgModal.hidden = true;
     imgModalImg.src = '';
+    bookPhotos = [];
+    bookOnChange = null;
   }
+
+  function renderBookPage(direction) {
+    const f = bookPhotos[bookIndex];
+    if (!f) { closeImageModal(); return; }
+    imgModalImg.src = f.dataUrl;
+    imgModalImg.alt = f.name || '';
+    imgModalCommentInput.value = f.commento || '';
+    imgModalPageCount.textContent = (bookIndex + 1) + ' / ' + bookPhotos.length;
+    imgModalPrev.disabled = bookIndex === 0;
+    imgModalNext.disabled = bookIndex === bookPhotos.length - 1;
+    imgModalPage.classList.remove('flip-prev');
+    void imgModalImg.offsetWidth; // forza il reflow, così l'animazione riparte ad ogni pagina
+    if (direction === 'prev') imgModalPage.classList.add('flip-prev');
+  }
+
+  // Apre il "libro" di Ispirazione: photos è l'elenco delle foto, index la pagina di partenza,
+  // onChange viene richiamata se si elimina una pagina, per aggiornare la copertina dietro al modale.
+  function openBookModal(photos, index, onChange) {
+    bookPhotos = photos;
+    bookIndex = index || 0;
+    bookOnChange = onChange || null;
+    imgModalPrev.hidden = false;
+    imgModalNext.hidden = false;
+    imgModalPageCount.hidden = false;
+    imgModalCommentArea.hidden = false;
+    imgModalRemove.hidden = false;
+    renderBookPage();
+    imgModal.hidden = false;
+  }
+
+  imgModalPrev.addEventListener('click', () => {
+    if (bookIndex > 0) { bookIndex--; renderBookPage('prev'); }
+  });
+  imgModalNext.addEventListener('click', () => {
+    if (bookIndex < bookPhotos.length - 1) { bookIndex++; renderBookPage('next'); }
+  });
+  imgModalCommentInput.addEventListener('input', () => {
+    const f = bookPhotos[bookIndex];
+    if (!f) return;
+    f.commento = imgModalCommentInput.value;
+    updateIspirazioneFotoCommento(f.id, imgModalCommentInput.value);
+    ispirazioneNotify('Salvato.');
+  });
+  imgModalRemove.addEventListener('click', () => {
+    const f = bookPhotos[bookIndex];
+    if (!f) return;
+    const ins = loadIspirazione();
+    ins.foto = ins.foto.filter(x => x.id !== f.id);
+    deleteIspirazioneFotoDoc(f.id);
+    bookPhotos = bookPhotos.filter(x => x.id !== f.id);
+    if (bookOnChange) bookOnChange();
+    if (!bookPhotos.length) { closeImageModal(); return; }
+    if (bookIndex >= bookPhotos.length) bookIndex = bookPhotos.length - 1;
+    renderBookPage();
+  });
   document.getElementById('imgModalClose').addEventListener('click', closeImageModal);
   imgModal.addEventListener('click', (e) => { if (e.target === imgModal) closeImageModal(); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !imgModal.hidden) closeImageModal(); });
+  document.addEventListener('keydown', (e) => {
+    if (imgModal.hidden) return;
+    if (e.key === 'Escape') { closeImageModal(); return; }
+    if (!bookPhotos.length) return;
+    if (e.key === 'ArrowLeft') imgModalPrev.click();
+    if (e.key === 'ArrowRight') imgModalNext.click();
+  });
 
   // Prima lettera maiuscola in automatico, in tutti i campi di testo dove si scrive
   // (eccetto il nome cliente, che ha già la sua trasformazione, e la ricerca).
@@ -2773,7 +2951,7 @@
     const el = e.target;
     const isTextField = (el.tagName === 'INPUT' && (el.type === 'text' || !el.type)) || el.tagName === 'TEXTAREA';
     if (!isTextField) return;
-    if (el.id === 'f-nome' || el.id === 'searchAppInput') return;
+    if (el.id === 'f-nome' || el.id === 'searchAppInput' || el.id === 'insBookTitle') return;
     capitalizeFirstLetter(el);
   });
 
