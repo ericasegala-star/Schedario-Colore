@@ -784,7 +784,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-06.2-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-07.1-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -1042,7 +1042,8 @@
   }
 
   // Appunti (le tre sezioni "Consigli di utilizzo" personalizzabili): solo testo,
-  // un documento per sezione, scritto per intero ad ogni modifica (è leggero).
+  // un documento per sezione E per persona (ognuno ha i suoi, privati: nessuno
+  // vede gli appunti di un altro), scritto per intero ad ogni modifica (è leggero).
   function normalizeAppuntiList(list) {
     const arr = Array.isArray(list) ? list : [];
     return arr.map(a => {
@@ -1053,11 +1054,35 @@
       return { id: a && a.id, voce: (a && a.voce) || '' };
     });
   }
+  function appuntiDocPath(section) {
+    return 'appunti/' + section + '-' + (currentOperator() || 'condivisi');
+  }
+  // Prima che esistesse Sara, gli appunti di Erica erano scritti in un unico posto
+  // condiviso (appunti/time, appunti/green, appunti/gloss). La prima volta che Erica
+  // apre l'app con questa versione, se i suoi appunti personali risultano ancora
+  // vuoti, li recupera da lì una volta sola, così non perde quello che aveva scritto.
+  // Sara invece è nuova e parte sempre da appunti vuoti, tutti suoi.
+  function migrateLegacyAppuntiIfNeeded(docs) {
+    if (currentOperator() !== 'Erica') return Promise.resolve(docs);
+    const sections = ['time', 'green', 'gloss'];
+    const allEmpty = docs.every(d => !d.exists || !(d.data() && d.data().list && d.data().list.length));
+    if (!allEmpty) return Promise.resolve(docs);
+    return Promise.all(sections.map(s => db.doc('appunti/' + s).get())).then(oldDocs => {
+      const hasOld = oldDocs.some(d => d.exists && d.data() && d.data().list && d.data().list.length);
+      if (!hasOld) return docs;
+      return Promise.all(oldDocs.map((old, i) => {
+        if (old.exists && old.data() && old.data().list && old.data().list.length) {
+          return db.doc('appunti/' + sections[i] + '-Erica').set({ list: old.data().list });
+        }
+        return Promise.resolve();
+      })).then(() => oldDocs);
+    }).catch(() => docs);
+  }
   function loadAppunti(section) { return appuntiCache[section] || []; }
   function saveAppunti(section, list) {
     appuntiCache[section] = list;
     if (!db) { showStorageError(); return Promise.resolve(false); }
-    return db.doc('appunti/' + section).set({ list })
+    return db.doc(appuntiDocPath(section)).set({ list })
       .then(() => { hideStorageError(); return true; })
       .catch(() => { showStorageError(); return false; });
   }
@@ -1100,11 +1125,11 @@
         clients = snap.docs.map(d => clientFromDbDoc(d.id, d.data()));
         clients.forEach(c => { lastWrittenUpdatedAt[c.id] = c.updatedAt || Date.now(); });
         return Promise.all([
-          db.doc('appunti/time').get(),
-          db.doc('appunti/green').get(),
-          db.doc('appunti/gloss').get()
+          db.doc(appuntiDocPath('time')).get(),
+          db.doc(appuntiDocPath('green')).get(),
+          db.doc(appuntiDocPath('gloss')).get()
         ]);
-      }).then(([aTime, aGreen, aGloss]) => {
+      }).then(migrateLegacyAppuntiIfNeeded).then(([aTime, aGreen, aGloss]) => {
         ispirazioneCache = { libri: [] };
         appuntiCache = {
           time: normalizeAppuntiList(aTime.exists ? aTime.data().list : []),
@@ -1984,7 +2009,7 @@
     const appunti = loadAppunti(section);
     return `
       <h4>I tuoi appunti</h4>
-      <p>Aggiungi qui le tue note: restano salvate su questo dispositivo/browser, come le schede clienti.</p>
+      <p>Aggiungi qui le tue note: sono private, le vedi solo tu. Chiunque altro usi l'app può aggiungere le proprie, senza vedere le tue.</p>
       ${appunti.map(a => `
         <div class="appunti-item">
           <div class="field">
