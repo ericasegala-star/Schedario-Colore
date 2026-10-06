@@ -1892,6 +1892,7 @@
     }
 
     if (viewingIspirazione) {
+      if (floatingSave) floatingSave.hidden = false; // qui il tasto laterale salva il procedimento
       const ins = loadIspirazione();
       panel.innerHTML = `
         <div class="sheet-head">
@@ -2776,9 +2777,18 @@
     capitalizeFirstLetter(el);
   });
 
-  // Tasto "Salva" fisso di lato: richiama semplicemente il Salva della scheda aperta
-  // (quello in fondo alla scheda), così la logica di salvataggio resta unica.
+  // Tasto "Salva" fisso di lato: su una scheda cliente richiama il Salva della scheda
+  // (quello in fondo alla scheda); su Ispirazione salva il procedimento, che altrimenti
+  // si salva solo in automatico mentre si scrive.
   document.getElementById('floatingSaveBtn').addEventListener('click', () => {
+    if (viewingIspirazione) {
+      const procField = document.getElementById('ins-procedimento');
+      const ins = loadIspirazione();
+      if (procField) ins.procedimento = procField.value;
+      saveIspirazione(ins);
+      ispirazioneNotify('Salvato.');
+      return;
+    }
     const realSaveBtn = document.getElementById('saveBtn');
     if (realSaveBtn) realSaveBtn.click();
   });
