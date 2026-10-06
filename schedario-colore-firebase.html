@@ -322,6 +322,7 @@
   }
   .ins-book-cover:hover { transform: perspective(600px) rotateY(-9deg); }
   .ins-book-cover-clickarea { position: relative; flex: 1; cursor: pointer; display: flex; }
+  .ins-book-cover-clickarea-inert { cursor: default; }
   .ins-book-cover-spine { position: absolute; left: 0; top: 0; bottom: 0; width: 10px; background: rgba(0,0,0,0.25); }
   .ins-book-cover-face {
     position: relative; flex: 1; margin-left: 10px;
@@ -336,6 +337,16 @@
     text-align: center; text-transform: uppercase; font-family: inherit;
   }
   .ins-book-cover-title::placeholder { color: #b98b96; text-transform: none; font-weight: 400; }
+
+  .ins-book-add {
+    width: 130px; height: 190px; padding: 0;
+    border: 1px dashed var(--line); border-radius: var(--radius);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    color: var(--ink-soft); cursor: pointer; background: transparent;
+  }
+  .ins-book-add:hover { border-color: var(--berry); color: var(--berry); }
+  .ins-book-add-icon { font-size: 26px; line-height: 1; }
+  .ins-book-add-label { font-size: 12.5px; text-align: center; line-height: 1.25; }
 
   .version-list { display: flex; flex-direction: column; gap: 8px; }
   .version-block { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
@@ -548,22 +559,26 @@
   }
   .img-modal-close:hover { background: rgba(255,255,255,0.22); }
 
-  /* Visualizzazione "a pagine di libro" per le foto di Ispirazione. */
+  /* Visualizzazione "a pagine di libro" per le foto di Ispirazione: le pagine si voltano
+     con un piccolo effetto di rotazione, come le pagine di un libro vero. */
   .img-modal-page {
     position: relative; max-width: 100%; max-height: 100%;
     display: flex; flex-direction: column; align-items: center; gap: 10px;
+    perspective: 1400px;
   }
   .img-modal-page img {
-    background: #fff; animation: pageInNext 0.18s ease;
+    background: #fff; backface-visibility: hidden;
+    transform-origin: left center;
+    animation: pageTurnNext 0.3s ease;
   }
-  .img-modal-page.flip-prev img { animation-name: pageInPrev; }
-  @keyframes pageInNext {
-    from { opacity: 0; transform: translateX(16px) scale(0.98); }
-    to { opacity: 1; transform: translateX(0) scale(1); }
+  .img-modal-page.flip-prev img { animation-name: pageTurnPrev; transform-origin: right center; }
+  @keyframes pageTurnNext {
+    from { opacity: 0.35; transform: rotateY(-78deg); }
+    to { opacity: 1; transform: rotateY(0deg); }
   }
-  @keyframes pageInPrev {
-    from { opacity: 0; transform: translateX(-16px) scale(0.98); }
-    to { opacity: 1; transform: translateX(0) scale(1); }
+  @keyframes pageTurnPrev {
+    from { opacity: 0.35; transform: rotateY(78deg); }
+    to { opacity: 1; transform: rotateY(0deg); }
   }
   .img-modal-nav {
     position: fixed; top: 50%; transform: translateY(-50%);
@@ -587,10 +602,10 @@
     background: rgba(255,255,255,0.92); font-family: inherit; font-size: 14px; text-align: center;
   }
   .img-modal-page-remove {
-    position: absolute; top: 8px; right: 8px; z-index: 1; width: 28px; height: 28px; border-radius: 50%;
-    background: rgba(0,0,0,0.45); color: #fff; border: none; font-size: 16px; line-height: 1; cursor: pointer;
+    background: rgba(255,255,255,0.12); color: #ffb3ad; border: 1px solid rgba(255,255,255,0.3);
+    border-radius: var(--radius); padding: 6px 16px; font-size: 13px; font-family: inherit; cursor: pointer;
   }
-  .img-modal-page-remove:hover { background: #A8433C; }
+  .img-modal-page-remove:hover { background: rgba(168,67,60,0.4); color: #fff; }
   .img-modal-page-remove[hidden] { display: none; }
 
   .center-toast {
@@ -743,11 +758,11 @@
   <button type="button" class="img-modal-close" id="imgModalClose" aria-label="Chiudi">×</button>
   <button type="button" class="img-modal-nav img-modal-prev" id="imgModalPrev" aria-label="Pagina precedente" hidden>‹</button>
   <div class="img-modal-page" id="imgModalPage">
-    <button type="button" class="img-modal-page-remove" id="imgModalRemove" title="Rimuovi questa foto" hidden>×</button>
     <img id="imgModalImg" src="" alt="">
     <div class="img-modal-page-comment" id="imgModalCommentArea" hidden>
       <input type="text" id="imgModalCommentInput" placeholder="Commento…">
     </div>
+    <button type="button" class="img-modal-page-remove" id="imgModalRemove" hidden>Elimina questa foto</button>
     <div class="img-modal-page-count" id="imgModalPageCount" hidden></div>
   </div>
   <button type="button" class="img-modal-nav img-modal-next" id="imgModalNext" aria-label="Pagina successiva" hidden>›</button>
@@ -773,6 +788,12 @@
 
   function currentOperator() {
     try { return localStorage.getItem(LOGIN_REMEMBER_KEY) || null; } catch (e) { return null; }
+  }
+
+  // La sezione "Ispirazione" la modifica solo Erica: Sara (o chiunque altro) la vede,
+  // ma non può aggiungere/eliminare libri o foto, scrivere nomi/commenti o modificare il procedimento.
+  function canEditIspirazione() {
+    return currentOperator() === 'Erica';
   }
 
   function showLoginGate() {
@@ -843,7 +864,8 @@
 
   // Copie in memoria: sono quello che il resto dell'app legge e disegna subito.
   let clients = [];
-  let ispirazioneCache = { foto: [], procedimento: "", titolo: "" };
+  let ispirazioneCache = { procedimento: "", libri: [] };
+  let pendingIspirazioneUploadLibroId = null; // quale libro riceverà le foto scelte dall'input condiviso
   let appuntiCache = { time: [], green: [], gloss: [] };
 
   // Tiene traccia dell'ultima modifica già scritta per ciascuna scheda, così un
@@ -960,35 +982,57 @@
     });
   }
 
-  // Ispirazione: il testo del procedimento vive in un unico documento; le foto, a
-  // parte, in "app/ispirazione/foto/<fotoId>".
+  // Ispirazione: il testo del procedimento vive in un unico documento; i "libri" di
+  // foto, ciascuno con un titolo e le proprie foto, vivono in "app/ispirazione/libri/<libroId>"
+  // e "app/ispirazione/libri/<libroId>/foto/<fotoId>".
   function loadIspirazione() { return ispirazioneCache; }
   function saveIspirazione(data) {
     ispirazioneCache = data;
     if (!db) { showStorageError(); return Promise.resolve(false); }
-    return db.doc('app/ispirazione').set({ procedimento: data.procedimento || '', titolo: data.titolo || '' })
+    return db.doc('app/ispirazione').set({ procedimento: data.procedimento || '' })
       .then(() => { hideStorageError(); return true; })
       .catch(() => { showStorageError(); return false; });
   }
-  function loadIspirazioneFoto() {
+  function loadIspirazioneLibri() {
     if (!db) return;
-    db.collection('app/ispirazione/foto').orderBy('createdAt', 'asc').get().then(snap => {
-      ispirazioneCache.foto = snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
-      if (viewingIspirazione) renderSheet();
-    }).catch(() => { /* le foto non si sono caricate: la sezione resta visibile senza, per ora */ });
+    db.collection('app/ispirazione/libri').orderBy('createdAt', 'asc').get().then(snap => {
+      const libri = snap.docs.map(d => Object.assign({ id: d.id, foto: [] }, d.data()));
+      return Promise.all(libri.map(libro =>
+        db.collection('app/ispirazione/libri/' + libro.id + '/foto').orderBy('createdAt', 'asc').get().then(fotoSnap => {
+          libro.foto = fotoSnap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+          return libro;
+        })
+      )).then(libri => {
+        ispirazioneCache.libri = libri;
+        if (viewingIspirazione) renderSheet();
+      });
+    }).catch(() => { /* i libri non si sono caricati: la sezione resta visibile senza, per ora */ });
   }
-  function saveIspirazioneFotoDoc(photoId, body) {
+  function createIspirazioneLibro() {
+    const id = uid();
+    const libro = { id, titolo: '', foto: [], createdAt: Date.now() };
+    ispirazioneCache.libri.push(libro);
+    if (!db) { showStorageError(); return Promise.resolve(libro); }
+    return db.doc('app/ispirazione/libri/' + id).set({ titolo: '', createdAt: libro.createdAt })
+      .then(() => { hideStorageError(); return libro; })
+      .catch(() => { showStorageError('Non sono riuscita a creare il nuovo libro. Riprova tra poco.'); return libro; });
+  }
+  function saveIspirazioneLibroTitolo(libroId, titolo) {
+    if (!db) return;
+    db.doc('app/ispirazione/libri/' + libroId).update({ titolo }).then(hideStorageError).catch(() => {});
+  }
+  function saveIspirazioneFotoDoc(libroId, photoId, body) {
     if (!db) { showStorageError(); return; }
-    db.doc('app/ispirazione/foto/' + photoId).set(body).then(hideStorageError)
+    db.doc('app/ispirazione/libri/' + libroId + '/foto/' + photoId).set(body).then(hideStorageError)
       .catch(() => showStorageError('Non sono riuscita a salvare questa foto. Riprova tra poco.'));
   }
-  function updateIspirazioneFotoCommento(photoId, commento) {
+  function updateIspirazioneFotoCommento(libroId, photoId, commento) {
     if (!db) return;
-    db.doc('app/ispirazione/foto/' + photoId).update({ commento }).then(hideStorageError).catch(() => {});
+    db.doc('app/ispirazione/libri/' + libroId + '/foto/' + photoId).update({ commento }).then(hideStorageError).catch(() => {});
   }
-  function deleteIspirazioneFotoDoc(photoId) {
+  function deleteIspirazioneFotoDoc(libroId, photoId) {
     if (!db) return;
-    db.doc('app/ispirazione/foto/' + photoId).delete().then(hideStorageError).catch(() => {});
+    db.doc('app/ispirazione/libri/' + libroId + '/foto/' + photoId).delete().then(hideStorageError).catch(() => {});
   }
 
   // Appunti (le tre sezioni "Consigli di utilizzo" personalizzabili): solo testo,
@@ -1057,7 +1101,7 @@
         ]);
       }).then(([ins, aTime, aGreen, aGloss]) => {
         const insData = ins.exists ? ins.data() : null;
-        ispirazioneCache = { foto: [], procedimento: (insData && insData.procedimento) || "", titolo: (insData && insData.titolo) || "" };
+        ispirazioneCache = { procedimento: (insData && insData.procedimento) || "", libri: [] };
         appuntiCache = {
           time: normalizeAppuntiList(aTime.exists ? aTime.data().list : []),
           green: normalizeAppuntiList(aGreen.exists ? aGreen.data().list : []),
@@ -1949,6 +1993,25 @@
     `;
   }
 
+  // Una copertina per ciascun "libro" di foto di Ispirazione: vuota si clicca per
+  // caricare le prime foto, piena si clicca per sfogliarla (solo per chi può modificare;
+  // chi vede soltanto può sfogliare un libro pieno, ma non aggiungerne uno vuoto).
+  function renderIspirazioneLibroHtml(libro, canEdit) {
+    const hasFoto = libro.foto && libro.foto.length;
+    const clickable = hasFoto || canEdit;
+    return `
+      <div class="ins-book-cover">
+        <div class="ins-book-cover-clickarea${clickable ? '' : ' ins-book-cover-clickarea-inert'}" data-libro-id="${libro.id}" title="${hasFoto ? 'Sfoglia le foto' : (canEdit ? 'Clicca per aggiungere le foto' : 'Nessuna foto ancora')}">
+          <div class="ins-book-cover-spine"></div>
+          <div class="ins-book-cover-face">
+            ${hasFoto ? `<img src="${libro.foto[0].dataUrl}" alt="">` : ''}
+            <div class="ins-book-cover-count">${hasFoto ? libro.foto.length + ' foto' : 'Nessuna foto'}</div>
+          </div>
+        </div>
+        <input type="text" class="ins-book-cover-title" data-libro-id="${libro.id}" placeholder="Nome…" value="${escapeHtml(libro.titolo || '')}" ${canEdit ? '' : 'readonly'}>
+      </div>`;
+  }
+
   function renderSheet() {
     const panel = document.getElementById('sheetPanel');
     const floatingSave = document.getElementById('floatingSaveBtn');
@@ -1976,38 +2039,33 @@
     }
 
     if (viewingIspirazione) {
-      if (floatingSave) floatingSave.hidden = false; // qui il tasto laterale salva il procedimento
+      const canEdit = canEditIspirazione();
+      if (floatingSave) floatingSave.hidden = !canEdit; // il tasto laterale salva il procedimento: solo per chi può modificare
       const ins = loadIspirazione();
       panel.innerHTML = `
         <div class="sheet-head">
           <div class="name-field">
             <div class="notes-title">Ispirazione</div>
+            ${canEdit ? '' : '<div class="sub">Solo visualizzazione: questa sezione la modifica solo Erica.</div>'}
           </div>
         </div>
         <fieldset>
           <div class="field">
             <label class="label-legend-style">Foto dei tuoi lavori</label>
             <div class="ins-book-area" id="insFotoGrid">
-              <div class="ins-book-cover">
-                <div class="ins-book-cover-clickarea" id="insBookCoverClick" title="${ins.foto.length ? 'Sfoglia le foto' : 'Clicca per aggiungere le foto'}">
-                  <div class="ins-book-cover-spine"></div>
-                  <div class="ins-book-cover-face">
-                    ${ins.foto.length ? `<img src="${ins.foto[0].dataUrl}" alt="">` : ''}
-                    <div class="ins-book-cover-count">${ins.foto.length ? ins.foto.length + ' foto' : 'Nessuna foto'}</div>
-                  </div>
-                </div>
-                <input type="text" class="ins-book-cover-title" id="insBookTitle" placeholder="Nome…" value="${escapeHtml(ins.titolo || '')}">
-              </div>
-              <label class="foto-add">
-                <input type="file" id="ins-foto-input" accept="image/*" multiple>
-                <span>+ Aggiungi</span>
-              </label>
+              ${ins.libri.map(l => renderIspirazioneLibroHtml(l, canEdit)).join('')}
+              ${canEdit ? `
+              <button type="button" class="ins-book-add" id="insBookAdd" title="Crea un nuovo libro">
+                <span class="ins-book-add-icon">+</span>
+                <span class="ins-book-add-label">Aggiungi<br>libro</span>
+              </button>
+              <input type="file" id="ins-foto-input" accept="image/*" multiple hidden>` : ''}
             </div>
-            <p class="hint">Clicca sul libro per aggiungere le prime foto, poi per sfogliarle. Restano salvate in automatico, come le schede clienti.</p>
+            <p class="hint">${canEdit ? 'Clicca su "+ Aggiungi libro" per crearne uno nuovo. Clicca su un libro vuoto per aggiungere le foto, su uno pieno per sfogliarlo. Restano salvate in automatico, come le schede clienti.' : 'Clicca su un libro per sfogliarlo.'}</p>
           </div>
           <div class="field">
             <label class="label-legend-style">Procedimento</label>
-            <textarea id="ins-procedimento" placeholder="Scrivi qui il procedimento…">${escapeHtml(ins.procedimento)}</textarea>
+            <textarea id="ins-procedimento" placeholder="Scrivi qui il procedimento…" ${canEdit ? '' : 'readonly'}>${escapeHtml(ins.procedimento)}</textarea>
           </div>
         </fieldset>
         <div class="sheet-footer">
@@ -2315,55 +2373,74 @@
     if (fotoInput) {
       fotoInput.addEventListener('change', async (e) => {
         const files = Array.from(e.target.files || []);
+        const libroId = pendingIspirazioneUploadLibroId;
+        pendingIspirazioneUploadLibroId = null;
         const ins = loadIspirazione();
+        const libro = libroId ? ins.libri.find(l => l.id === libroId) : null;
+        if (!libro) { e.target.value = ''; return; }
         for (const file of files) {
           try {
             const dataUrl = await resizeImage(file, 1000, 0.6);
             const photoId = uid();
             const body = { dataUrl, name: file.name, commento: '', createdAt: Date.now() };
-            ins.foto.push(Object.assign({ id: photoId }, body));
-            saveIspirazioneFotoDoc(photoId, body);
+            libro.foto.push(Object.assign({ id: photoId }, body));
+            saveIspirazioneFotoDoc(libroId, photoId, body);
           } catch (err) {
             ispirazioneNotify('Non sono riuscita a caricare "' + file.name + '".', true);
           }
         }
+        e.target.value = ''; // l'input è condiviso tra tutti i libri: si ripulisce per poterlo riusare
         renderSheet();
       });
     }
 
-    const bookClickArea = document.getElementById('insBookCoverClick');
-    if (bookClickArea) {
-      bookClickArea.addEventListener('click', () => {
+    document.querySelectorAll('.ins-book-cover-clickarea').forEach(area => {
+      area.addEventListener('click', () => {
+        const libroId = area.dataset.libroId;
         const ins = loadIspirazione();
-        if (ins.foto.length) {
-          openBookModal(ins.foto, 0, () => { renderSheet(); });
-        } else {
+        const libro = ins.libri.find(l => l.id === libroId);
+        if (!libro) return;
+        if (libro.foto && libro.foto.length) {
+          openBookModal(libro.foto, 0, () => { renderSheet(); }, libroId);
+        } else if (canEditIspirazione()) {
+          pendingIspirazioneUploadLibroId = libroId;
           const fi = document.getElementById('ins-foto-input');
           if (fi) fi.click(); // libro vuoto: cliccandoci sopra si apre direttamente la scelta foto
-        }
+        } // chi può solo vedere non può aggiungere foto a un libro vuoto: il click non fa nulla
       });
-    }
+    });
 
-    const bookTitleInput = document.getElementById('insBookTitle');
-    if (bookTitleInput) {
-      bookTitleInput.addEventListener('click', e => e.stopPropagation());
-      bookTitleInput.addEventListener('input', () => {
-        const pos = bookTitleInput.selectionStart;
-        const upper = bookTitleInput.value.toUpperCase();
-        if (upper !== bookTitleInput.value) {
-          bookTitleInput.value = upper;
-          try { bookTitleInput.setSelectionRange(pos, pos); } catch (e2) { /* alcuni input non supportano setSelectionRange */ }
+    document.querySelectorAll('.ins-book-cover-title').forEach(titleInput => {
+      titleInput.addEventListener('click', e => e.stopPropagation());
+      titleInput.addEventListener('input', () => {
+        if (!canEditIspirazione()) return; // chi può solo vedere non modifica il nome
+        const pos = titleInput.selectionStart;
+        const upper = titleInput.value.toUpperCase();
+        if (upper !== titleInput.value) {
+          titleInput.value = upper;
+          try { titleInput.setSelectionRange(pos, pos); } catch (e2) { /* alcuni input non supportano setSelectionRange */ }
         }
+        const libroId = titleInput.dataset.libroId;
         const ins = loadIspirazione();
-        ins.titolo = bookTitleInput.value;
-        saveIspirazione(ins);
+        const libro = ins.libri.find(l => l.id === libroId);
+        if (libro) libro.titolo = titleInput.value;
+        saveIspirazioneLibroTitolo(libroId, titleInput.value);
         ispirazioneNotify('Salvato.');
+      });
+    });
+
+    const bookAddBtn = document.getElementById('insBookAdd');
+    if (bookAddBtn) {
+      bookAddBtn.addEventListener('click', () => {
+        if (!canEditIspirazione()) return;
+        createIspirazioneLibro().then(() => renderSheet());
       });
     }
 
     const procField = document.getElementById('ins-procedimento');
     if (procField) {
       procField.addEventListener('input', () => {
+        if (!canEditIspirazione()) return; // chi può solo vedere non modifica il procedimento
         const ins = loadIspirazione();
         ins.procedimento = procField.value;
         saveIspirazione(ins);
@@ -2706,7 +2783,7 @@
     viewingOstwald = false;
     closeMobileMenu();
     renderAll();
-    loadIspirazioneFoto();
+    loadIspirazioneLibri();
   });
 
   // Cerca nell'app: stesso comportamento, apre come una scheda
@@ -2849,10 +2926,12 @@
   let bookPhotos = [];
   let bookIndex = 0;
   let bookOnChange = null; // richiamata quando una foto viene eliminata dal libro, per aggiornare la copertina dietro
+  let bookLibroId = null; // a quale libro appartengono le foto che si stanno sfogliando
 
   function openImageModal(src, alt) {
     bookPhotos = [];
     bookOnChange = null;
+    bookLibroId = null;
     imgModalPrev.hidden = true;
     imgModalNext.hidden = true;
     imgModalPageCount.hidden = true;
@@ -2867,6 +2946,7 @@
     imgModalImg.src = '';
     bookPhotos = [];
     bookOnChange = null;
+    bookLibroId = null;
   }
 
   function renderBookPage(direction) {
@@ -2884,16 +2964,20 @@
   }
 
   // Apre il "libro" di Ispirazione: photos è l'elenco delle foto, index la pagina di partenza,
-  // onChange viene richiamata se si elimina una pagina, per aggiornare la copertina dietro al modale.
-  function openBookModal(photos, index, onChange) {
+  // onChange viene richiamata se si elimina una pagina (per aggiornare la copertina dietro al
+  // modale), libroId dice a quale libro appartengono (serve per salvare commento/eliminazione).
+  function openBookModal(photos, index, onChange, libroId) {
     bookPhotos = photos;
     bookIndex = index || 0;
     bookOnChange = onChange || null;
+    bookLibroId = libroId || null;
+    const canEdit = canEditIspirazione();
     imgModalPrev.hidden = false;
     imgModalNext.hidden = false;
     imgModalPageCount.hidden = false;
     imgModalCommentArea.hidden = false;
-    imgModalRemove.hidden = false;
+    imgModalCommentInput.readOnly = !canEdit; // chi può solo vedere legge il commento ma non lo modifica
+    imgModalRemove.hidden = !canEdit; // e non può eliminare la foto
     renderBookPage();
     imgModal.hidden = false;
   }
@@ -2905,18 +2989,21 @@
     if (bookIndex < bookPhotos.length - 1) { bookIndex++; renderBookPage('next'); }
   });
   imgModalCommentInput.addEventListener('input', () => {
+    if (!canEditIspirazione()) return;
     const f = bookPhotos[bookIndex];
-    if (!f) return;
+    if (!f || !bookLibroId) return;
     f.commento = imgModalCommentInput.value;
-    updateIspirazioneFotoCommento(f.id, imgModalCommentInput.value);
+    updateIspirazioneFotoCommento(bookLibroId, f.id, imgModalCommentInput.value);
     ispirazioneNotify('Salvato.');
   });
   imgModalRemove.addEventListener('click', () => {
+    if (!canEditIspirazione()) return;
     const f = bookPhotos[bookIndex];
-    if (!f) return;
+    if (!f || !bookLibroId) return;
     const ins = loadIspirazione();
-    ins.foto = ins.foto.filter(x => x.id !== f.id);
-    deleteIspirazioneFotoDoc(f.id);
+    const libro = ins.libri.find(l => l.id === bookLibroId);
+    if (libro) libro.foto = libro.foto.filter(x => x.id !== f.id);
+    deleteIspirazioneFotoDoc(bookLibroId, f.id);
     bookPhotos = bookPhotos.filter(x => x.id !== f.id);
     if (bookOnChange) bookOnChange();
     if (!bookPhotos.length) { closeImageModal(); return; }
@@ -2951,7 +3038,7 @@
     const el = e.target;
     const isTextField = (el.tagName === 'INPUT' && (el.type === 'text' || !el.type)) || el.tagName === 'TEXTAREA';
     if (!isTextField) return;
-    if (el.id === 'f-nome' || el.id === 'searchAppInput' || el.id === 'insBookTitle') return;
+    if (el.id === 'f-nome' || el.id === 'searchAppInput' || el.classList.contains('ins-book-cover-title')) return;
     capitalizeFirstLetter(el);
   });
 
