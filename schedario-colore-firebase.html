@@ -259,19 +259,18 @@
   @media (max-width: 620px) { .row3, .row2 { grid-template-columns: 1fr; } }
 
   .choice-group { display: flex; flex-wrap: wrap; gap: 8px; }
-  .choice-group.bianchi-row { display: grid; grid-template-columns: repeat(4, 1fr); }
+  .choice-group.bianchi-row { display: grid; grid-template-columns: repeat(4, 1fr); align-items: stretch; }
   .choice-group.bianchi-row .choice { text-align: center; }
-  .bianchi-tag-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 6px; }
-  .bianchi-tag-spacer { grid-column: 1 / span 2; }
-  .bianchi-tag {
-    grid-column: 3 / span 2; text-align: center; padding: 4px 8px;
-    background: var(--berry); color: #fff; border-radius: var(--radius);
-    font-size: 11.5px; font-weight: 600; letter-spacing: 0.02em;
-  }
   @media (max-width: 460px) {
-    .choice-group.bianchi-row, .bianchi-tag-row { grid-template-columns: repeat(2, 1fr); }
-    .bianchi-tag-spacer { display: none; }
-    .bianchi-tag { grid-column: 1 / span 2; }
+    .choice-group.bianchi-row { grid-template-columns: repeat(2, 1fr); }
+  }
+  /* Etichetta "Abbassare di un tono" attaccata alla singola opzione (50%–70% e 100%),
+     così resta sempre sul suo capello bianco giusto, anche quando le opzioni vanno a
+     capo su due righe sul cellulare. */
+  .bianchi-tag-inline {
+    display: block; margin-top: 6px; padding: 3px 6px; border-radius: var(--radius);
+    background: var(--berry); color: #fff; font-size: 10.5px; font-weight: 600;
+    letter-spacing: 0.02em; text-align: center;
   }
   .choice {
     border: 1px solid var(--line); border-radius: var(--radius);
@@ -784,7 +783,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-07.1-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-08.1-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -1584,6 +1583,11 @@
     { v: "50-70", l: "50%–70%" },
     { v: "100", l: "100%" }
   ];
+  // Per queste due percentuali (molti capelli bianchi) va ricordato di abbassare di un tono.
+  // L'etichetta è attaccata direttamente a ciascuna delle due opzioni (non più una fascia a
+  // parte sopra tutte e quattro) così resta sempre associata a quelle giuste, anche quando sul
+  // cellulare le opzioni vanno a capo su due righe.
+  const BIANCHI_ABBASSA_TONO = ["50-70", "100"];
 
   function blankFormula() {
     return { base: "", lunghezze: "", tonalizzazione: "", correttore: "", mordenzatura: "", tecnica: "", gloss: "" };
@@ -2273,27 +2277,21 @@
         <legend>Diagnosi capello</legend>
         <div class="field">
           <label>Capelli bianchi — <strong>davanti</strong></label>
-          <div class="bianchi-tag-row">
-            <span class="bianchi-tag-spacer"></span>
-            <span class="bianchi-tag">Abbassare di un tono</span>
-          </div>
           <div class="choice-group bianchi-row" id="bianchiDavantiGroup">
             ${BIANCHI_OPTIONS.map(o => `
               <label class="choice ${c.bianchiDavanti === o.v ? 'checked' : ''}">
                 <input type="radio" name="bianchiDavanti" value="${o.v}" ${c.bianchiDavanti === o.v ? 'checked' : ''}> ${o.l}
+                ${BIANCHI_ABBASSA_TONO.includes(o.v) ? '<span class="bianchi-tag-inline">Abbassare di un tono</span>' : ''}
               </label>`).join('')}
           </div>
         </div>
         <div class="field">
           <label>Capelli bianchi — <strong>dietro</strong></label>
-          <div class="bianchi-tag-row">
-            <span class="bianchi-tag-spacer"></span>
-            <span class="bianchi-tag">Abbassare di un tono</span>
-          </div>
           <div class="choice-group bianchi-row" id="bianchiDietroGroup">
             ${BIANCHI_OPTIONS.map(o => `
               <label class="choice ${c.bianchiDietro === o.v ? 'checked' : ''}">
                 <input type="radio" name="bianchiDietro" value="${o.v}" ${c.bianchiDietro === o.v ? 'checked' : ''}> ${o.l}
+                ${BIANCHI_ABBASSA_TONO.includes(o.v) ? '<span class="bianchi-tag-inline">Abbassare di un tono</span>' : ''}
               </label>`).join('')}
           </div>
         </div>
