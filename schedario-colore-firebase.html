@@ -204,11 +204,25 @@
     box-shadow: 0 2px 10px rgba(122, 59, 86, 0.1);
   }
   @media (max-width: 860px) { .sidebar { position: static; } }
+  .search-wrap { position: relative; margin-bottom: 10px; }
   .search {
-    width: 100%; padding: 9px 10px; border: 1px solid var(--line);
+    width: 100%; padding: 9px 30px 9px 10px; border: 1px solid var(--line);
     border-radius: var(--radius); background: var(--paper); color: var(--ink);
-    font-size: 14px; margin-bottom: 10px;
+    font-size: 14px; margin-bottom: 0;
   }
+  .search-clear {
+    position: absolute; top: 5px; right: 5px; width: 22px; height: 22px; padding: 0;
+    border: none; border-radius: 50%; background: transparent; color: var(--ink-soft);
+    font-size: 15px; line-height: 1; cursor: pointer;
+  }
+  .search-clear:hover { background: var(--berry-soft); color: var(--berry); }
+  .search-clear[hidden] { display: none; }
+  .empty-list-newbtn {
+    display: block; width: 100%; margin-top: 8px; padding: 8px 10px;
+    border: 1px dashed var(--berry); border-radius: var(--radius); background: transparent;
+    color: var(--berry); font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+  .empty-list-newbtn:hover { background: var(--berry-soft); }
   .client-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; max-height: 186px; overflow-y: auto; }
   .client-list li {
     padding: 9px 10px; border-radius: var(--radius); cursor: pointer;
@@ -219,7 +233,7 @@
   .client-list li.active { background: var(--berry-soft); border-color: var(--berry); font-weight: 500; }
   .client-list .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .client-list .date { color: var(--ink-soft); font-size: 12px; white-space: nowrap; }
-  .empty-list { color: var(--ink-soft); font-size: 13px; padding: 10px; }
+  .client-list li.empty-list { color: var(--ink-soft); font-size: 13px; padding: 10px; display: block; }
 
   .sheet { padding: 24px 26px 28px; }
   .sheet-head {
@@ -721,7 +735,10 @@
   <div class="layout">
     <div class="sidebar-stack">
       <aside class="panel sidebar">
-        <input class="search" id="search" type="text" placeholder="Cerca cliente…">
+        <div class="search-wrap">
+          <input class="search" id="search" type="text" placeholder="Cerca cliente…">
+          <button type="button" class="search-clear" id="searchClear" title="Cancella la ricerca" hidden>×</button>
+        </div>
         <ul class="client-list" id="clientList"></ul>
       </aside>
       <button type="button" class="menu-toggle" id="menuToggle">
@@ -786,7 +803,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-08.4-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-08.6-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -1854,7 +1871,14 @@
       .sort((a, b) => b.updatedAt - a.updatedAt);
 
     if (!filtered.length) {
-      ul.innerHTML = '<li class="empty-list">Nessuna scheda trovata.</li>';
+      // Il tasto "+ Nuova scheda" compare solo cercando qualcosa che non c'è (non a campo
+      // vuoto): magari si pensava di aver già segnato questa cliente, ma non è così, e questo
+      // evita di dover tornare su "+ Nuova scheda" in alto e riscrivere il nome da capo.
+      ul.innerHTML = '<li class="empty-list">Nessuna scheda trovata.' +
+        (term ? '<button type="button" class="empty-list-newbtn" id="emptyListNewBtn">+ Nuova scheda per "' +
+          escapeHtml(searchTerm.trim()) + '"</button>' : '') + '</li>';
+      const btn = document.getElementById('emptyListNewBtn');
+      if (btn) btn.addEventListener('click', () => createNewClient(searchTerm.trim()));
       return;
     }
     ul.innerHTML = '';
@@ -2755,9 +2779,13 @@
     renderSheet();
   }
 
-  document.getElementById('newBtn').addEventListener('click', () => {
+  // Crea una scheda nuova e la apre. Usata sia dal tasto "+ Nuova scheda" in alto, sia dal
+  // tasto che compare quando una ricerca in "Cerca cliente" non trova nessuno, nel qual caso
+  // il nome cercato va già scritto nella nuova scheda (prefillName), per non doverlo riscrivere.
+  function createNewClient(prefillName) {
     if (activeId) { const prev = getClient(activeId); if (prev) commitVersion(prev); }
     const c = blankClient();
+    if (prefillName) c.nome = titleCaseName(prefillName);
     clients.push(c);
     activeId = c.id;
     versionsExpanded = false;
@@ -2766,16 +2794,42 @@
     viewingSearchApp = false;
     viewingBlankSheet = false;
     viewingOstwald = false;
+    searchTerm = "";
+    const searchEl = document.getElementById('search');
+    if (searchEl) searchEl.value = "";
+    const searchClearEl = document.getElementById('searchClear');
+    if (searchClearEl) searchClearEl.hidden = true;
     persist('Nuova scheda creata.');
     renderAll();
     const nameInput = document.getElementById('f-nome');
-    if (nameInput) nameInput.focus();
-  });
+    if (nameInput) {
+      nameInput.focus();
+      nameInput.setSelectionRange(nameInput.value.length, nameInput.value.length);
+    }
+  }
 
-  document.getElementById('search').addEventListener('input', e => {
+  document.getElementById('newBtn').addEventListener('click', () => createNewClient());
+
+  const searchInput = document.getElementById('search');
+  const searchClearBtn = document.getElementById('searchClear');
+  function updateSearchClearVisibility() {
+    if (searchClearBtn) searchClearBtn.hidden = !searchInput.value;
+  }
+  searchInput.addEventListener('input', e => {
     searchTerm = e.target.value;
+    updateSearchClearVisibility();
     renderList();
   });
+  updateSearchClearVisibility();
+  if (searchClearBtn) {
+    searchClearBtn.addEventListener('click', () => {
+      searchTerm = "";
+      searchInput.value = "";
+      updateSearchClearVisibility();
+      renderList();
+      searchInput.focus();
+    });
+  }
 
   // Menu a tendina (solo in verticale su iPad/iPhone): "Cerca cliente" + lista restano sempre visibili,
   // le altre voci si aprono/chiudono con questo pulsante.
@@ -3111,14 +3165,17 @@
 
   // Prima lettera maiuscola in automatico, in tutti i campi di testo dove si scrive
   // (eccetto il nome cliente, che ha già la sua trasformazione, e la ricerca).
+  // Lettera maiuscola in automatico: all'inizio del campo, e dopo ogni punto (o ! o ?)
+  // seguito da uno spazio, come l'inizio di una nuova frase. Maiuscole/minuscole non
+  // cambiano mai la lunghezza del testo, quindi il cursore resta sempre al suo posto.
   function capitalizeFirstLetter(el) {
     const val = el.value;
     if (!val) return;
-    const first = val.charAt(0);
-    const capped = first.toUpperCase();
-    if (first === capped) return;
+    let out = val.charAt(0).toUpperCase() + val.slice(1);
+    out = out.replace(/([.!?]\s+)([a-zà-öø-ÿ])/g, (m, sep, letter) => sep + letter.toUpperCase());
+    if (out === val) return;
     const pos = el.selectionStart;
-    el.value = capped + val.slice(1);
+    el.value = out;
     if (pos !== null && el === document.activeElement) {
       try { el.setSelectionRange(pos, pos); } catch (e2) { /* alcuni input non supportano setSelectionRange */ }
     }
