@@ -786,7 +786,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-08.3-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-08.4-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -2076,7 +2076,10 @@
 
     if (viewingIspirazione) {
       const canEdit = canEditIspirazione();
-      if (floatingSave) floatingSave.hidden = true; // qui ogni cosa si salva già da sola (nomi, foto, procedimento nel libro)
+      // Ogni cosa qui si salva già da sola mentre scrivi (nomi, foto, procedimento nel libro),
+      // ma il tasto resta comunque visibile per chi può modificare: dà la conferma visiva che
+      // il client-save ha sulle schede clienti. Chi può solo vedere non ha nulla da salvare.
+      if (floatingSave) floatingSave.hidden = !canEdit;
       const ins = loadIspirazione();
       panel.innerHTML = `
         <div class="sheet-head">
@@ -3128,10 +3131,19 @@
     capitalizeFirstLetter(el);
   });
 
-  // Tasto "Salva" fisso di lato: richiama il Salva della scheda cliente aperta (quello in
-  // fondo alla scheda). Non compare in Ispirazione, dove ormai tutto si salva da solo
-  // (nomi, foto, e il procedimento scritto nell'ultima pagina del libro).
+  // Tasto "Salva" fisso di lato: su una scheda cliente richiama il Salva vero e proprio
+  // (quello in fondo alla scheda). In Ispirazione ogni campo si salva già da solo mentre
+  // scrivi (nome del libro, foto, procedimento), ma premendo qui si forza comunque il
+  // salvataggio di quello che si sta scrivendo in quel momento (uscendo dal campo attivo,
+  // così parte subito, senza aspettare che l'utente clicchi altrove) e compare la stessa
+  // conferma "Fatto" della scheda cliente, per avere la stessa certezza visiva.
   document.getElementById('floatingSaveBtn').addEventListener('click', () => {
+    if (viewingIspirazione) {
+      const active = document.activeElement;
+      if (active && document.getElementById('sheetPanel').contains(active)) active.blur();
+      showCenterToast('Fatto');
+      return;
+    }
     const realSaveBtn = document.getElementById('saveBtn');
     if (realSaveBtn) realSaveBtn.click();
   });
