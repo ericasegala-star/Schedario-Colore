@@ -662,6 +662,9 @@
     .layout { grid-template-columns: 1fr; }
     .panel { border: none; }
     .line-block { break-inside: avoid; }
+    /* Gli "Es. ..." nei campi vuoti sono solo un suggerimento per chi compila a schermo:
+       in stampa non devono comparire, altrimenti sembrano scritti per davvero. */
+    input::placeholder, textarea::placeholder { color: transparent !important; opacity: 0 !important; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -783,7 +786,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-08.1-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-08.2-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -2165,6 +2168,7 @@
               ${BIANCHI_OPTIONS.map(o => `
                 <label class="choice">
                   <input type="radio" disabled> ${o.l}
+                  ${BIANCHI_ABBASSA_TONO.includes(o.v) ? '<span class="bianchi-tag-inline">Abbassare di un tono</span>' : ''}
                 </label>`).join('')}
             </div>
           </div>
@@ -2174,6 +2178,7 @@
               ${BIANCHI_OPTIONS.map(o => `
                 <label class="choice">
                   <input type="radio" disabled> ${o.l}
+                  ${BIANCHI_ABBASSA_TONO.includes(o.v) ? '<span class="bianchi-tag-inline">Abbassare di un tono</span>' : ''}
                 </label>`).join('')}
             </div>
           </div>
