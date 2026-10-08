@@ -256,6 +256,16 @@
     color: var(--berry); font-weight: 600; margin-bottom: 10px; padding: 0;
   }
   .field { margin-bottom: 14px; }
+  /* Scheda cliente "compatta": i campi e le sezioni non compilate restano nascosti finché non
+     si clicca "Mostra anche i campi non compilati". Non toccano l'ordine di niente: nascondono
+     e basta, allo stesso posto in cui si trovano sempre. */
+  .field.field-hidden, .section-hidden { display: none; }
+  .sheet-show-empty-toggle {
+    display: inline-block; margin: 2px 0 18px; padding: 7px 14px;
+    border: 1px dashed var(--berry); border-radius: var(--radius); background: transparent;
+    color: var(--berry); font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+  .sheet-show-empty-toggle:hover { background: var(--berry-soft); }
   .field label { display: block; font-size: 13px; color: var(--ink-soft); margin-bottom: 5px; }
   .field label.label-legend-style {
     font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em;
@@ -803,7 +813,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-08.6-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-08.7-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -1297,6 +1307,10 @@
   let searchTerm = "";
   let sessionBaseline = {}; // id scheda -> contenuto all'apertura, per rilevare modifiche
   let versionsExpanded = false; // mostra solo le ultime 2 versioni finché non si clicca "Vedi tutte le versioni"
+  // Scheda cliente "compatta": false = mostra solo i campi compilati (e nasconde quelli vuoti,
+  // con un tasto per farli comparire). Riaprendo una scheda già esistente parte sempre compatta;
+  // creandone una nuova parte espansa (tutto visibile, non c'è ancora nulla da nascondere).
+  let sheetShowEmpty = false;
   let viewingNotes = false; // true quando il pannello principale mostra "Consigli di utilizzo" invece di una scheda cliente
   let viewingIspirazione = false; // true quando il pannello principale mostra "Ispirazione"
   let viewingSearchApp = false; // true quando il pannello principale mostra "Cerca nell'app"
@@ -1340,6 +1354,7 @@
     }
     activeId = newId;
     versionsExpanded = false;
+    sheetShowEmpty = false;
     viewingNotes = false;
     viewingIspirazione = false;
     viewingSearchApp = false;
@@ -1963,13 +1978,17 @@
     });
   }
 
-  function renderLineBlock(c, lineKey, readOnly) {
+  function renderLineBlock(c, lineKey, readOnly, compact) {
     const line = LINES[lineKey];
     const tempi = lineKey === 'time' ? c.tempiTime : c.tempiGreen;
     const formula = lineKey === 'time' ? c.formulaTime : c.formulaGreen;
     const prefix = lineKey === 'time' ? 't' : 'g';
     const dis = readOnly ? 'disabled' : '';
     const ro = readOnly ? 'readonly' : '';
+    // Modalità compatta (solo sulla scheda vera, non sul modulo vuoto da stampare): nasconde i
+    // singoli campi di formula non compilati, e l'intera linea se non è stata usata per niente.
+    const hc = (val) => (compact && !val) ? ' field-hidden' : '';
+    const lineHidden = compact && !lineHasContent(c, lineKey) ? ' section-hidden' : '';
 
     const groupsHtml = line.groups.map(g => `
       <div class="dose-group">
@@ -1994,40 +2013,40 @@
       </div>`).join('');
 
     return `
-      <div class="line-block ${lineKey}">
+      <div class="line-block ${lineKey}${lineHidden}">
         <div class="line-block-head">${line.label}</div>
         <div class="line-block-body">
           ${groupsHtml}
           <div class="formula-grid">
-            <div class="field">
+            <div class="field${hc(formula.base)}">
               <label>Formula colore base</label>
               <textarea id="f-${prefix}-base" class="field-autosize" rows="1" placeholder="Es. 6.1 + 7.21…" ${ro}>${escapeHtml(formula.base)}</textarea>
             </div>
             <div class="row2">
-              <div class="field">
+              <div class="field${hc(formula.mordenzatura)}">
                 <label>Mordenzatura</label>
                 <input type="text" id="f-${prefix}-mordenzatura" value="${escapeHtml(formula.mordenzatura)}" ${ro}>
               </div>
-              <div class="field">
+              <div class="field${hc(formula.correttore)}">
                 <label>Correttore / booster</label>
                 <input type="text" id="f-${prefix}-correttore" value="${escapeHtml(formula.correttore)}" ${ro}>
               </div>
             </div>
             <div class="row2">
-              <div class="field">
+              <div class="field${hc(formula.lunghezze)}">
                 <label>Lunghezze</label>
                 <input type="text" id="f-${prefix}-lunghezze" value="${escapeHtml(formula.lunghezze)}" ${ro}>
               </div>
-              <div class="field">
+              <div class="field${hc(formula.tonalizzazione)}">
                 <label>Tonalizzazione</label>
                 <textarea id="f-${prefix}-tonalizzazione" class="field-autosize" rows="1" ${ro}>${escapeHtml(formula.tonalizzazione)}</textarea>
               </div>
             </div>
-            <div class="field">
+            <div class="field${hc(formula.tecnica)}">
               <label>Tecnica e servizi</label>
               <textarea id="f-${prefix}-tecnica" class="field-autosize" rows="1" placeholder="Es. balayage, tocco di luce, trattamento…" ${ro}>${escapeHtml(formula.tecnica)}</textarea>
             </div>
-            <div class="field">
+            <div class="field${hc(formula.gloss)}">
               <label>Tonalizzazione Forever Gloss</label>
               <input type="text" id="f-${prefix}-gloss" placeholder="Es. 1+1/2, posa 20 minuti" value="${escapeHtml(formula.gloss)}" ${ro}>
             </div>
@@ -2282,6 +2301,26 @@
     ensureBaseline(c);
     if (floatingSave) floatingSave.hidden = false; // c'è una vera scheda cliente aperta: mostra il tasto laterale
 
+    // Scheda "compatta": appena si riapre una scheda già esistente, si vede solo quello che è
+    // stato davvero compilato; il resto resta nascosto finché non si clicca il tasto per
+    // farlo comparire, tutto allo stesso posto e nello stesso ordine di sempre.
+    const compact = !sheetShowEmpty;
+    const hc = (val) => (compact && !val) ? ' field-hidden' : '';
+    const noteSectionHidden = compact && !c.note ? ' section-hidden' : '';
+    const allergieSectionHidden = compact && !c.allergie ? ' section-hidden' : '';
+    const diagnosiSectionHidden = compact && !(c.bianchiDavanti || c.bianchiDietro || c.livFondo || c.livLunghezze || c.livPunte || c.obiettivo) ? ' section-hidden' : '';
+    const tecnicaSectionHidden = compact && !lineHasContent(c, 'time') && !lineHasContent(c, 'green') ? ' section-hidden' : '';
+    function lineHasHiddenFields(lineKey) {
+      if (!lineHasContent(c, lineKey)) return true; // l'intera linea è nascosta: c'è sicuramente altro da mostrare
+      const formula = lineKey === 'time' ? c.formulaTime : c.formulaGreen;
+      return !formula.base || !formula.mordenzatura || !formula.correttore || !formula.lunghezze || !formula.tonalizzazione || !formula.tecnica || !formula.gloss;
+    }
+    const hasHiddenFields = compact && (
+      !c.note || !c.allergie || !c.bianchiDavanti || !c.bianchiDietro ||
+      !c.livFondo || !c.livLunghezze || !c.livPunte || !c.obiettivo || !c.modifiche ||
+      lineHasHiddenFields('time') || lineHasHiddenFields('green')
+    );
+
     panel.innerHTML = `
       <div class="sheet-head">
         <div class="name-field">
@@ -2290,24 +2329,25 @@
         </div>
         <button class="danger ghost small" id="deleteBtn">Elimina scheda</button>
       </div>
+      ${hasHiddenFields ? '<button type="button" class="sheet-show-empty-toggle" id="sheetShowEmptyBtn">Mostra anche i campi non compilati</button>' : ''}
 
-      <fieldset>
+      <fieldset class="${noteSectionHidden}">
         <legend>Note e preferenze</legend>
         <div class="field">
           <textarea id="f-note" class="field-autosize" rows="1" placeholder="Es. copertura leggera, non pesante…">${escapeHtml(c.note)}</textarea>
         </div>
       </fieldset>
 
-      <fieldset>
+      <fieldset class="${allergieSectionHidden}">
         <legend>Allergie / ipersensibilità</legend>
         <div class="field">
           <textarea id="f-allergie" class="field-autosize" rows="1" placeholder="Segnala qui eventuali reazioni note…">${escapeHtml(c.allergie)}</textarea>
         </div>
       </fieldset>
 
-      <fieldset>
+      <fieldset class="${diagnosiSectionHidden}">
         <legend>Diagnosi capello</legend>
-        <div class="field">
+        <div class="field${hc(c.bianchiDavanti)}">
           <label>Capelli bianchi — <strong>davanti</strong></label>
           <div class="choice-group bianchi-row" id="bianchiDavantiGroup">
             ${BIANCHI_OPTIONS.map(o => `
@@ -2317,7 +2357,7 @@
               </label>`).join('')}
           </div>
         </div>
-        <div class="field">
+        <div class="field${hc(c.bianchiDietro)}">
           <label>Capelli bianchi — <strong>dietro</strong></label>
           <div class="choice-group bianchi-row" id="bianchiDietroGroup">
             ${BIANCHI_OPTIONS.map(o => `
@@ -2328,30 +2368,30 @@
           </div>
         </div>
         <div class="row3">
-          <div class="field">
+          <div class="field${hc(c.livFondo)}">
             <label>Livello di fondo</label>
             <input type="text" id="f-livFondo" value="${escapeHtml(c.livFondo)}">
           </div>
-          <div class="field">
+          <div class="field${hc(c.livLunghezze)}">
             <label>Livello di lunghezze</label>
             <input type="text" id="f-livLunghezze" value="${escapeHtml(c.livLunghezze)}">
           </div>
-          <div class="field">
+          <div class="field${hc(c.livPunte)}">
             <label>Livello punte</label>
             <input type="text" id="f-livPunte" value="${escapeHtml(c.livPunte)}">
           </div>
         </div>
         <p class="hint">Ricordati che la schiaritura del fondo dipende dall'attivatore: bassi volumi = poca schiaritura, alti volumi = buona schiaritura. Se lunghezze o punte sono colorate, il nuovo colore dovrà essere dello stesso livello o più scuro.</p>
-        <div class="field">
+        <div class="field${hc(c.obiettivo)}">
           <label>Obiettivo</label>
           <textarea id="f-obiettivo" class="field-autosize" rows="1" placeholder="Es. lasciare colore di base, andare in copertura dei bianchi…">${escapeHtml(c.obiettivo)}</textarea>
         </div>
       </fieldset>
 
-      <fieldset>
+      <fieldset class="${tecnicaSectionHidden}">
         <legend>Tecnica e servizi per linea colore</legend>
-        ${renderLineBlock(c, 'time')}
-        ${renderLineBlock(c, 'green')}
+        ${renderLineBlock(c, 'time', false, compact)}
+        ${renderLineBlock(c, 'green', false, compact)}
       </fieldset>
 
       <fieldset>
@@ -2692,6 +2732,11 @@
       }
     });
 
+    on('sheetShowEmptyBtn', 'click', () => {
+      sheetShowEmpty = true;
+      renderSheet();
+    });
+
     on('saveBtn', 'click', () => {
       c.updatedAt = Date.now();
       commitVersion(c);
@@ -2789,6 +2834,7 @@
     clients.push(c);
     activeId = c.id;
     versionsExpanded = false;
+    sheetShowEmpty = true;
     viewingNotes = false;
     viewingIspirazione = false;
     viewingSearchApp = false;
