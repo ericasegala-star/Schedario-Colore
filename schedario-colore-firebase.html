@@ -284,30 +284,34 @@
   .field textarea { resize: vertical; min-height: 44px; }
   .field-autosize { resize: none; overflow: hidden; min-height: 38px; }
 
-  /* Note/Allergie/Obiettivo/Per la prossima volta: "Time", "Green Mix", "Gloss" e "Forever Gloss"
-     compaiono da sole in grande e grassetto mentre si scrive. Il trucco: la textarea vera resta
-     sotto (dove si scrive davvero, con un cursore normale) ma con il testo reso invisibile; sopra,
-     alla stessa identica posizione, un livello non modificabile mostra lo stesso testo con quelle
-     parole evidenziate. Occorre che i due livelli abbiano lo stesso riquadro e lo stesso carattere,
-     altrimenti non si sovrappongono bene. */
+  /* Note/Allergie/Obiettivo/Per la prossima volta/Mordenzatura: "Time", "Green Mix", "Gloss" e
+     "Forever Gloss" compaiono da sole in grande e grassetto mentre si scrive. Il trucco: il campo
+     vero (textarea o input) resta sotto (dove si scrive davvero, con un cursore normale) ma con
+     il testo reso invisibile; sopra, alla stessa identica posizione, un livello non modificabile
+     mostra lo stesso testo con quelle parole evidenziate. Occorre che i due livelli abbiano lo
+     stesso riquadro e lo stesso carattere, altrimenti non si sovrappongono bene. */
   .field-rich { position: relative; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); }
   .field-rich-overlay {
     padding: 9px 10px; font-family: inherit; font-size: 14px; line-height: 1.45;
     white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;
     color: var(--ink); min-height: 38px; pointer-events: none;
   }
+  .field-rich-overlay.single-line { white-space: pre; overflow: hidden; text-overflow: ellipsis; }
   .field-rich-overlay:empty::before { content: attr(data-placeholder); color: var(--ink-soft); }
-  textarea.field-rich-input {
+  /* Selettore un po' "pesante" (due classi + il tag) apposta: deve vincere sulla regola generica
+     ".field textarea, .field input[type=text]" più sopra, altrimenti quella rimetterebbe lo
+     sfondo/bordo/colore normali sopra il trucco della trasparenza. */
+  .field-rich textarea.field-rich-input, .field-rich input.field-rich-input {
     position: absolute; inset: 0; width: 100%; height: 100%; margin: 0;
     border: none; border-radius: var(--radius); background: transparent;
     color: transparent; caret-color: var(--ink); font-family: inherit; font-size: 14px;
     line-height: 1.45; padding: 9px 10px; resize: none; overflow: hidden;
   }
-  textarea.field-rich-input::placeholder { color: transparent; }
+  .field-rich-input::placeholder { color: transparent; }
   .pl-term { font-weight: 700; font-size: 1.15em; }
   @media print {
     .field-rich-overlay { display: none; }
-    textarea.field-rich-input { position: static; color: var(--ink) !important; }
+    .field-rich textarea.field-rich-input, .field-rich input.field-rich-input { position: static; color: var(--ink) !important; }
   }
   .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
   .row2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
@@ -1016,7 +1020,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-08.13-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-08.14-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -2562,7 +2566,12 @@
             <div class="row2">
               <div class="field${hc(formula.mordenzatura)}">
                 <label>Mordenzatura</label>
-                <input type="text" id="f-${prefix}-mordenzatura" value="${escapeHtml(formula.mordenzatura)}" ${ro}>
+                ${readOnly ? `
+                <input type="text" id="f-${prefix}-mordenzatura" value="${escapeHtml(formula.mordenzatura)}" ${ro}>` : `
+                <div class="field-rich">
+                  <input type="text" id="f-${prefix}-mordenzatura" class="field-rich-input" value="${escapeHtml(formula.mordenzatura)}">
+                  <div class="field-rich-overlay single-line" data-placeholder="" aria-hidden="true"></div>
+                </div>`}
               </div>
               <div class="field${hc(formula.correttore)}">
                 <label>Correttore / booster</label>
