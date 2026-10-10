@@ -416,14 +416,14 @@
   .version-item .version-date { font-weight: 500; }
   .version-item .version-indicator { color: var(--ink-soft); font-size: 12.5px; }
   .version-actions { display: flex; align-items: center; gap: 12px; }
-  .version-delete {
+  .version-delete, .magazzino-delete {
     font-family: inherit; font-size: 12px; color: var(--ink-soft);
     background: none; border: none; padding: 2px 4px; cursor: pointer;
     border-radius: var(--radius); text-decoration: underline; text-decoration-color: transparent;
     transition: color .15s ease, text-decoration-color .15s ease;
   }
-  .version-delete:hover { color: #A8433C; text-decoration-color: #A8433C; }
-  .version-delete.armed { color: #A8433C; font-weight: 600; text-decoration-color: #A8433C; }
+  .version-delete:hover, .magazzino-delete:hover { color: #A8433C; text-decoration-color: #A8433C; }
+  .version-delete.armed, .magazzino-delete.armed { color: #A8433C; font-weight: 600; text-decoration-color: #A8433C; }
   .version-empty { font-size: 13px; color: var(--ink-soft); }
   .version-see-all {
     display: inline-block; margin-top: 8px; font-size: 13px; color: var(--berry);
@@ -806,6 +806,34 @@
     letter-spacing: 0.01em; vertical-align: middle;
   }
 
+  /* Magazzino: un elenco di prodotti, ciascuno in una riga con i suoi campi affiancati. */
+  .magazzino-low-summary { color: #A8433C; font-weight: 600; }
+  .magazzino-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+  .magazzino-row {
+    display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px;
+    padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper-raised);
+  }
+  .magazzino-row-low { border-color: #A8433C; }
+  .magazzino-row .field { margin-bottom: 0; }
+  .magazzino-field-nome { flex: 2 1 160px; }
+  .magazzino-field-marca { flex: 1.4 1 120px; }
+  .magazzino-field-prezzo { flex: 0.8 1 80px; }
+  .magazzino-field-scorta { flex: 0.8 1 90px; }
+  .magazzino-qty-wrap { display: flex; align-items: center; gap: 6px; }
+  /* Selettore apposta "pesante" (tre classi): deve vincere sulla regola generica
+     ".field input[type=number]" più sopra, altrimenti quella forza width:100% e l'input
+     si allarga fino a sovrapporsi al campo "Scorta minima" accanto. */
+  .magazzino-row .magazzino-qty-wrap .magazzino-qty-input { width: 54px; text-align: center; flex: none; }
+  .magazzino-qty-btn {
+    width: 30px; height: 34px; padding: 0; font-size: 17px; line-height: 1; flex: none;
+  }
+  .magazzino-row-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+  .magazzino-low-badge {
+    display: inline-block; padding: 1px 7px; border-radius: 10px;
+    background: #A8433C; color: #fff; font-size: 10.5px; font-weight: 600; letter-spacing: 0.01em;
+  }
+  .magazzino-empty { margin-top: 0; }
+
   .settings-font-options { display: flex; flex-wrap: wrap; gap: 8px; }
   .settings-font-option {
     padding: 10px 16px; font-size: 16px; border-radius: var(--radius);
@@ -921,6 +949,11 @@
           </div>
         </aside>
         <aside class="panel notes-banner">
+          <div class="notes-banner-item" id="magazzinoEntry">
+            <span class="name">Magazzino</span>
+          </div>
+        </aside>
+        <aside class="panel notes-banner">
           <div class="notes-banner-item" id="cercaAppEntry">
             <span class="name">Cerca nell'app</span>
           </div>
@@ -1019,7 +1052,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-09.15-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-10.16-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -1111,6 +1144,10 @@
   let ispirazioneCache = { libri: [] };
   let pendingIspirazioneUploadLibroId = null; // quale libro riceverà le foto scelte dall'input condiviso
   let appuntiCache = { time: [], green: [], gloss: [] };
+  // Magazzino prodotti: condiviso fra Erica e Sara (entrambe possono modificarlo), un unico
+  // documento con dentro l'elenco (leggero, non serve una collezione separata per prodotto).
+  let magazzinoCache = { prodotti: [] };
+  let magazzinoSearchTerm = "";
   // Aspetto dell'app (logo, nome, colore): condiviso tra tutte, si cambia da "Impostazioni".
   let appSettingsCache = { nome: null, logo: null, colore: null, font: null, indirizzo: null, telefono: null, mesiRicontatto: null };
   // Promemoria backup: quando è stato fatto l'ultimo "Esporta backup", condiviso tra tutte.
@@ -1339,6 +1376,35 @@
     return db.doc(appuntiDocPath(section)).set({ list })
       .then(() => { hideStorageError(); return true; })
       .catch(() => { showStorageError(); return false; });
+  }
+
+  // Magazzino: un unico documento condiviso ("app/magazzino") con dentro l'elenco prodotti,
+  // scritto per intero a ogni modifica — leggero, come gli Appunti. Si carica solo quando si apre
+  // la sezione (non all'avvio), perché non serve altrove.
+  function loadMagazzino() { return magazzinoCache; }
+  function loadMagazzinoFromDb() {
+    if (!db) { showStorageError(); return; }
+    db.doc('app/magazzino').get().then(doc => {
+      magazzinoCache.prodotti = (doc.exists && doc.data() && doc.data().prodotti) || [];
+      hideStorageError();
+      if (viewingMagazzino) renderSheet();
+    }).catch(() => { /* resta quello che c'era (vuoto, la prima volta): si riprova riaprendo la sezione */ });
+  }
+  function saveMagazzino() {
+    if (!db) { showStorageError(); return Promise.resolve(false); }
+    return db.doc('app/magazzino').set({ prodotti: magazzinoCache.prodotti })
+      .then(() => { hideStorageError(); return true; })
+      .catch(() => { showStorageError('Non sono riuscita a salvare il magazzino. Riprova tra poco.'); return false; });
+  }
+  function createMagazzinoProdotto() {
+    const p = { id: uid(), nome: '', marca: '', prezzo: null, quantita: 0, scortaMinima: null, createdAt: Date.now() };
+    magazzinoCache.prodotti.push(p);
+    saveMagazzino();
+    return p;
+  }
+  function deleteMagazzinoProdotto(id) {
+    magazzinoCache.prodotti = magazzinoCache.prodotti.filter(p => p.id !== id);
+    saveMagazzino();
   }
 
   // ---- Aspetto dell'app (logo, nome, colore): "Impostazioni", condiviso tra tutte ----
@@ -1749,6 +1815,7 @@
   let sheetShowEmpty = false;
   let viewingNotes = false; // true quando il pannello principale mostra "Consigli di utilizzo" invece di una scheda cliente
   let viewingIspirazione = false; // true quando il pannello principale mostra "Ispirazione"
+  let viewingMagazzino = false; // true quando il pannello principale mostra "Magazzino"
   let viewingSearchApp = false; // true quando il pannello principale mostra "Cerca nell'app"
   let searchAppTerm = "";
   let viewingBlankSheet = false; // true quando il pannello principale mostra "Scheda da stampare" (modulo vuoto)
@@ -1794,6 +1861,7 @@
     sheetShowEmpty = false;
     viewingNotes = false;
     viewingIspirazione = false;
+    viewingMagazzino = false;
     viewingSearchApp = false;
     viewingBlankSheet = false;
     viewingOstwald = false;
@@ -2324,7 +2392,7 @@
   }
 
   async function downloadBackup() {
-    const payload = { app: 'schedario-colore', esportatoIl: Date.now(), clienti: clients, ispirazione: loadIspirazione(), appunti: { time: loadAppunti('time'), green: loadAppunti('green'), gloss: loadAppunti('gloss') } };
+    const payload = { app: 'schedario-colore', esportatoIl: Date.now(), clienti: clients, ispirazione: loadIspirazione(), magazzino: loadMagazzino(), appunti: { time: loadAppunti('time'), green: loadAppunti('green'), gloss: loadAppunti('gloss') } };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const stamp = fmtDate(Date.now()).replace(/\//g, '-');
     const filename = 'schedario-colore-backup-' + stamp + '.json';
@@ -2421,7 +2489,7 @@
     ul.innerHTML = '';
     filtered.forEach(c => {
       const li = document.createElement('li');
-      li.className = (!viewingNotes && !viewingIspirazione && !viewingSearchApp && !viewingBlankSheet && !viewingOstwald && !viewingHome && c.id === activeId) ? 'active' : '';
+      li.className = (!viewingNotes && !viewingIspirazione && !viewingMagazzino && !viewingSearchApp && !viewingBlankSheet && !viewingOstwald && !viewingHome && c.id === activeId) ? 'active' : '';
       const mesiRic = appSettingsCache.mesiRicontatto;
       const daRicontattare = mesiRic && (Date.now() - c.updatedAt) >= mesiRic * 30 * 24 * 3600 * 1000;
       li.innerHTML = `<span class="name">${escapeHtml(c.nome || 'Senza nome')}${daRicontattare ? '<span class="recontact-badge">Da ricontattare</span>' : ''}</span><span class="date">${fmtDate(c.updatedAt)}</span>`;
@@ -2435,6 +2503,8 @@
     if (entry) entry.className = 'notes-banner-item' + (viewingNotes ? ' active' : '');
     const ispEntry = document.getElementById('ispirazioneEntry');
     if (ispEntry) ispEntry.className = 'notes-banner-item' + (viewingIspirazione ? ' active' : '');
+    const magEntry = document.getElementById('magazzinoEntry');
+    if (magEntry) magEntry.className = 'notes-banner-item' + (viewingMagazzino ? ' active' : '');
     const searchEntry = document.getElementById('cercaAppEntry');
     if (searchEntry) searchEntry.className = 'notes-banner-item' + (viewingSearchApp ? ' active' : '');
     const blankEntry = document.getElementById('blankSheetEntry');
@@ -2636,6 +2706,46 @@
       </div>`;
   }
 
+  // Un prodotto è "in esaurimento" solo se è stata scritta una scorta minima (facoltativa):
+  // senza, non si sa cosa consideri poco, quindi niente avviso.
+  function isMagazzinoProdottoLow(p) {
+    return p.scortaMinima != null && p.scortaMinima > 0 && (p.quantita || 0) <= p.scortaMinima;
+  }
+  function renderMagazzinoRowHtml(p) {
+    const low = isMagazzinoProdottoLow(p);
+    return `
+      <div class="magazzino-row${low ? ' magazzino-row-low' : ''}" data-id="${p.id}">
+        <div class="field magazzino-field-nome">
+          <label>Prodotto</label>
+          <input type="text" class="magazzino-input" data-id="${p.id}" data-field="nome" placeholder="Es. Shampoo ricostruttore" value="${escapeHtml(p.nome || '')}">
+        </div>
+        <div class="field magazzino-field-marca">
+          <label>Marca/fornitore</label>
+          <input type="text" class="magazzino-input" data-id="${p.id}" data-field="marca" placeholder="Es. Wella" value="${escapeHtml(p.marca || '')}">
+        </div>
+        <div class="field magazzino-field-prezzo">
+          <label>Prezzo €</label>
+          <input type="number" class="magazzino-input" data-id="${p.id}" data-field="prezzo" min="0" step="0.01" placeholder="—" value="${p.prezzo != null ? p.prezzo : ''}">
+        </div>
+        <div class="field magazzino-field-qty">
+          <label>Quantità</label>
+          <div class="magazzino-qty-wrap">
+            <button type="button" class="magazzino-qty-btn" data-id="${p.id}" data-delta="-1" aria-label="Togli uno">−</button>
+            <input type="number" class="magazzino-input magazzino-qty-input" data-id="${p.id}" data-field="quantita" min="0" step="1" value="${p.quantita != null ? p.quantita : 0}">
+            <button type="button" class="magazzino-qty-btn" data-id="${p.id}" data-delta="1" aria-label="Aggiungi uno">+</button>
+          </div>
+        </div>
+        <div class="field magazzino-field-scorta">
+          <label>Scorta minima</label>
+          <input type="number" class="magazzino-input" data-id="${p.id}" data-field="scortaMinima" min="0" step="1" placeholder="facolt." value="${p.scortaMinima != null ? p.scortaMinima : ''}">
+        </div>
+        <div class="magazzino-row-actions">
+          <span class="magazzino-low-badge" ${low ? '' : 'hidden'}>In esaurimento</span>
+          <button type="button" class="magazzino-delete" data-id="${p.id}">Elimina</button>
+        </div>
+      </div>`;
+  }
+
   function renderSheet() {
     const panel = document.getElementById('sheetPanel');
     const floatingSave = document.getElementById('floatingSaveBtn');
@@ -2696,6 +2806,41 @@
         </div>
       `;
       bindIspirazioneEvents();
+      return;
+    }
+
+    if (viewingMagazzino) {
+      // Modificabile sia da Erica che da Sara: nessuna restrizione, a differenza di Ispirazione.
+      if (floatingSave) floatingSave.hidden = false;
+      const mag = loadMagazzino();
+      const term = magazzinoSearchTerm.trim().toLowerCase();
+      const prodotti = mag.prodotti
+        .filter(p => !term || (p.nome || '').toLowerCase().includes(term) || (p.marca || '').toLowerCase().includes(term))
+        .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'it', { sensitivity: 'base' }));
+      const lowCount = mag.prodotti.filter(isMagazzinoProdottoLow).length;
+      panel.innerHTML = `
+        <div class="sheet-head">
+          <div class="name-field">
+            <div class="notes-title">Magazzino</div>
+            ${lowCount ? '<div class="sub magazzino-low-summary">' + lowCount + (lowCount === 1 ? ' prodotto in esaurimento' : ' prodotti in esaurimento') + '</div>' : ''}
+          </div>
+        </div>
+        <fieldset>
+          <div class="field">
+            <input type="text" id="magazzinoSearch" placeholder="Cerca per nome o marca…" value="${escapeHtml(magazzinoSearchTerm)}">
+          </div>
+          <div class="magazzino-list" id="magazzinoList">
+            ${prodotti.length ? prodotti.map(renderMagazzinoRowHtml).join('') :
+              '<p class="hint magazzino-empty">' + (term ? 'Nessun prodotto trovato.' : 'Nessun prodotto ancora: aggiungine uno con il tasto qui sotto.') + '</p>'}
+          </div>
+          <button type="button" class="ghost small" id="magazzinoAddBtn">+ Aggiungi prodotto</button>
+          <p class="hint">Si salva da sola mentre scrivi, come Ispirazione: non serve un tasto "Salva" dedicato.</p>
+        </fieldset>
+        <div class="sheet-footer">
+          <span class="save-status" id="magazzinoSaveStatus"></span>
+        </div>
+      `;
+      bindMagazzinoEvents();
       return;
     }
 
@@ -3111,6 +3256,105 @@
     }
   }
 
+  function magazzinoNotify(msg, isError) {
+    const el = document.getElementById('magazzinoSaveStatus');
+    if (!el) return;
+    el.textContent = msg;
+    el.style.color = isError ? '#A8433C' : 'var(--ok)';
+    clearTimeout(magazzinoNotify._t);
+    magazzinoNotify._t = setTimeout(() => { if (el) el.textContent = ''; }, 1800);
+  }
+
+  // Aggiorna solo il bollino "In esaurimento" di una riga già disegnata, senza ridisegnare
+  // tutto il pannello: altrimenti si perderebbe il focus/cursore mentre si scrive o si tocca +/-.
+  function updateMagazzinoRowLowBadge(row, p) {
+    const low = isMagazzinoProdottoLow(p);
+    row.classList.toggle('magazzino-row-low', low);
+    const badge = row.querySelector('.magazzino-low-badge');
+    if (badge) badge.hidden = !low;
+  }
+
+  function bindMagazzinoEvents() {
+    const searchInput = document.getElementById('magazzinoSearch');
+    if (searchInput) {
+      searchInput.addEventListener('input', () => {
+        magazzinoSearchTerm = searchInput.value;
+        renderSheet();
+      });
+      searchInput.focus();
+      searchInput.selectionStart = searchInput.selectionEnd = searchInput.value.length;
+    }
+
+    document.querySelectorAll('.magazzino-input').forEach(input => {
+      input.addEventListener('input', () => {
+        const id = input.dataset.id;
+        const field = input.dataset.field;
+        const p = magazzinoCache.prodotti.find(x => x.id === id);
+        if (!p) return;
+        if (field === 'nome' || field === 'marca') {
+          p[field] = input.value;
+        } else {
+          // prezzo/quantità/scorta minima: numero, o null se il campo è vuoto (facoltativo)
+          const n = input.value === '' ? null : Number(input.value);
+          p[field] = (n === null || isNaN(n)) ? (field === 'quantita' ? 0 : null) : n;
+        }
+        saveMagazzino();
+        magazzinoNotify('Salvato.');
+        const row = input.closest('.magazzino-row');
+        if (row) updateMagazzinoRowLowBadge(row, p);
+      });
+    });
+
+    document.querySelectorAll('.magazzino-qty-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        const delta = Number(btn.dataset.delta) || 0;
+        const p = magazzinoCache.prodotti.find(x => x.id === id);
+        if (!p) return;
+        p.quantita = Math.max(0, (p.quantita || 0) + delta);
+        saveMagazzino();
+        magazzinoNotify('Salvato.');
+        const row = btn.closest('.magazzino-row');
+        if (row) {
+          const qtyInput = row.querySelector('.magazzino-qty-input');
+          if (qtyInput) qtyInput.value = p.quantita;
+          updateMagazzinoRowLowBadge(row, p);
+        }
+      });
+    });
+
+    document.querySelectorAll('.magazzino-delete').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!btn.classList.contains('armed')) {
+          btn.classList.add('armed');
+          btn.textContent = 'Confermi?';
+          clearTimeout(btn._armTimer);
+          btn._armTimer = setTimeout(() => {
+            btn.classList.remove('armed');
+            btn.textContent = 'Elimina';
+          }, 4000);
+          return;
+        }
+        clearTimeout(btn._armTimer);
+        deleteMagazzinoProdotto(btn.dataset.id);
+        magazzinoNotify('Prodotto eliminato.');
+        renderSheet();
+      });
+    });
+
+    const addBtn = document.getElementById('magazzinoAddBtn');
+    if (addBtn) {
+      addBtn.addEventListener('click', () => {
+        // Nome vuoto: finché non si scrive nulla, l'ordinamento alfabetico lo mette in cima,
+        // quindi si cerca il nuovo prodotto per id (non per posizione) per metterci il focus.
+        const p = createMagazzinoProdotto();
+        renderSheet();
+        const input = document.querySelector('.magazzino-input[data-field="nome"][data-id="' + p.id + '"]');
+        if (input) input.focus();
+      });
+    }
+  }
+
   function autoResizeAppunti(el) {
     el.style.height = 'auto';
     el.style.height = el.scrollHeight + 'px';
@@ -3418,6 +3662,7 @@
     sheetShowEmpty = true;
     viewingNotes = false;
     viewingIspirazione = false;
+    viewingMagazzino = false;
     viewingSearchApp = false;
     viewingBlankSheet = false;
     viewingOstwald = false;
@@ -3482,6 +3727,7 @@
   document.getElementById('notesEntry').addEventListener('click', () => {
     viewingNotes = true;
     viewingIspirazione = false;
+    viewingMagazzino = false;
     viewingSearchApp = false;
     viewingBlankSheet = false;
     viewingOstwald = false;
@@ -3493,6 +3739,7 @@
   // Ispirazione: stesso comportamento, apre come una scheda
   document.getElementById('ispirazioneEntry').addEventListener('click', () => {
     viewingIspirazione = true;
+    viewingMagazzino = false;
     viewingNotes = false;
     viewingSearchApp = false;
     viewingBlankSheet = false;
@@ -3503,11 +3750,27 @@
     loadIspirazioneLibri();
   });
 
+  // Magazzino: stesso comportamento, apre come una scheda
+  document.getElementById('magazzinoEntry').addEventListener('click', () => {
+    viewingMagazzino = true;
+    viewingNotes = false;
+    viewingIspirazione = false;
+    viewingSearchApp = false;
+    viewingBlankSheet = false;
+    viewingOstwald = false;
+    viewingHome = false;
+    magazzinoSearchTerm = "";
+    closeMobileMenu();
+    renderAll();
+    loadMagazzinoFromDb();
+  });
+
   // Cerca nell'app: stesso comportamento, apre come una scheda
   document.getElementById('cercaAppEntry').addEventListener('click', () => {
     viewingSearchApp = true;
     viewingNotes = false;
     viewingIspirazione = false;
+    viewingMagazzino = false;
     viewingBlankSheet = false;
     viewingOstwald = false;
     viewingHome = false;
@@ -3520,6 +3783,7 @@
     viewingBlankSheet = true;
     viewingNotes = false;
     viewingIspirazione = false;
+    viewingMagazzino = false;
     viewingSearchApp = false;
     viewingOstwald = false;
     viewingHome = false;
@@ -3532,6 +3796,7 @@
     viewingOstwald = true;
     viewingNotes = false;
     viewingIspirazione = false;
+    viewingMagazzino = false;
     viewingSearchApp = false;
     viewingBlankSheet = false;
     viewingHome = false;
@@ -3545,6 +3810,7 @@
     activeId = null;
     viewingNotes = false;
     viewingIspirazione = false;
+    viewingMagazzino = false;
     viewingSearchApp = false;
     viewingBlankSheet = false;
     viewingOstwald = false;
@@ -3975,7 +4241,7 @@
   // così parte subito, senza aspettare che l'utente clicchi altrove) e compare la stessa
   // conferma "Fatto" della scheda cliente, per avere la stessa certezza visiva.
   document.getElementById('floatingSaveBtn').addEventListener('click', () => {
-    if (viewingIspirazione) {
+    if (viewingIspirazione || viewingMagazzino) {
       const active = document.activeElement;
       if (active && document.getElementById('sheetPanel').contains(active)) active.blur();
       showCenterToast('Fatto');
