@@ -847,6 +847,32 @@
     background: #A8433C; color: #fff; font-size: 10.5px; font-weight: 600; letter-spacing: 0.01em;
   }
   .magazzino-empty { margin-top: 0; }
+  .mag-head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* Importazione fattura in Magazzino: anteprima a tabella prima di confermare. */
+  .mag-import-card { width: min(760px, 100%); }
+  .mag-import-error { color: #A8433C; }
+  .mag-import-summary { margin: 0 0 14px; font-size: 13.5px; color: var(--ink-soft); }
+  .mag-import-summary strong { color: var(--ink); }
+  .mag-import-table-wrap { max-height: 50vh; overflow-y: auto; margin-bottom: 16px; border: 1px solid var(--line); border-radius: var(--radius); }
+  .mag-import-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .mag-import-table th {
+    position: sticky; top: 0; background: var(--paper-raised); text-align: left;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--ink-soft);
+    padding: 7px 8px; border-bottom: 1px solid var(--line);
+  }
+  .mag-import-table td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  .mag-import-table tr:last-child td { border-bottom: none; }
+  .mag-import-table input[type="text"], .mag-import-table input[type="number"], .mag-import-table select {
+    width: 100%; font-size: 13px; padding: 6px 7px;
+  }
+  .mag-import-col-check { width: 30px; text-align: center; }
+  .mag-import-col-qty, .mag-import-col-prezzo { width: 80px; }
+  .mag-import-col-match { width: 180px; }
+  .mag-import-row-off { opacity: 0.42; }
+  .mag-import-match-new { color: var(--berry); font-weight: 600; font-size: 11.5px; display: block; margin-top: 3px; }
+  .mag-import-match-existing { color: var(--ok); font-size: 11.5px; display: block; margin-top: 3px; }
+  .mag-import-actions { display: flex; justify-content: flex-end; gap: 10px; }
 
   .settings-font-options { display: flex; flex-wrap: wrap; gap: 8px; }
   .settings-font-option {
@@ -1059,6 +1085,25 @@
   </div>
 </div>
 
+<div class="settings-modal" id="magImportModal" hidden>
+  <div class="settings-card mag-import-card">
+    <button type="button" class="settings-close" id="magImportClose" aria-label="Chiudi">×</button>
+    <h2>Importa da fattura</h2>
+    <div id="magImportBody">
+      <div class="settings-section" id="magImportStep1">
+        <label>File fattura elettronica</label>
+        <label class="ghost import-label" id="magImportFileLabel" style="display:inline-flex; align-items:center; border:1px solid var(--line); border-radius: var(--radius); padding: 9px 14px; cursor:pointer;">
+          Scegli file…
+          <input type="file" id="magImportFileInput" accept=".xml,.p7m,text/xml,application/xml" hidden>
+        </label>
+        <p class="hint">Accetta il file della fattura elettronica: firmato (.p7m) o già estratto (.xml). Si legge tutto sul tuo dispositivo, non viene inviato a nessun server.</p>
+        <p class="hint mag-import-error" id="magImportError" hidden></p>
+      </div>
+      <div id="magImportReview" hidden></div>
+    </div>
+  </div>
+</div>
+
 <div class="center-toast" id="centerToast">
   <span class="check-icon">✓</span>
   <span class="center-toast-text">Fatto</span>
@@ -1066,7 +1111,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-10.17-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-10.18-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -2970,7 +3015,10 @@
             <div class="notes-title">Magazzino</div>
             ${lowCount ? '<div class="sub magazzino-low-summary">' + lowCount + (lowCount === 1 ? ' prodotto in esaurimento' : ' prodotti in esaurimento') + '</div>' : ''}
           </div>
-          <button class="ghost small" id="magazzinoPdfBtn">Scarica PDF inventario</button>
+          <div class="mag-head-actions">
+            <button class="ghost small" id="magazzinoImportBtn">Importa da fattura</button>
+            <button class="ghost small" id="magazzinoPdfBtn">Scarica PDF inventario</button>
+          </div>
         </div>
         <fieldset>
           <div class="field">
@@ -3512,6 +3560,290 @@
           .catch((err) => { if (!(err && err.code === 'declined')) notifyTop('Non sono riuscita a generare il PDF.', true); });
       });
     }
+
+    const importBtn = document.getElementById('magazzinoImportBtn');
+    if (importBtn) importBtn.addEventListener('click', openMagImportModal);
+  }
+
+  // ===================== Importa da fattura (FatturaPA XML / .p7m) =====================
+  // Tutto in locale, nel browser: nessun server, nessuna IA. La fattura elettronica italiana
+  // (FatturaPA) segue sempre lo stesso schema XML, quindi i campi si leggono in modo diretto.
+  // Se il file è firmato (.p7m) è un "involucro" CMS/PKCS#7 attorno allo stesso XML: va letto
+  // a basso livello (DER/BER) per tirarne fuori il contenuto, byte per byte.
+
+  // --- Lettore DER/BER minimo: legge un singolo TLV (tag-lunghezza-valore) ---
+  function derReadTlvHeader(bytes, pos) {
+    const tag = bytes[pos];
+    const constructed = !!(tag & 0x20);
+    const lenByte = bytes[pos + 1];
+    let length, contentStart;
+    if (lenByte < 0x80) { length = lenByte; contentStart = pos + 2; }
+    else if (lenByte === 0x80) { length = null; contentStart = pos + 2; } // lunghezza indefinita (BER)
+    else {
+      const n = lenByte & 0x7f;
+      length = 0;
+      for (let i = 0; i < n; i++) length = length * 256 + bytes[pos + 2 + i];
+      contentStart = pos + 2 + n;
+    }
+    return { tag, constructed, length, contentStart };
+  }
+  // Trova la fine di un TLV (gestendo anche la lunghezza indefinita, terminata da 00 00).
+  function derSkipTlv(bytes, pos) {
+    const h = derReadTlvHeader(bytes, pos);
+    if (h.length !== null) return h.contentStart + h.length;
+    let p = h.contentStart;
+    while (!(bytes[p] === 0 && bytes[p + 1] === 0)) p = derSkipTlv(bytes, p);
+    return p + 2;
+  }
+  // Scorre i figli diretti di un intervallo [start,end) (end esclude l'eventuale EOC finale).
+  function derEachChild(bytes, start, end, cb) {
+    let pos = start;
+    while (pos < end) {
+      if (bytes[pos] === 0 && bytes[pos + 1] === 0) { pos += 2; continue; }
+      const h = derReadTlvHeader(bytes, pos);
+      const endPos = derSkipTlv(bytes, pos);
+      const contentEnd = h.length !== null ? (h.contentStart + h.length) : (endPos - 2);
+      cb(h.tag, h.constructed, h.contentStart, contentEnd);
+      pos = endPos;
+    }
+  }
+  // Un OCTET STRING "costruito" (contenuto grande, spezzato in più blocchi dal firmatario) va
+  // ricostruito concatenando i blocchi, uno dopo l'altro, nell'ordine in cui compaiono.
+  function derCollectOctetStrings(bytes, start, end) {
+    const parts = [];
+    derEachChild(bytes, start, end, (tag, constructed, cs, ce) => {
+      if (tag === 0x04 && !constructed) parts.push(bytes.subarray(cs, ce));
+      else if (tag === 0x24 && constructed) parts.push(derCollectOctetStrings(bytes, cs, ce));
+    });
+    let total = 0;
+    parts.forEach(p => total += p.length);
+    const out = new Uint8Array(total);
+    let off = 0;
+    parts.forEach(p => { out.set(p, off); off += p.length; });
+    return out;
+  }
+  function findBytes(bytes, needle, from) {
+    outer: for (let i = from; i <= bytes.length - needle.length; i++) {
+      for (let j = 0; j < needle.length; j++) if (bytes[i + j] !== needle[j]) continue outer;
+      return i;
+    }
+    return -1;
+  }
+  // Tira fuori l'XML "in chiaro" da dentro la busta firmata CMS/PKCS#7 (.p7m).
+  function extractXmlFromP7m(bytes) {
+    // OID 1.2.840.113549.1.7.1 ("data"): è lì che inizia il contenuto vero e proprio.
+    const oidData = new Uint8Array([0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x07, 0x01]);
+    const idx = findBytes(bytes, oidData, 0);
+    if (idx === -1) throw new Error('p7m: OID del contenuto non trovato');
+    const pos = idx + oidData.length;
+    const h = derReadTlvHeader(bytes, pos);
+    if (h.tag !== 0xa0) throw new Error('p7m: struttura inattesa dopo l\'OID');
+    const endPos = derSkipTlv(bytes, pos);
+    const contentEnd = h.length !== null ? (h.contentStart + h.length) : (endPos - 2);
+    const xmlBytes = derCollectOctetStrings(bytes, h.contentStart, contentEnd);
+    let text = new TextDecoder('utf-8').decode(xmlBytes);
+    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1); // BOM
+    return text;
+  }
+  function looksLikeXmlText(text) {
+    return /^\s*(<\?xml|﻿<\?xml|<p:FatturaElettronica|<FatturaElettronica)/i.test(text.slice(0, 200));
+  }
+  function readFileAsBytes(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(new Uint8Array(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsArrayBuffer(file);
+    });
+  }
+  // Legge un elemento FatturaPA per tag, ignorando il prefisso di namespace (es. "p:...").
+  function fatturaTag(root, tag) {
+    const els = root.getElementsByTagName(tag);
+    return els.length ? els[0] : null;
+  }
+  function fatturaText(root, tag) {
+    const el = fatturaTag(root, tag);
+    return el ? (el.textContent || '').trim() : '';
+  }
+  function parseItNumber(s) {
+    if (!s) return null;
+    const n = parseFloat(String(s).trim().replace(',', '.'));
+    return isNaN(n) ? null : n;
+  }
+  // Analizza l'XML FatturaPA (già estratto, se veniva da un .p7m) e tira fuori fornitore + righe.
+  function parseFatturaPaXml(xmlText) {
+    const doc = new DOMParser().parseFromString(xmlText, 'text/xml');
+    if (doc.getElementsByTagName('parsererror').length) throw new Error('XML non valido');
+    const cedente = doc.getElementsByTagName('CedentePrestatore')[0];
+    const fornitore = cedente ? fatturaText(cedente, 'Denominazione') : '';
+    const numero = fatturaText(doc, 'Numero');
+    const data = fatturaText(doc, 'Data');
+    const righeEl = Array.from(doc.getElementsByTagName('DettaglioLinee'));
+    if (!righeEl.length) throw new Error('nessuna riga prodotto trovata');
+    const righe = righeEl.map(el => ({
+      descrizione: fatturaText(el, 'Descrizione'),
+      quantita: parseItNumber(fatturaText(el, 'Quantita')),
+      prezzoUnitario: parseItNumber(fatturaText(el, 'PrezzoUnitario')),
+      unitaMisura: fatturaText(el, 'UnitaMisura')
+    })).filter(r => r.descrizione);
+    if (!righe.length) throw new Error('nessuna riga prodotto trovata');
+    return { fornitore, numero, data, righe };
+  }
+
+  // --- Stato e interfaccia della finestra di importazione ---
+  let magImportParsed = null; // { fornitore, numero, data, righe: [...] }
+
+  function normMagNome(s) { return (s || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+  function findMagazzinoMatch(descrizione) {
+    const target = normMagNome(descrizione);
+    return magazzinoCache.prodotti.find(p => normMagNome(p.nome) === target) || null;
+  }
+
+  function openMagImportModal() {
+    const modal = document.getElementById('magImportModal');
+    if (!modal) return;
+    magImportParsed = null;
+    const fileInput = document.getElementById('magImportFileInput');
+    if (fileInput) fileInput.value = '';
+    showMagImportError('');
+    document.getElementById('magImportStep1').hidden = false;
+    document.getElementById('magImportReview').hidden = true;
+    document.getElementById('magImportReview').innerHTML = '';
+    modal.hidden = false;
+  }
+  function closeMagImportModal() {
+    const modal = document.getElementById('magImportModal');
+    if (modal) modal.hidden = true;
+  }
+  function showMagImportError(msg) {
+    const el = document.getElementById('magImportError');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.hidden = !msg;
+  }
+
+  async function handleMagImportFile(file) {
+    showMagImportError('');
+    try {
+      const bytes = await readFileAsBytes(file);
+      let text;
+      // Se il nome finisce per .p7m, oppure il contenuto non sembra XML in chiaro, si tenta
+      // prima l'estrazione dalla busta firmata; altrimenti si legge direttamente come testo.
+      const asTextGuess = new TextDecoder('utf-8').decode(bytes.subarray(0, 200));
+      if (/\.p7m$/i.test(file.name) || !looksLikeXmlText(asTextGuess)) {
+        text = extractXmlFromP7m(bytes);
+      } else {
+        text = new TextDecoder('utf-8').decode(bytes);
+        if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+      }
+      magImportParsed = parseFatturaPaXml(text);
+    } catch (e) {
+      showMagImportError('Non sono riuscita a leggere questo file. Controlla che sia la fattura elettronica (XML o .p7m) e riprova.');
+      magImportParsed = null;
+      return;
+    }
+    renderMagImportReview();
+  }
+
+  function renderMagImportReview() {
+    const p = magImportParsed;
+    const reviewEl = document.getElementById('magImportReview');
+    if (!p || !reviewEl) return;
+    document.getElementById('magImportStep1').hidden = true;
+    reviewEl.hidden = false;
+    const esistenti = magazzinoCache.prodotti.slice().sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'it', { sensitivity: 'base' }));
+    const optionsHtml = '<option value="__new__">— Nuovo prodotto —</option>' +
+      esistenti.map(p2 => `<option value="${p2.id}">${escapeHtml(p2.nome || '(senza nome)')}</option>`).join('');
+    const rowsHtml = p.righe.map((r, i) => {
+      const match = findMagazzinoMatch(r.descrizione);
+      const matchId = match ? match.id : '__new__';
+      const rowOpts = optionsHtml.replace(
+        `value="${matchId}"`, `value="${matchId}" selected`
+      );
+      return `
+        <tr class="mag-import-row" data-idx="${i}">
+          <td class="mag-import-col-check"><input type="checkbox" class="mag-import-check" data-idx="${i}" checked></td>
+          <td>
+            <input type="text" class="mag-import-nome" data-idx="${i}" value="${escapeHtml(r.descrizione)}">
+            ${match ? '<span class="mag-import-match-existing">Aggiorna prodotto esistente</span>' : '<span class="mag-import-match-new">Nuovo prodotto</span>'}
+          </td>
+          <td class="mag-import-col-match">
+            <select class="mag-import-match" data-idx="${i}">${rowOpts}</select>
+          </td>
+          <td class="mag-import-col-qty"><input type="number" class="mag-import-qty" data-idx="${i}" min="0" step="0.01" value="${r.quantita != null ? r.quantita : 0}"></td>
+          <td class="mag-import-col-prezzo"><input type="number" class="mag-import-prezzo" data-idx="${i}" min="0" step="0.01" value="${r.prezzoUnitario != null ? r.prezzoUnitario : ''}"></td>
+        </tr>`;
+    }).join('');
+    reviewEl.innerHTML = `
+      <p class="mag-import-summary">
+        Fornitore: <strong>${escapeHtml(p.fornitore || '—')}</strong>
+        ${p.numero ? ' · Fattura n. ' + escapeHtml(p.numero) : ''}${p.data ? ' del ' + escapeHtml(p.data) : ''}
+        <br>${p.righe.length} righe trovate. La quantità indicata si <strong>aggiunge</strong> a quella già a magazzino; il prezzo sostituisce quello attuale. Controlla e correggi prima di confermare.
+      </p>
+      <div class="mag-import-table-wrap">
+        <table class="mag-import-table">
+          <thead><tr>
+            <th class="mag-import-col-check"></th>
+            <th>Prodotto (dalla fattura)</th>
+            <th>Abbina a</th>
+            <th class="mag-import-col-qty">Quantità</th>
+            <th class="mag-import-col-prezzo">Prezzo €</th>
+          </tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+      <div class="mag-import-actions">
+        <button type="button" class="ghost small" id="magImportCancelBtn">Annulla</button>
+        <button type="button" class="primary small" id="magImportConfirmBtn">Importa</button>
+      </div>
+    `;
+    reviewEl.querySelectorAll('.mag-import-check').forEach(chk => {
+      chk.addEventListener('change', () => {
+        const row = chk.closest('.mag-import-row');
+        if (row) row.classList.toggle('mag-import-row-off', !chk.checked);
+      });
+    });
+    document.getElementById('magImportCancelBtn').addEventListener('click', closeMagImportModal);
+    document.getElementById('magImportConfirmBtn').addEventListener('click', confirmMagImport);
+  }
+
+  function confirmMagImport() {
+    const p = magImportParsed;
+    const reviewEl = document.getElementById('magImportReview');
+    if (!p || !reviewEl) return;
+    let nuovi = 0, aggiornati = 0;
+    reviewEl.querySelectorAll('.mag-import-row').forEach(row => {
+      const idx = row.dataset.idx;
+      const checked = row.querySelector('.mag-import-check').checked;
+      if (!checked) return;
+      const nome = row.querySelector('.mag-import-nome').value.trim();
+      const matchSel = row.querySelector('.mag-import-match').value;
+      const qty = parseFloat(row.querySelector('.mag-import-qty').value) || 0;
+      const prezzoRaw = row.querySelector('.mag-import-prezzo').value;
+      const prezzo = prezzoRaw === '' ? null : (parseFloat(prezzoRaw) || null);
+      if (!nome) return;
+      if (matchSel === '__new__') {
+        const prod = createMagazzinoProdotto();
+        prod.nome = nome;
+        prod.marca = p.fornitore || '';
+        prod.tipo = 'materiaPrima';
+        prod.quantita = qty;
+        prod.prezzo = prezzo;
+        nuovi++;
+      } else {
+        const prod = magazzinoCache.prodotti.find(x => x.id === matchSel);
+        if (!prod) return;
+        prod.quantita = (prod.quantita || 0) + qty;
+        if (prezzo != null) prod.prezzo = prezzo;
+        if (!prod.marca && p.fornitore) prod.marca = p.fornitore;
+        aggiornati++;
+      }
+    });
+    saveMagazzino();
+    closeMagImportModal();
+    if (viewingMagazzino) renderSheet();
+    const msg = 'Importazione completata: ' + nuovi + ' nuovi, ' + aggiornati + ' aggiornati.';
+    notifyTop(msg);
   }
 
   function autoResizeAppunti(el) {
@@ -3985,6 +4317,16 @@
   document.getElementById('settingsModal').addEventListener('click', (e) => {
     if (e.target.id === 'settingsModal') closeSettingsModal(); // clic fuori dalla scheda: chiude
   });
+
+  // ---- Importa da fattura (dentro Magazzino) ----
+  document.getElementById('magImportClose').addEventListener('click', closeMagImportModal);
+  document.getElementById('magImportModal').addEventListener('click', (e) => {
+    if (e.target.id === 'magImportModal') closeMagImportModal();
+  });
+  document.getElementById('magImportFileInput').addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) handleMagImportFile(file);
+  });
   document.getElementById('settingsSwatches').addEventListener('click', (e) => {
     const btn = e.target.closest('.settings-swatch');
     if (!btn) return;
@@ -4300,6 +4642,8 @@
   document.addEventListener('keydown', (e) => {
     const settingsModalEl = document.getElementById('settingsModal');
     if (settingsModalEl && !settingsModalEl.hidden && e.key === 'Escape') { closeSettingsModal(); return; }
+    const magImportModalEl = document.getElementById('magImportModal');
+    if (magImportModalEl && !magImportModalEl.hidden && e.key === 'Escape') { closeMagImportModal(); return; }
     if (imgModal.hidden) return;
     if (e.key === 'Escape') { closeImageModal(); return; }
     if (!bookPhotos.length) return;
