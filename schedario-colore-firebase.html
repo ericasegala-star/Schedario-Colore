@@ -806,8 +806,14 @@
     letter-spacing: 0.01em; vertical-align: middle;
   }
 
-  /* Magazzino: un elenco di prodotti, ciascuno in una riga con i suoi campi affiancati. */
+  /* Magazzino: un elenco di prodotti, ciascuno in una riga con i suoi campi affiancati,
+     raggruppati per "Tipo" (materie prime / merci in vendita). */
   .magazzino-low-summary { color: #A8433C; font-weight: 600; }
+  .magazzino-group { margin-bottom: 20px; }
+  .magazzino-group-title {
+    font-size: 12.5px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase;
+    color: var(--berry); margin-bottom: 8px;
+  }
   .magazzino-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
   .magazzino-row {
     display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px;
@@ -816,9 +822,17 @@
   .magazzino-row-low { border-color: #A8433C; }
   .magazzino-row .field { margin-bottom: 0; }
   .magazzino-field-nome { flex: 2 1 160px; }
+  .magazzino-field-tipo { flex: 1.1 1 130px; }
   .magazzino-field-marca { flex: 1.4 1 120px; }
   .magazzino-field-prezzo { flex: 0.8 1 80px; }
   .magazzino-field-scorta { flex: 0.8 1 90px; }
+  .magazzino-select {
+    width: 100%; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--paper); color: var(--ink); font-family: inherit; font-size: 14px;
+    padding: 9px 10px; cursor: pointer;
+  }
+  /* Riga ancora senza categoria scelta: lo sfondo del "Tipo" è leggermente diverso, per farlo notare. */
+  .magazzino-select.magazzino-select-unset { border-color: var(--berry); background: var(--berry-soft); }
   .magazzino-qty-wrap { display: flex; align-items: center; gap: 6px; }
   /* Selettore apposta "pesante" (tre classi): deve vincere sulla regola generica
      ".field input[type=number]" più sopra, altrimenti quella forza width:100% e l'input
@@ -1052,7 +1066,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-10.16-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-10.17-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -1396,8 +1410,15 @@
       .then(() => { hideStorageError(); return true; })
       .catch(() => { showStorageError('Non sono riuscita a salvare il magazzino. Riprova tra poco.'); return false; });
   }
+  // "Materia prima" (quello che si usa in salone, es. tinte, ossidanti) vs "Merce in vendita"
+  // (quello che si vende alle clienti, es. shampoo da banco): raggruppa l'elenco e il PDF.
+  const MAGAZZINO_TIPI = [
+    { key: 'materiaPrima', label: 'Materie prime' },
+    { key: 'vendita', label: 'Merci in vendita' },
+    { key: '', label: 'Senza categoria' }
+  ];
   function createMagazzinoProdotto() {
-    const p = { id: uid(), nome: '', marca: '', prezzo: null, quantita: 0, scortaMinima: null, createdAt: Date.now() };
+    const p = { id: uid(), nome: '', marca: '', tipo: '', prezzo: null, quantita: 0, scortaMinima: null, createdAt: Date.now() };
     magazzinoCache.prodotti.push(p);
     saveMagazzino();
     return p;
@@ -2279,6 +2300,99 @@
     }
   }
 
+  // PDF dell'inventario di Magazzino: un elenco a tabella, raggruppato per Tipo (come a schermo)
+  // e poi per marca/nome, con il valore stimato (prezzo × quantità) per gruppo e totale.
+  function buildMagazzinoPdf() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const left = 42;
+    const pageH = doc.internal.pageSize.getHeight();
+    const pageW = doc.internal.pageSize.getWidth();
+    const col = { nome: left, marca: left + 260, prezzo: left + 360, qty: left + 420, scorta: left + 465 };
+    let y = 54;
+
+    function ensureSpace(extra) { if (y + extra > pageH - 40) { doc.addPage(); y = 54; } }
+    function h1(text) {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(30, 24, 20);
+      ensureSpace(26); doc.text(text, left, y); y += 10;
+      doc.setDrawColor(122, 59, 86); doc.setLineWidth(1.2);
+      doc.line(left, y, pageW - left, y); y += 20;
+    }
+    function h2(text) {
+      ensureSpace(20);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(122, 59, 86);
+      doc.text(text.toUpperCase(), left, y); doc.setTextColor(30, 24, 20); y += 14;
+    }
+    function tableHeader() {
+      ensureSpace(18);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(107, 95, 87);
+      doc.text('PRODOTTO', col.nome, y); doc.text('MARCA', col.marca, y);
+      doc.text('PREZZO', col.prezzo, y); doc.text('QTÀ', col.qty, y); doc.text('SCORTA', col.scorta, y);
+      y += 5;
+      doc.setDrawColor(180, 170, 160); doc.setLineWidth(0.6);
+      doc.line(left, y, pageW - left, y); y += 13;
+      doc.setTextColor(30, 24, 20);
+    }
+    function money(n) { return n == null ? '—' : ('€ ' + n.toFixed(2).replace('.', ',')); }
+    function row(p) {
+      ensureSpace(15);
+      const low = isMagazzinoProdottoLow(p);
+      doc.setFont('helvetica', low ? 'bold' : 'normal'); doc.setFontSize(9.5);
+      if (low) doc.setTextColor(168, 67, 60); else doc.setTextColor(30, 24, 20);
+      doc.text((p.nome || 'Senza nome') + (low ? ' *' : ''), col.nome, y, { maxWidth: col.marca - col.nome - 8 });
+      doc.text(p.marca || '—', col.marca, y, { maxWidth: col.prezzo - col.marca - 8 });
+      doc.text(money(p.prezzo), col.prezzo, y);
+      doc.text(String(p.quantita != null ? p.quantita : 0), col.qty, y);
+      doc.text(p.scortaMinima != null ? String(p.scortaMinima) : '—', col.scorta, y);
+      doc.setTextColor(30, 24, 20);
+      y += 15;
+    }
+    function groupTotalRow(valore) {
+      ensureSpace(16);
+      doc.setDrawColor(180, 170, 160); doc.setLineWidth(0.4);
+      doc.line(col.prezzo - 8, y, pageW - left, y); y += 12;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+      doc.text('Valore stimato gruppo: ' + money(valore), col.marca, y);
+      y += 18;
+    }
+
+    const prodotti = loadMagazzino().prodotti;
+    h1('Magazzino — inventario al ' + fmtDateLong(Date.now()));
+    if (!prodotti.length) {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5);
+      doc.text('Nessun prodotto in magazzino.', left, y);
+    } else {
+      let grandTotal = 0;
+      let anyLow = false;
+      groupMagazzinoProdotti(prodotti).forEach(g => {
+        h2(g.tipo.label + ' (' + g.prodotti.length + ')');
+        tableHeader();
+        let groupValore = 0;
+        g.prodotti.forEach(p => {
+          row(p);
+          if (isMagazzinoProdottoLow(p)) anyLow = true;
+          if (p.prezzo != null) groupValore += p.prezzo * (p.quantita || 0);
+        });
+        groupTotalRow(groupValore);
+        grandTotal += groupValore;
+      });
+      ensureSpace(20);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(30, 24, 20);
+      doc.text('Valore stimato totale: ' + money(grandTotal), left, y);
+      y += 18;
+      if (anyLow) {
+        ensureSpace(14);
+        doc.setFont('helvetica', 'italic'); doc.setFontSize(8.5); doc.setTextColor(168, 67, 60);
+        doc.text('* prodotto in esaurimento (quantità alla o sotto la scorta minima)', left, y);
+      }
+    }
+    return doc.output('blob');
+  }
+  async function downloadMagazzinoPdf() {
+    const blob = buildMagazzinoPdf();
+    await saveBlobAsFile(blob, 'magazzino-inventario-' + fmtDate(Date.now()).replace(/\//g, '-') + '.pdf');
+  }
+
   // Salva un Blob sul dispositivo (foto, PDF, backup…).
   // Serve passare dal meccanismo "downloads": un semplice <a download> non funziona in questo ambiente.
   async function saveBlobAsFile(blob, filename) {
@@ -2719,6 +2833,14 @@
           <label>Prodotto</label>
           <input type="text" class="magazzino-input" data-id="${p.id}" data-field="nome" placeholder="Es. Shampoo ricostruttore" value="${escapeHtml(p.nome || '')}">
         </div>
+        <div class="field magazzino-field-tipo">
+          <label>Tipo</label>
+          <select class="magazzino-input magazzino-select${p.tipo ? '' : ' magazzino-select-unset'}" data-id="${p.id}" data-field="tipo">
+            <option value="" ${!p.tipo ? 'selected' : ''}>— da scegliere —</option>
+            <option value="materiaPrima" ${p.tipo === 'materiaPrima' ? 'selected' : ''}>Materia prima</option>
+            <option value="vendita" ${p.tipo === 'vendita' ? 'selected' : ''}>Merce in vendita</option>
+          </select>
+        </div>
         <div class="field magazzino-field-marca">
           <label>Marca/fornitore</label>
           <input type="text" class="magazzino-input" data-id="${p.id}" data-field="marca" placeholder="Es. Wella" value="${escapeHtml(p.marca || '')}">
@@ -2744,6 +2866,31 @@
           <button type="button" class="magazzino-delete" data-id="${p.id}">Elimina</button>
         </div>
       </div>`;
+  }
+
+  // Ordina per marca e poi nome: è la "distinzione per marca" chiesta, utile per ritrovare
+  // in fretta tutti i prodotti di un fornitore quando si fa l'ordine.
+  function sortMagazzinoProdotti(list) {
+    return list.slice().sort((a, b) =>
+      (a.marca || '').localeCompare(b.marca || '', 'it', { sensitivity: 'base' }) ||
+      (a.nome || '').localeCompare(b.nome || '', 'it', { sensitivity: 'base' })
+    );
+  }
+  // Raggruppa in Materie prime / Merci in vendita / Senza categoria, nell'ordine fisso di
+  // MAGAZZINO_TIPI, saltando i gruppi vuoti (eccetto quando l'elenco intero è vuoto).
+  function groupMagazzinoProdotti(list) {
+    return MAGAZZINO_TIPI
+      .map(t => ({ tipo: t, prodotti: sortMagazzinoProdotti(list.filter(p => (p.tipo || '') === t.key)) }))
+      .filter(g => g.prodotti.length);
+  }
+  function renderMagazzinoListHtml(prodotti, emptyMsg) {
+    if (!prodotti.length) return '<p class="hint magazzino-empty">' + emptyMsg + '</p>';
+    return groupMagazzinoProdotti(prodotti).map(g => `
+      <div class="magazzino-group">
+        <div class="magazzino-group-title">${escapeHtml(g.tipo.label)}</div>
+        <div class="magazzino-list">${g.prodotti.map(renderMagazzinoRowHtml).join('')}</div>
+      </div>
+    `).join('');
   }
 
   function renderSheet() {
@@ -2815,8 +2962,7 @@
       const mag = loadMagazzino();
       const term = magazzinoSearchTerm.trim().toLowerCase();
       const prodotti = mag.prodotti
-        .filter(p => !term || (p.nome || '').toLowerCase().includes(term) || (p.marca || '').toLowerCase().includes(term))
-        .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'it', { sensitivity: 'base' }));
+        .filter(p => !term || (p.nome || '').toLowerCase().includes(term) || (p.marca || '').toLowerCase().includes(term));
       const lowCount = mag.prodotti.filter(isMagazzinoProdottoLow).length;
       panel.innerHTML = `
         <div class="sheet-head">
@@ -2824,17 +2970,17 @@
             <div class="notes-title">Magazzino</div>
             ${lowCount ? '<div class="sub magazzino-low-summary">' + lowCount + (lowCount === 1 ? ' prodotto in esaurimento' : ' prodotti in esaurimento') + '</div>' : ''}
           </div>
+          <button class="ghost small" id="magazzinoPdfBtn">Scarica PDF inventario</button>
         </div>
         <fieldset>
           <div class="field">
             <input type="text" id="magazzinoSearch" placeholder="Cerca per nome o marca…" value="${escapeHtml(magazzinoSearchTerm)}">
           </div>
-          <div class="magazzino-list" id="magazzinoList">
-            ${prodotti.length ? prodotti.map(renderMagazzinoRowHtml).join('') :
-              '<p class="hint magazzino-empty">' + (term ? 'Nessun prodotto trovato.' : 'Nessun prodotto ancora: aggiungine uno con il tasto qui sotto.') + '</p>'}
+          <div id="magazzinoList">
+            ${renderMagazzinoListHtml(prodotti, term ? 'Nessun prodotto trovato.' : 'Nessun prodotto ancora: aggiungine uno con il tasto qui sotto.')}
           </div>
           <button type="button" class="ghost small" id="magazzinoAddBtn">+ Aggiungi prodotto</button>
-          <p class="hint">Si salva da sola mentre scrivi, come Ispirazione: non serve un tasto "Salva" dedicato.</p>
+          <p class="hint">Si salva da sola mentre scrivi, come Ispirazione: non serve un tasto "Salva" dedicato. Scegliendo "Tipo" il prodotto è subito ricollocato nel gruppo giusto.</p>
         </fieldset>
         <div class="sheet-footer">
           <span class="save-status" id="magazzinoSaveStatus"></span>
@@ -3286,12 +3432,15 @@
     }
 
     document.querySelectorAll('.magazzino-input').forEach(input => {
-      input.addEventListener('input', () => {
+      const isTipo = input.dataset.field === 'tipo';
+      // Il "Tipo" cambia gruppo (Materie prime/Merci in vendita): qui serve ridisegnare tutto,
+      // non solo aggiornare il bollino di scorta come per gli altri campi.
+      input.addEventListener(isTipo ? 'change' : 'input', () => {
         const id = input.dataset.id;
         const field = input.dataset.field;
         const p = magazzinoCache.prodotti.find(x => x.id === id);
         if (!p) return;
-        if (field === 'nome' || field === 'marca') {
+        if (field === 'nome' || field === 'marca' || field === 'tipo') {
           p[field] = input.value;
         } else {
           // prezzo/quantità/scorta minima: numero, o null se il campo è vuoto (facoltativo)
@@ -3300,6 +3449,7 @@
         }
         saveMagazzino();
         magazzinoNotify('Salvato.');
+        if (isTipo) { renderSheet(); return; }
         const row = input.closest('.magazzino-row');
         if (row) updateMagazzinoRowLowBadge(row, p);
       });
@@ -3351,6 +3501,15 @@
         renderSheet();
         const input = document.querySelector('.magazzino-input[data-field="nome"][data-id="' + p.id + '"]');
         if (input) input.focus();
+      });
+    }
+
+    const pdfBtn = document.getElementById('magazzinoPdfBtn');
+    if (pdfBtn) {
+      pdfBtn.addEventListener('click', () => {
+        downloadMagazzinoPdf()
+          .then(() => notifyTop('PDF scaricato.'))
+          .catch((err) => { if (!(err && err.code === 'declined')) notifyTop('Non sono riuscita a generare il PDF.', true); });
       });
     }
   }
