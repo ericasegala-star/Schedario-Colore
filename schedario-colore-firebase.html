@@ -285,33 +285,32 @@
   .field-autosize { resize: none; overflow: hidden; min-height: 38px; }
 
   /* Note/Allergie/Obiettivo/Per la prossima volta/Mordenzatura: "Time", "Green Mix", "Gloss" e
-     "Forever Gloss" compaiono da sole in grande e grassetto mentre si scrive. Il trucco: il campo
-     vero (textarea o input) resta sotto (dove si scrive davvero, con un cursore normale) ma con
-     il testo reso invisibile; sopra, alla stessa identica posizione, un livello non modificabile
-     mostra lo stesso testo con quelle parole evidenziate. Occorre che i due livelli abbiano lo
-     stesso riquadro e lo stesso carattere, altrimenti non si sovrappongono bene. */
+     "Forever Gloss" compaiono in grande e grassetto appena si esce dal campo (non più mentre si
+     scrive lettera per lettera: far "saltare" le parole di dimensione mentre si digita rendeva
+     scomodo scrivere, perché il testo si spostava sotto le dita). Il campo vero e il testo
+     evidenziato non stanno mai sovrapposti: si vede uno o l'altro, a turno — il campo normale
+     mentre ci si scrive dentro, il testo evidenziato appena se ne esce. */
   .field-rich { position: relative; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); }
   .field-rich-overlay {
     padding: 9px 10px; font-family: inherit; font-size: 14px; line-height: 1.45;
     white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;
-    color: var(--ink); min-height: 38px; pointer-events: none;
+    color: var(--ink); min-height: 38px; cursor: text;
   }
   .field-rich-overlay.single-line { white-space: pre; overflow: hidden; text-overflow: ellipsis; }
   .field-rich-overlay:empty::before { content: attr(data-placeholder); color: var(--ink-soft); }
-  /* Selettore un po' "pesante" (due classi + il tag) apposta: deve vincere sulla regola generica
-     ".field textarea, .field input[type=text]" più sopra, altrimenti quella rimetterebbe lo
-     sfondo/bordo/colore normali sopra il trucco della trasparenza. */
-  .field-rich textarea.field-rich-input, .field-rich input.field-rich-input {
-    position: absolute; inset: 0; width: 100%; height: 100%; margin: 0;
-    border: none; border-radius: var(--radius); background: transparent;
-    color: transparent; caret-color: var(--ink); font-family: inherit; font-size: 14px;
+  .field-rich textarea.field-rich-input, .field-rich input.field-rich-input { display: none; }
+  /* Selettore un po' "pesante" (tre classi + il tag) apposta: deve vincere sulla regola generica
+     ".field textarea, .field input[type=text]" più sopra. */
+  .field-rich.editing textarea.field-rich-input, .field-rich.editing input.field-rich-input {
+    display: block; width: 100%; margin: 0; border: none; border-radius: var(--radius);
+    background: transparent; color: var(--ink); font-family: inherit; font-size: 14px;
     line-height: 1.45; padding: 9px 10px; resize: none; overflow: hidden;
   }
-  .field-rich-input::placeholder { color: transparent; }
+  .field-rich.editing .field-rich-overlay { display: none; }
   .pl-term { font-weight: 700; font-size: 1.15em; }
   @media print {
     .field-rich-overlay { display: none; }
-    .field-rich textarea.field-rich-input, .field-rich input.field-rich-input { position: static; color: var(--ink) !important; }
+    .field-rich textarea.field-rich-input, .field-rich input.field-rich-input { display: block; position: static; color: var(--ink) !important; }
   }
   .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
   .row2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
@@ -1020,7 +1019,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-08.14-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-09.15-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -2902,7 +2901,7 @@
         <legend>Note e preferenze</legend>
         <div class="field">
           <div class="field-rich">
-            <textarea id="f-note" class="field-rich-input" rows="1" placeholder="Es. copertura leggera, non pesante…">${escapeHtml(c.note)}</textarea>
+            <textarea id="f-note" class="field-rich-input field-autosize" rows="1" placeholder="Es. copertura leggera, non pesante…">${escapeHtml(c.note)}</textarea>
             <div class="field-rich-overlay" data-placeholder="Es. copertura leggera, non pesante…" aria-hidden="true"></div>
           </div>
         </div>
@@ -2912,7 +2911,7 @@
         <legend>Allergie / ipersensibilità</legend>
         <div class="field">
           <div class="field-rich">
-            <textarea id="f-allergie" class="field-rich-input" rows="1" placeholder="Segnala qui eventuali reazioni note…">${escapeHtml(c.allergie)}</textarea>
+            <textarea id="f-allergie" class="field-rich-input field-autosize" rows="1" placeholder="Segnala qui eventuali reazioni note…">${escapeHtml(c.allergie)}</textarea>
             <div class="field-rich-overlay" data-placeholder="Segnala qui eventuali reazioni note…" aria-hidden="true"></div>
           </div>
         </div>
@@ -2958,7 +2957,7 @@
         <div class="field${hc(c.obiettivo)}">
           <label>Obiettivo</label>
           <div class="field-rich">
-            <textarea id="f-obiettivo" class="field-rich-input" rows="1" placeholder="Es. lasciare colore di base, andare in copertura dei bianchi…">${escapeHtml(c.obiettivo)}</textarea>
+            <textarea id="f-obiettivo" class="field-rich-input field-autosize" rows="1" placeholder="Es. lasciare colore di base, andare in copertura dei bianchi…">${escapeHtml(c.obiettivo)}</textarea>
             <div class="field-rich-overlay" data-placeholder="Es. lasciare colore di base, andare in copertura dei bianchi…" aria-hidden="true"></div>
           </div>
         </div>
@@ -2995,7 +2994,7 @@
         <legend>Per la prossima volta</legend>
         <div class="field">
           <div class="field-rich">
-            <textarea id="f-modifiche" class="field-rich-input" rows="1" placeholder="Note per il prossimo appuntamento…">${escapeHtml(c.modifiche)}</textarea>
+            <textarea id="f-modifiche" class="field-rich-input field-autosize" rows="1" placeholder="Note per il prossimo appuntamento…">${escapeHtml(c.modifiche)}</textarea>
             <div class="field-rich-overlay" data-placeholder="Note per il prossimo appuntamento…" aria-hidden="true"></div>
           </div>
         </div>
@@ -3931,7 +3930,42 @@
     if (el.id === 'f-nome' || el.id === 'searchAppInput' || el.classList.contains('ins-book-cover-title')) return;
     addSpaceAfterPunctuation(el);
     capitalizeFirstLetter(el);
-    if (el.classList.contains('field-rich-input')) updateFieldOverlay(el);
+    // L'evidenziazione (grande/grassetto) si aggiorna quando si esce dal campo, non lettera per
+    // lettera: vedi il gestore "focus"/"blur" dei campi .field-rich-input, più sotto.
+  });
+
+  // Nei campi "field-rich" (Note/Allergie/Obiettivo/Per la prossima volta/Mordenzatura), appena
+  // si entra nel campo si vede e si scrive nel campo vero e proprio (normale, senza sorprese);
+  // appena se ne esce, si rivede lo stesso testo con "Time"/"Green Mix"/"Gloss"/"Forever Gloss"
+  // evidenziati in grande e grassetto.
+  document.addEventListener('focus', (e) => {
+    const el = e.target;
+    if (!el.classList || !el.classList.contains('field-rich-input')) return;
+    const wrap = el.closest('.field-rich');
+    if (!wrap) return;
+    wrap.classList.add('editing');
+    if (el.classList.contains('field-autosize')) autoResizeField(el);
+  }, true);
+  document.addEventListener('blur', (e) => {
+    const el = e.target;
+    if (!el.classList || !el.classList.contains('field-rich-input')) return;
+    const wrap = el.closest('.field-rich');
+    if (!wrap) return;
+    updateFieldOverlay(el);
+    wrap.classList.remove('editing');
+  }, true);
+  // Cliccando il testo evidenziato (quando il campo non è a fuoco) si entra nel campo, come se
+  // si fosse cliccato un campo normale.
+  document.addEventListener('click', (e) => {
+    const overlay = e.target.closest('.field-rich-overlay');
+    if (!overlay) return;
+    const wrap = overlay.closest('.field-rich');
+    const input = wrap && wrap.querySelector('.field-rich-input');
+    if (!input) return;
+    wrap.classList.add('editing'); // va fatto PRIMA del focus: un campo display:none non si può mettere a fuoco
+    input.focus();
+    const len = input.value.length;
+    try { input.setSelectionRange(len, len); } catch (e2) { /* alcuni input non supportano setSelectionRange */ }
   });
 
   // Tasto "Salva" fisso di lato: su una scheda cliente richiama il Salva vero e proprio
