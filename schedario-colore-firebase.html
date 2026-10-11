@@ -1292,7 +1292,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-11.31-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-11.32-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -3534,7 +3534,7 @@
                 return `<td>
                   <div class="cell-row">
                     <input type="checkbox" class="tempo-check" data-line="${lineKey}" data-key="${key}" ${cell.on ? 'checked' : ''} ${dis}>
-                    <input type="text" class="tempo-min" data-line="${lineKey}" data-key="${key}" placeholder="${col.hint}" value="${escapeHtml(cell.min)}" ${ro}>
+                    <input type="text" class="tempo-min" data-line="${lineKey}" data-key="${key}" placeholder="${readOnly ? '' : col.hint}" value="${escapeHtml(cell.min)}" ${ro}>
                   </div>
                 </td>`;
               }).join('')}
@@ -3703,10 +3703,28 @@
       .filter(c => (c.nome || '').toLowerCase().includes(t))
       .slice(0, 6);
   }
-  // Calendario a quarti d'ora, dalle 8:00 alle 19:45 (ultimo appuntamento alle 19:45).
-  function agendaSlots() {
+  // Orario di apertura del salone, diverso per giorno della settimana (0=domenica…6=sabato):
+  // martedì e mercoledì 8:30-15:30, giovedì e venerdì 8:30-19:00, sabato 8:00-18:00. Lunedì e
+  // domenica non sono elencati: il salone è chiuso, niente slot in quei giorni.
+  const AGENDA_ORARI = {
+    2: [8 * 60 + 30, 15 * 60 + 30],
+    3: [8 * 60 + 30, 15 * 60 + 30],
+    4: [8 * 60 + 30, 19 * 60],
+    5: [8 * 60 + 30, 19 * 60],
+    6: [8 * 60, 18 * 60]
+  };
+  // Calendario a quarti d'ora, secondo l'orario di apertura del giorno indicato (se non si sa
+  // ancora il giorno, usa un intervallo generico 8:00-20:00 come ripiego).
+  function agendaSlots(dateISO) {
+    let range = [8 * 60, 20 * 60];
+    if (dateISO) {
+      const [y, m, d] = dateISO.split('-').map(Number);
+      const day = new Date(y, m - 1, d).getDay();
+      range = AGENDA_ORARI[day] || null;
+    }
+    if (!range) return [];
     const slots = [];
-    for (let m = 8 * 60; m < 20 * 60; m += 15) {
+    for (let m = range[0]; m < range[1]; m += 15) {
       const hh = String(Math.floor(m / 60)).padStart(2, '0');
       const mm = String(m % 60).padStart(2, '0');
       slots.push(hh + ':' + mm);
@@ -3720,7 +3738,7 @@
         <div class="field agenda-field-ora">
           <label>Ora</label>
           <select class="agenda-input" data-id="${a.id}" data-field="ora">
-            ${agendaSlots().map(t => `<option value="${t}" ${a.ora === t ? 'selected' : ''}>${t}</option>`).join('')}
+            ${agendaSlots(a.data || agendaDataSelezionata).map(t => `<option value="${t}" ${a.ora === t ? 'selected' : ''}>${t}</option>`).join('')}
           </select>
         </div>
         <div class="field agenda-field-cliente">
@@ -3773,8 +3791,10 @@
         </div>
       </div>`;
   }
-  function renderAgendaGridHtml(appuntamenti) {
-    return `<div class="agenda-grid">${agendaSlots().map(t => renderAgendaSlotHtml(t, appuntamenti)).join('')}</div>`;
+  function renderAgendaGridHtml(appuntamenti, dateISO) {
+    const slots = agendaSlots(dateISO);
+    if (!slots.length) return '<p class="hint agenda-closed">Il salone è chiuso questo giorno.</p>';
+    return `<div class="agenda-grid">${slots.map(t => renderAgendaSlotHtml(t, appuntamenti)).join('')}</div>`;
   }
 
   function renderSheet() {
@@ -3924,13 +3944,6 @@
         </fieldset>
 
         <fieldset>
-          <legend>Allergie / ipersensibilità</legend>
-          <div class="field">
-            <textarea placeholder="Segnala qui eventuali reazioni note…" readonly></textarea>
-          </div>
-        </fieldset>
-
-        <fieldset>
           <legend>Diagnosi capello</legend>
           <div class="field">
             <label>Capelli bianchi — <strong>davanti</strong></label>
@@ -4041,7 +4054,7 @@
             </div>
             <div class="agenda-date-label">${fmtDateISOLong(agendaDataSelezionata)}</div>
             <div id="agendaGridWrap">
-              ${renderAgendaGridHtml(appuntamentiDelGiorno(agendaDataSelezionata))}
+              ${renderAgendaGridHtml(appuntamentiDelGiorno(agendaDataSelezionata), agendaDataSelezionata)}
             </div>
             <span class="save-status" id="agendaSaveStatus"></span>
           </div>
@@ -5605,7 +5618,9 @@
     }
 
     imgModalPage.classList.remove('flip-prev');
-    if (direction === 'prev') imgModalPage.classList.add('flip-prev');
+    // L'effetto va nel verso giusto scambiando quale animazione corrisponde ad "avanti" e
+    // "indietro" (prima sfogliava al contrario rispetto al verso dello scorrimento).
+    if (direction === 'next') imgModalPage.classList.add('flip-prev');
     // L'animazione di voltar pagina va fatta ripartire "a mano": cambiando solo la classe
     // (sopra) il nome dell'animazione CSS resta lo stesso quando si passa da una foto a
     // un'altra foto (perché l'immagine non viene nascosta/rimostrata), quindi il browser non
