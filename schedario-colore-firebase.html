@@ -1105,7 +1105,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-11.19-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-11.21-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -2368,7 +2368,7 @@
   // PDF dell'inventario di Magazzino, UN FILE PER TIPO (materie prime / merci in vendita), con
   // i prodotti raggruppati per marca: il nome del fornitore compare solo nella cella verticale
   // a sinistra del blocco (non ripetuto riga per riga), come un dorso di raccoglitore.
-  function buildMagazzinoPdfTipo(tipoKey, tipoLabel) {
+  function buildMagazzinoPdfTipo(tipoKey, tipoLabel, logo) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
     const margin = 42;
@@ -2381,6 +2381,15 @@
     let y = 54;
     let grandTotal = 0;
 
+    // Logo in alto a destra (solo sulla prima pagina): è lo stesso logo impostato in
+    // "Impostazioni", quindi ogni salone che userà questa app in futuro ci vedrà il proprio,
+    // non quello di Erica fissato nel codice.
+    if (logo && logo.dataUrl) {
+      const maxH = 34;
+      const scale = Math.min(1, maxH / logo.h);
+      const dw = logo.w * scale, dh = logo.h * scale;
+      try { doc.addImage(logo.dataUrl, 'PNG', pageW - margin - dw, 16, dw, dh); } catch (e) { /* logo illeggibile: si procede senza */ }
+    }
     function wouldOverflow(extra) { return y + extra > pageH - 44; }
     function ensureSpace(extra) { if (wouldOverflow(extra)) { doc.addPage(); y = 54; } }
     function h1(text) {
@@ -2416,9 +2425,11 @@
       const h = Math.max(endY - startY, 16);
       doc.setDrawColor(122, 59, 86); doc.setFillColor(246, 239, 235); doc.setLineWidth(0.8);
       doc.rect(margin, startY, sidebarW, h, 'FD');
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(122, 59, 86);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(122, 59, 86);
       const label = marca.toUpperCase() + (continued ? ' (SEGUE)' : '');
-      doc.text(label, margin + sidebarW / 2 + 3, startY + h / 2, { angle: 90, align: 'center' });
+      // "baseline: middle" centra lo spessore del testo sull'asse verticale della cella: senza,
+      // il testo (ruotato di 90°) resta ancorato alla base dei caratteri e sporge da un lato.
+      doc.text(label, margin + sidebarW / 2, startY + h / 2, { angle: 90, align: 'center', baseline: 'middle' });
       doc.setTextColor(30, 24, 20);
     }
 
@@ -2454,8 +2465,36 @@
     doc.text('Valore stimato totale: ' + money(grandTotal), margin, y);
     return doc.output('blob');
   }
+  // Carica l'immagine del logo (quello di "Impostazioni", o quello predefinito se nessuno l'ha
+  // cambiato) come PNG pronto per jsPDF: passa sempre da un canvas, così funziona qualunque sia
+  // il formato originale (PNG, JPEG, WEBP...), che jsPDF da solo non sempre sa decodificare.
+  function loadImageAsPngDataUrl(src, maxDim) {
+    return new Promise((resolve) => {
+      if (!src) { resolve(null); return; }
+      const img = new Image();
+      img.onload = () => {
+        try {
+          let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+          if (!w || !h) { resolve(null); return; }
+          const scale = Math.min(1, maxDim / Math.max(w, h));
+          w = Math.round(w * scale); h = Math.round(h * scale);
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve({ dataUrl: canvas.toDataURL('image/png'), w, h });
+        } catch (e) { resolve(null); }
+      };
+      img.onerror = () => resolve(null);
+      img.src = src;
+    });
+  }
+  async function getMagazzinoPdfLogo() {
+    const src = appSettingsCache.logo || DEFAULT_LOGO_SRC;
+    return await loadImageAsPngDataUrl(src, 160);
+  }
   async function downloadMagazzinoPdfTipo(tipoKey, tipoLabel) {
-    const blob = buildMagazzinoPdfTipo(tipoKey, tipoLabel);
+    const logo = await getMagazzinoPdfLogo();
+    const blob = buildMagazzinoPdfTipo(tipoKey, tipoLabel, logo);
     const slug = tipoKey === 'vendita' ? 'merci-vendita' : 'materie-prime';
     await saveBlobAsFile(blob, 'magazzino-' + slug + '-' + fmtDate(Date.now()).replace(/\//g, '-') + '.pdf');
   }
