@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root {
     --ink: #2B2320;
@@ -808,7 +809,6 @@
 
   /* Magazzino: un elenco di prodotti, ciascuno in una riga con i suoi campi affiancati,
      raggruppati per "Tipo" (materie prime / merci in vendita). */
-  .magazzino-low-summary { color: #A8433C; font-weight: 600; }
   .magazzino-group { margin-bottom: 20px; }
   .magazzino-group-title {
     font-size: 12.5px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase;
@@ -819,13 +819,11 @@
     display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px;
     padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper-raised);
   }
-  .magazzino-row-low { border-color: #A8433C; }
   .magazzino-row .field { margin-bottom: 0; }
   .magazzino-field-nome { flex: 2 1 160px; }
   .magazzino-field-tipo { flex: 1.1 1 130px; }
   .magazzino-field-marca { flex: 1.4 1 120px; }
   .magazzino-field-prezzo { flex: 0.8 1 80px; }
-  .magazzino-field-scorta { flex: 0.8 1 90px; }
   .magazzino-select {
     width: 100%; border: 1px solid var(--line); border-radius: var(--radius);
     background: var(--paper); color: var(--ink); font-family: inherit; font-size: 14px;
@@ -836,16 +834,12 @@
   .magazzino-qty-wrap { display: flex; align-items: center; gap: 6px; }
   /* Selettore apposta "pesante" (tre classi): deve vincere sulla regola generica
      ".field input[type=number]" più sopra, altrimenti quella forza width:100% e l'input
-     si allarga fino a sovrapporsi al campo "Scorta minima" accanto. */
+     si allarga troppo. */
   .magazzino-row .magazzino-qty-wrap .magazzino-qty-input { width: 54px; text-align: center; flex: none; }
   .magazzino-qty-btn {
     width: 30px; height: 34px; padding: 0; font-size: 17px; line-height: 1; flex: none;
   }
   .magazzino-row-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
-  .magazzino-low-badge {
-    display: inline-block; padding: 1px 7px; border-radius: 10px;
-    background: #A8433C; color: #fff; font-size: 10.5px; font-weight: 600; letter-spacing: 0.01em;
-  }
   .magazzino-empty { margin-top: 0; }
   .mag-head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
@@ -1111,7 +1105,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-10.18-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-11.19-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -1463,7 +1457,7 @@
     { key: '', label: 'Senza categoria' }
   ];
   function createMagazzinoProdotto() {
-    const p = { id: uid(), nome: '', marca: '', tipo: '', prezzo: null, quantita: 0, scortaMinima: null, createdAt: Date.now() };
+    const p = { id: uid(), nome: '', marca: '', tipo: '', prezzo: null, quantita: 0, createdAt: Date.now() };
     magazzinoCache.prodotti.push(p);
     saveMagazzino();
     return p;
@@ -2345,97 +2339,161 @@
     }
   }
 
-  // PDF dell'inventario di Magazzino: un elenco a tabella, raggruppato per Tipo (come a schermo)
-  // e poi per marca/nome, con il valore stimato (prezzo × quantità) per gruppo e totale.
-  function buildMagazzinoPdf() {
+  // Raggruppa un elenco di prodotti per marca/fornitore (ordine alfabetico, "Senza marca" in
+  // fondo se vuota), e dentro ogni gruppo per nome: usato sia dal PDF che dall'Excel.
+  function groupMagazzinoByMarca(list) {
+    const map = new Map();
+    list.forEach(p => {
+      const key = (p.marca || '').trim() || 'Senza marca';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(p);
+    });
+    return Array.from(map.entries())
+      .sort((a, b) => {
+        if (a[0] === 'Senza marca') return 1;
+        if (b[0] === 'Senza marca') return -1;
+        return a[0].localeCompare(b[0], 'it', { sensitivity: 'base' });
+      })
+      .map(([marca, prodotti]) => ({
+        marca,
+        prodotti: prodotti.slice().sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'it', { sensitivity: 'base' }))
+      }));
+  }
+  // Solo i prodotti con quantità e prezzo diversi da zero vanno esportati (PDF ed Excel): una
+  // riga a zero non serve nell'inventario che si scarica.
+  function magazzinoEsportabili(tipoKey) {
+    return magazzinoCache.prodotti.filter(p => p.tipo === tipoKey && (p.quantita || 0) > 0 && p.prezzo != null && p.prezzo > 0);
+  }
+
+  // PDF dell'inventario di Magazzino, UN FILE PER TIPO (materie prime / merci in vendita), con
+  // i prodotti raggruppati per marca: il nome del fornitore compare solo nella cella verticale
+  // a sinistra del blocco (non ripetuto riga per riga), come un dorso di raccoglitore.
+  function buildMagazzinoPdfTipo(tipoKey, tipoLabel) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-    const left = 42;
+    const margin = 42;
+    const sidebarW = 22;
+    const contentLeft = margin + sidebarW + 10;
     const pageH = doc.internal.pageSize.getHeight();
     const pageW = doc.internal.pageSize.getWidth();
-    const col = { nome: left, marca: left + 260, prezzo: left + 360, qty: left + 420, scorta: left + 465 };
+    const col = { nome: contentLeft, prezzo: pageW - margin - 130, qty: pageW - margin - 65, valore: pageW - margin };
+    const rowH = 14.5;
     let y = 54;
+    let grandTotal = 0;
 
-    function ensureSpace(extra) { if (y + extra > pageH - 40) { doc.addPage(); y = 54; } }
+    function wouldOverflow(extra) { return y + extra > pageH - 44; }
+    function ensureSpace(extra) { if (wouldOverflow(extra)) { doc.addPage(); y = 54; } }
     function h1(text) {
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(30, 24, 20);
-      ensureSpace(26); doc.text(text, left, y); y += 10;
-      doc.setDrawColor(122, 59, 86); doc.setLineWidth(1.2);
-      doc.line(left, y, pageW - left, y); y += 20;
-    }
-    function h2(text) {
-      ensureSpace(20);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(122, 59, 86);
-      doc.text(text.toUpperCase(), left, y); doc.setTextColor(30, 24, 20); y += 14;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(17); doc.setTextColor(30, 24, 20);
+      doc.text(text, margin, y); y += 9;
+      doc.setDrawColor(122, 59, 86); doc.setLineWidth(1.1);
+      doc.line(margin, y, pageW - margin, y); y += 20;
     }
     function tableHeader() {
-      ensureSpace(18);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(107, 95, 87);
-      doc.text('PRODOTTO', col.nome, y); doc.text('MARCA', col.marca, y);
-      doc.text('PREZZO', col.prezzo, y); doc.text('QTÀ', col.qty, y); doc.text('SCORTA', col.scorta, y);
-      y += 5;
-      doc.setDrawColor(180, 170, 160); doc.setLineWidth(0.6);
-      doc.line(left, y, pageW - left, y); y += 13;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(107, 95, 87);
+      doc.text('PRODOTTO', col.nome, y);
+      doc.text('PREZZO', col.prezzo, y, { align: 'right' });
+      doc.text('QTÀ', col.qty, y, { align: 'right' });
+      doc.text('VALORE', col.valore, y, { align: 'right' });
+      y += 4;
+      doc.setDrawColor(190, 180, 170); doc.setLineWidth(0.5);
+      doc.line(contentLeft, y, pageW - margin, y); y += 11;
       doc.setTextColor(30, 24, 20);
     }
-    function money(n) { return n == null ? '—' : ('€ ' + n.toFixed(2).replace('.', ',')); }
-    function row(p) {
-      ensureSpace(15);
-      const low = isMagazzinoProdottoLow(p);
-      doc.setFont('helvetica', low ? 'bold' : 'normal'); doc.setFontSize(9.5);
-      if (low) doc.setTextColor(168, 67, 60); else doc.setTextColor(30, 24, 20);
-      doc.text((p.nome || 'Senza nome') + (low ? ' *' : ''), col.nome, y, { maxWidth: col.marca - col.nome - 8 });
-      doc.text(p.marca || '—', col.marca, y, { maxWidth: col.prezzo - col.marca - 8 });
-      doc.text(money(p.prezzo), col.prezzo, y);
-      doc.text(String(p.quantita != null ? p.quantita : 0), col.qty, y);
-      doc.text(p.scortaMinima != null ? String(p.scortaMinima) : '—', col.scorta, y);
-      doc.setTextColor(30, 24, 20);
-      y += 15;
+    function money(n) { return '€ ' + n.toFixed(2).replace('.', ','); }
+    function drawRow(p) {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(30, 24, 20);
+      doc.text(p.nome || 'Senza nome', col.nome, y, { maxWidth: col.prezzo - col.nome - 60 });
+      doc.text(money(p.prezzo), col.prezzo, y, { align: 'right' });
+      doc.text(String(p.quantita), col.qty, y, { align: 'right' });
+      doc.text(money(p.prezzo * p.quantita), col.valore, y, { align: 'right' });
+      y += rowH;
     }
-    function groupTotalRow(valore) {
-      ensureSpace(16);
-      doc.setDrawColor(180, 170, 160); doc.setLineWidth(0.4);
-      doc.line(col.prezzo - 8, y, pageW - left, y); y += 12;
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
-      doc.text('Valore stimato gruppo: ' + money(valore), col.marca, y);
-      y += 18;
+    // Il "dorso" verticale a sinistra con il nome del fornitore, alto quanto il blocco appena
+    // disegnato (da startY a y): se un fornitore occupa più pagine, ne esce un dorso per pagina,
+    // con "(segue)" su quelli successivi al primo.
+    function drawSidebar(marca, startY, endY, continued) {
+      const h = Math.max(endY - startY, 16);
+      doc.setDrawColor(122, 59, 86); doc.setFillColor(246, 239, 235); doc.setLineWidth(0.8);
+      doc.rect(margin, startY, sidebarW, h, 'FD');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(122, 59, 86);
+      const label = marca.toUpperCase() + (continued ? ' (SEGUE)' : '');
+      doc.text(label, margin + sidebarW / 2 + 3, startY + h / 2, { angle: 90, align: 'center' });
+      doc.setTextColor(30, 24, 20);
     }
 
-    const prodotti = loadMagazzino().prodotti;
-    h1('Magazzino — inventario al ' + fmtDateLong(Date.now()));
+    const prodotti = magazzinoEsportabili(tipoKey);
+    h1(tipoLabel + ' — inventario al ' + fmtDateLong(Date.now()));
     if (!prodotti.length) {
       doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5);
-      doc.text('Nessun prodotto in magazzino.', left, y);
-    } else {
-      let grandTotal = 0;
-      let anyLow = false;
-      groupMagazzinoProdotti(prodotti).forEach(g => {
-        h2(g.tipo.label + ' (' + g.prodotti.length + ')');
-        tableHeader();
-        let groupValore = 0;
-        g.prodotti.forEach(p => {
-          row(p);
-          if (isMagazzinoProdottoLow(p)) anyLow = true;
-          if (p.prezzo != null) groupValore += p.prezzo * (p.quantita || 0);
-        });
-        groupTotalRow(groupValore);
-        grandTotal += groupValore;
-      });
-      ensureSpace(20);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(30, 24, 20);
-      doc.text('Valore stimato totale: ' + money(grandTotal), left, y);
-      y += 18;
-      if (anyLow) {
-        ensureSpace(14);
-        doc.setFont('helvetica', 'italic'); doc.setFontSize(8.5); doc.setTextColor(168, 67, 60);
-        doc.text('* prodotto in esaurimento (quantità alla o sotto la scorta minima)', left, y);
-      }
+      doc.text('Nessun prodotto con quantità e prezzo diversi da zero.', margin, y);
+      return doc.output('blob');
     }
+    tableHeader();
+    groupMagazzinoByMarca(prodotti).forEach(g => {
+      let sidebarStartY = y;
+      let continued = false;
+      let groupValore = 0;
+      g.prodotti.forEach(p => {
+        if (wouldOverflow(rowH)) {
+          drawSidebar(g.marca, sidebarStartY, y, continued);
+          doc.addPage(); y = 54;
+          tableHeader();
+          sidebarStartY = y;
+          continued = true;
+        }
+        drawRow(p);
+        groupValore += p.prezzo * p.quantita;
+      });
+      drawSidebar(g.marca, sidebarStartY, y, continued);
+      grandTotal += groupValore;
+      y += 10;
+    });
+    ensureSpace(20);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(30, 24, 20);
+    doc.text('Valore stimato totale: ' + money(grandTotal), margin, y);
     return doc.output('blob');
   }
-  async function downloadMagazzinoPdf() {
-    const blob = buildMagazzinoPdf();
-    await saveBlobAsFile(blob, 'magazzino-inventario-' + fmtDate(Date.now()).replace(/\//g, '-') + '.pdf');
+  async function downloadMagazzinoPdfTipo(tipoKey, tipoLabel) {
+    const blob = buildMagazzinoPdfTipo(tipoKey, tipoLabel);
+    const slug = tipoKey === 'vendita' ? 'merci-vendita' : 'materie-prime';
+    await saveBlobAsFile(blob, 'magazzino-' + slug + '-' + fmtDate(Date.now()).replace(/\//g, '-') + '.pdf');
+  }
+
+  // Excel (.xlsx): una cartella con un foglio per tipo (Materie prime / Merci in vendita),
+  // righe raggruppate per marca con la cella "Marca/fornitore" unita verticalmente sul gruppo
+  // (l'equivalente, su un foglio di calcolo, del dorso verticale del PDF). Si apre anche in
+  // Numbers: non esiste un formato ".numbers" scrivibile da fuori Apple, ma Numbers importa
+  // un .xlsx direttamente, quindi un unico file serve per entrambi.
+  function buildMagazzinoWorkbook() {
+    const wb = XLSX.utils.book_new();
+    MAGAZZINO_TIPI.filter(t => t.key).forEach(t => {
+      const prodotti = magazzinoEsportabili(t.key);
+      const rows = [['Marca/fornitore', 'Prodotto', 'Prezzo €', 'Quantità', 'Valore €']];
+      const merges = [];
+      groupMagazzinoByMarca(prodotti).forEach(g => {
+        const startR = rows.length;
+        g.prodotti.forEach(p => {
+          rows.push([g.marca, p.nome || 'Senza nome', p.prezzo, p.quantita, Math.round(p.prezzo * p.quantita * 100) / 100]);
+        });
+        if (g.prodotti.length > 1) merges.push({ s: { r: startR, c: 0 }, e: { r: rows.length - 1, c: 0 } });
+      });
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!merges'] = merges;
+      ws['!cols'] = [{ wch: 22 }, { wch: 34 }, { wch: 10 }, { wch: 10 }, { wch: 10 }];
+      for (let i = 1; i < rows.length; i++) {
+        const cPrezzo = ws[XLSX.utils.encode_cell({ r: i, c: 2 })]; if (cPrezzo) cPrezzo.z = '"€"#,##0.00';
+        const cValore = ws[XLSX.utils.encode_cell({ r: i, c: 4 })]; if (cValore) cValore.z = '"€"#,##0.00';
+      }
+      XLSX.utils.book_append_sheet(wb, ws, t.label);
+    });
+    return wb;
+  }
+  async function downloadMagazzinoExcel() {
+    const wb = buildMagazzinoWorkbook();
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([wbout], { type: 'application/octet-stream' });
+    await saveBlobAsFile(blob, 'magazzino-' + fmtDate(Date.now()).replace(/\//g, '-') + '.xlsx');
   }
 
   // Salva un Blob sul dispositivo (foto, PDF, backup…).
@@ -2865,15 +2923,9 @@
       </div>`;
   }
 
-  // Un prodotto è "in esaurimento" solo se è stata scritta una scorta minima (facoltativa):
-  // senza, non si sa cosa consideri poco, quindi niente avviso.
-  function isMagazzinoProdottoLow(p) {
-    return p.scortaMinima != null && p.scortaMinima > 0 && (p.quantita || 0) <= p.scortaMinima;
-  }
   function renderMagazzinoRowHtml(p) {
-    const low = isMagazzinoProdottoLow(p);
     return `
-      <div class="magazzino-row${low ? ' magazzino-row-low' : ''}" data-id="${p.id}">
+      <div class="magazzino-row" data-id="${p.id}">
         <div class="field magazzino-field-nome">
           <label>Prodotto</label>
           <input type="text" class="magazzino-input" data-id="${p.id}" data-field="nome" placeholder="Es. Shampoo ricostruttore" value="${escapeHtml(p.nome || '')}">
@@ -2902,12 +2954,7 @@
             <button type="button" class="magazzino-qty-btn" data-id="${p.id}" data-delta="1" aria-label="Aggiungi uno">+</button>
           </div>
         </div>
-        <div class="field magazzino-field-scorta">
-          <label>Scorta minima</label>
-          <input type="number" class="magazzino-input" data-id="${p.id}" data-field="scortaMinima" min="0" step="1" placeholder="facolt." value="${p.scortaMinima != null ? p.scortaMinima : ''}">
-        </div>
         <div class="magazzino-row-actions">
-          <span class="magazzino-low-badge" ${low ? '' : 'hidden'}>In esaurimento</span>
           <button type="button" class="magazzino-delete" data-id="${p.id}">Elimina</button>
         </div>
       </div>`;
@@ -3008,16 +3055,16 @@
       const term = magazzinoSearchTerm.trim().toLowerCase();
       const prodotti = mag.prodotti
         .filter(p => !term || (p.nome || '').toLowerCase().includes(term) || (p.marca || '').toLowerCase().includes(term));
-      const lowCount = mag.prodotti.filter(isMagazzinoProdottoLow).length;
       panel.innerHTML = `
         <div class="sheet-head">
           <div class="name-field">
             <div class="notes-title">Magazzino</div>
-            ${lowCount ? '<div class="sub magazzino-low-summary">' + lowCount + (lowCount === 1 ? ' prodotto in esaurimento' : ' prodotti in esaurimento') + '</div>' : ''}
           </div>
           <div class="mag-head-actions">
             <button class="ghost small" id="magazzinoImportBtn">Importa da fattura</button>
-            <button class="ghost small" id="magazzinoPdfBtn">Scarica PDF inventario</button>
+            <button class="ghost small" id="magazzinoPdfVenditaBtn">PDF merci in vendita</button>
+            <button class="ghost small" id="magazzinoPdfMateriaBtn">PDF materie prime</button>
+            <button class="ghost small" id="magazzinoExcelBtn">Scarica Excel</button>
           </div>
         </div>
         <fieldset>
@@ -3459,15 +3506,6 @@
     magazzinoNotify._t = setTimeout(() => { if (el) el.textContent = ''; }, 1800);
   }
 
-  // Aggiorna solo il bollino "In esaurimento" di una riga già disegnata, senza ridisegnare
-  // tutto il pannello: altrimenti si perderebbe il focus/cursore mentre si scrive o si tocca +/-.
-  function updateMagazzinoRowLowBadge(row, p) {
-    const low = isMagazzinoProdottoLow(p);
-    row.classList.toggle('magazzino-row-low', low);
-    const badge = row.querySelector('.magazzino-low-badge');
-    if (badge) badge.hidden = !low;
-  }
-
   function bindMagazzinoEvents() {
     const searchInput = document.getElementById('magazzinoSearch');
     if (searchInput) {
@@ -3491,15 +3529,13 @@
         if (field === 'nome' || field === 'marca' || field === 'tipo') {
           p[field] = input.value;
         } else {
-          // prezzo/quantità/scorta minima: numero, o null se il campo è vuoto (facoltativo)
+          // prezzo/quantità: numero, o null se il campo è vuoto (facoltativo per il prezzo)
           const n = input.value === '' ? null : Number(input.value);
           p[field] = (n === null || isNaN(n)) ? (field === 'quantita' ? 0 : null) : n;
         }
         saveMagazzino();
         magazzinoNotify('Salvato.');
-        if (isTipo) { renderSheet(); return; }
-        const row = input.closest('.magazzino-row');
-        if (row) updateMagazzinoRowLowBadge(row, p);
+        if (isTipo) renderSheet();
       });
     });
 
@@ -3516,7 +3552,6 @@
         if (row) {
           const qtyInput = row.querySelector('.magazzino-qty-input');
           if (qtyInput) qtyInput.value = p.quantita;
-          updateMagazzinoRowLowBadge(row, p);
         }
       });
     });
@@ -3552,12 +3587,28 @@
       });
     }
 
-    const pdfBtn = document.getElementById('magazzinoPdfBtn');
-    if (pdfBtn) {
-      pdfBtn.addEventListener('click', () => {
-        downloadMagazzinoPdf()
+    const pdfVenditaBtn = document.getElementById('magazzinoPdfVenditaBtn');
+    if (pdfVenditaBtn) {
+      pdfVenditaBtn.addEventListener('click', () => {
+        downloadMagazzinoPdfTipo('vendita', 'Merci in vendita')
           .then(() => notifyTop('PDF scaricato.'))
           .catch((err) => { if (!(err && err.code === 'declined')) notifyTop('Non sono riuscita a generare il PDF.', true); });
+      });
+    }
+    const pdfMateriaBtn = document.getElementById('magazzinoPdfMateriaBtn');
+    if (pdfMateriaBtn) {
+      pdfMateriaBtn.addEventListener('click', () => {
+        downloadMagazzinoPdfTipo('materiaPrima', 'Materie prime')
+          .then(() => notifyTop('PDF scaricato.'))
+          .catch((err) => { if (!(err && err.code === 'declined')) notifyTop('Non sono riuscita a generare il PDF.', true); });
+      });
+    }
+    const excelBtn = document.getElementById('magazzinoExcelBtn');
+    if (excelBtn) {
+      excelBtn.addEventListener('click', () => {
+        downloadMagazzinoExcel()
+          .then(() => notifyTop('Excel scaricato.'))
+          .catch((err) => { if (!(err && err.code === 'declined')) notifyTop('Non sono riuscita a generare il file Excel.', true); });
       });
     }
 
