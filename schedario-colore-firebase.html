@@ -396,9 +396,13 @@
   }
   .ins-book-cover-title::placeholder { color: #b98b96; text-transform: none; font-weight: 400; }
   .ins-book-delete {
-    position: absolute; top: -8px; right: -8px; z-index: 2;
-    width: 24px; height: 24px; border-radius: 50%; border: none;
-    background: #a8433c; color: #fff; font-size: 15px; line-height: 1; cursor: pointer;
+    /* Dentro al riquadro (non a cavallo del bordo): la copertina ha overflow:hidden (per il
+       taglio "a libro" dell'immagine), quindi un tasto a metà fuori veniva tagliato via e
+       risultava invisibile/poco cliccabile. */
+    position: absolute; top: 6px; right: 6px; z-index: 2;
+    width: 22px; height: 22px; border-radius: 50%; border: none;
+    background: rgba(20,16,13,0.55); color: #fff; font-size: 14px; line-height: 1; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
     box-shadow: 0 2px 6px rgba(0,0,0,0.3);
   }
   .ins-book-delete:hover { background: #8c352f; }
@@ -710,6 +714,15 @@
     position: relative; max-width: calc(100vw - 48px); max-height: calc(100vh - 48px);
     display: flex; flex-direction: column; align-items: center; gap: 10px;
     perspective: 1400px;
+    /* Su schermi bassi (es. un Mac con la finestra non a tutta altezza) la foto da sola può
+       occupare già tutto lo spazio disponibile, lasciando il commento/i tasti sotto fuori
+       dalla vista. Si può scorrere per raggiungerli, invece di restare nascosti del tutto. */
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+  }
+  /* Quando sotto la foto c'è anche il campo commento (modalità libro), si lascia sempre un
+     po' di spazio sotto la foto stessa, così il commento si vede senza dover scorrere. */
+  .img-modal-page:has(.img-modal-page-comment:not([hidden])) img {
+    max-height: calc(100vh - 230px);
   }
   .img-modal-page img, .img-modal-procedimento {
     background: #fff; backface-visibility: hidden;
@@ -1218,7 +1231,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-11.29-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-11.30-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -5187,8 +5200,17 @@
     }
 
     imgModalPage.classList.remove('flip-prev');
-    void imgModalPage.offsetWidth; // forza il reflow, così l'animazione riparte ad ogni pagina
     if (direction === 'prev') imgModalPage.classList.add('flip-prev');
+    // L'animazione di voltar pagina va fatta ripartire "a mano": cambiando solo la classe
+    // (sopra) il nome dell'animazione CSS resta lo stesso quando si passa da una foto a
+    // un'altra foto (perché l'immagine non viene nascosta/rimostrata), quindi il browser non
+    // la fa ripartire da sé — restava "ferma" sulle pagine di mezzo, funzionando solo quando
+    // si passava dalla/alla pagina del procedimento (che nasconde/rimostra gli elementi).
+    // Si forza il riavvio togliendo e rimettendo l'animazione su tutto quello che è visibile.
+    const animTargets = [imgModalImg, imgModalProcedimento].filter(el => el && !el.hidden);
+    animTargets.forEach(el => { el.style.animation = 'none'; });
+    void imgModalPage.offsetWidth; // forza il reflow
+    animTargets.forEach(el => { el.style.animation = ''; });
   }
 
   // Apre il "libro" di Ispirazione: photos è l'elenco delle foto, index la pagina di partenza,
