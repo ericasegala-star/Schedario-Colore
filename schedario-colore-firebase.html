@@ -843,6 +843,38 @@
   .magazzino-empty { margin-top: 0; }
   .mag-head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
+  /* Agenda: navigazione data in alto, poi un elenco di appuntamenti del giorno,
+     ciascuno in una riga con i suoi campi affiancati (stesso stile del Magazzino). */
+  .agenda-date-nav { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
+  .agenda-date-nav input[type=date] { width: auto; flex: none; }
+  .agenda-date-nav button { flex: none; }
+  .agenda-date-label {
+    font-size: 12.5px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase;
+    color: var(--berry); margin-bottom: 10px;
+  }
+  .agenda-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+  .agenda-row {
+    display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px;
+    padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper-raised);
+  }
+  .agenda-row .field { margin-bottom: 0; position: relative; }
+  .agenda-field-ora { flex: 0.6 1 90px; }
+  .agenda-field-cliente { flex: 1.4 1 160px; }
+  .agenda-field-servizio { flex: 1.2 1 140px; }
+  .agenda-field-note { flex: 1.6 1 180px; }
+  .agenda-field-note textarea { min-height: 38px; resize: vertical; }
+  .agenda-cliente-suggestions {
+    position: absolute; top: 100%; left: 0; right: 0; z-index: 5;
+    background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08); overflow: hidden;
+  }
+  .agenda-cliente-suggestions:empty { display: none; }
+  .agenda-cliente-suggestion { padding: 8px 10px; font-size: 14px; cursor: pointer; }
+  .agenda-cliente-suggestion:hover { background: var(--berry-soft); }
+  .agenda-open-client { margin-top: 6px; }
+  .agenda-row-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+  .agenda-empty { margin-top: 0; }
+
   /* Importazione fattura in Magazzino: anteprima a tabella prima di confermare. */
   .mag-import-card { width: min(760px, 100%); }
   .mag-import-error { color: #A8433C; }
@@ -988,6 +1020,11 @@
           </div>
         </aside>
         <aside class="panel notes-banner">
+          <div class="notes-banner-item" id="agendaEntry">
+            <span class="name">Agenda</span>
+          </div>
+        </aside>
+        <aside class="panel notes-banner">
           <div class="notes-banner-item" id="cercaAppEntry">
             <span class="name">Cerca nell'app</span>
           </div>
@@ -1105,7 +1142,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-11.22-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-11.23-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -1201,6 +1238,12 @@
   // documento con dentro l'elenco (leggero, non serve una collezione separata per prodotto).
   let magazzinoCache = { prodotti: [] };
   let magazzinoSearchTerm = "";
+  // Agenda: appuntamenti condivisi tra tutte (stessa logica del Magazzino).
+  let agendaCache = { appuntamenti: [] };
+  let agendaDataSelezionata = fmtDateISO(new Date()); // giorno mostrato nella vista lista (YYYY-MM-DD)
+  let agendaClienteQuery = ""; // testo digitato nel campo di ricerca cliente del form nuovo appuntamento
+  let agendaClienteSelezionatoId = null; // id cliente collegato all'appuntamento in creazione/modifica (null = nome libero)
+  let agendaModificaId = null; // id dell'appuntamento in modifica (null = si sta creando un nuovo appuntamento)
   // Aspetto dell'app (logo, nome, colore): condiviso tra tutte, si cambia da "Impostazioni".
   let appSettingsCache = { nome: null, logo: null, colore: null, font: null, indirizzo: null, telefono: null, mesiRicontatto: null };
   // Promemoria backup: quando è stato fatto l'ultimo "Esporta backup", condiviso tra tutte.
@@ -1465,6 +1508,64 @@
   function deleteMagazzinoProdotto(id) {
     magazzinoCache.prodotti = magazzinoCache.prodotti.filter(p => p.id !== id);
     saveMagazzino();
+  }
+
+  // Agenda: un unico documento condiviso ("app/agenda") con dentro l'elenco appuntamenti,
+  // stessa logica del Magazzino — leggero, caricato solo quando si apre la sezione.
+  function loadAgenda() { return agendaCache; }
+  function loadAgendaFromDb() {
+    if (!db) { showStorageError(); return; }
+    db.doc('app/agenda').get().then(doc => {
+      agendaCache.appuntamenti = (doc.exists && doc.data() && doc.data().appuntamenti) || [];
+      hideStorageError();
+      if (viewingAgenda) renderSheet();
+    }).catch(() => { /* resta quello che c'era (vuoto, la prima volta): si riprova riaprendo la sezione */ });
+  }
+  function saveAgenda() {
+    if (!db) { showStorageError(); return Promise.resolve(false); }
+    return db.doc('app/agenda').set({ appuntamenti: agendaCache.appuntamenti })
+      .then(() => { hideStorageError(); return true; })
+      .catch(() => { showStorageError('Non sono riuscita a salvare l\'agenda. Riprova tra poco.'); return false; });
+  }
+  function createAppuntamento(data) {
+    const a = {
+      id: uid(),
+      data: data.data || agendaDataSelezionata,
+      ora: data.ora || '',
+      clienteId: data.clienteId || null,
+      nomeManuale: data.nomeManuale || '',
+      servizio: data.servizio || '',
+      note: data.note || '',
+      createdAt: Date.now()
+    };
+    agendaCache.appuntamenti.push(a);
+    saveAgenda();
+    return a;
+  }
+  function updateAppuntamento(id, patch) {
+    const a = agendaCache.appuntamenti.find(x => x.id === id);
+    if (!a) return;
+    Object.assign(a, patch);
+    saveAgenda();
+  }
+  function deleteAppuntamento(id) {
+    agendaCache.appuntamenti = agendaCache.appuntamenti.filter(a => a.id !== id);
+    saveAgenda();
+  }
+  // Nome da mostrare per un appuntamento: se collegato a una cliente usa la scheda (sempre aggiornata
+  // anche se la cliente viene rinominata dopo), altrimenti il nome libero digitato a mano.
+  function appuntamentoNomeDisplay(a) {
+    if (a.clienteId) {
+      const c = getClient(a.clienteId);
+      if (c) return c.nome || 'Senza nome';
+    }
+    return a.nomeManuale || 'Senza nome';
+  }
+  function appuntamentiDelGiorno(iso) {
+    return agendaCache.appuntamenti
+      .filter(a => a.data === iso)
+      .slice()
+      .sort((a, b) => (a.ora || '').localeCompare(b.ora || ''));
   }
 
   // ---- Aspetto dell'app (logo, nome, colore): "Impostazioni", condiviso tra tutte ----
@@ -1876,6 +1977,7 @@
   let viewingNotes = false; // true quando il pannello principale mostra "Consigli di utilizzo" invece di una scheda cliente
   let viewingIspirazione = false; // true quando il pannello principale mostra "Ispirazione"
   let viewingMagazzino = false; // true quando il pannello principale mostra "Magazzino"
+  let viewingAgenda = false; // true quando il pannello principale mostra "Agenda"
   let viewingSearchApp = false; // true quando il pannello principale mostra "Cerca nell'app"
   let searchAppTerm = "";
   let viewingBlankSheet = false; // true quando il pannello principale mostra "Scheda da stampare" (modulo vuoto)
@@ -1922,6 +2024,7 @@
     viewingNotes = false;
     viewingIspirazione = false;
     viewingMagazzino = false;
+    viewingAgenda = false;
     viewingSearchApp = false;
     viewingBlankSheet = false;
     viewingOstwald = false;
@@ -1970,6 +2073,19 @@
   function fmtDateLong(ts) {
     const d = new Date(ts);
     return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+  // YYYY-MM-DD locale (non UTC), per i campi <input type="date"> dell'Agenda.
+  function fmtDateISO(d) {
+    const pad = n => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+  // "YYYY-MM-DD" -> "lunedì 12 ottobre 2026", per l'intestazione del giorno in Agenda.
+  function fmtDateISOLong(iso) {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-').map(Number);
+    const date = new Date(y, (m || 1) - 1, d || 1);
+    const s = date.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    return s.charAt(0).toUpperCase() + s.slice(1);
   }
 
   function bianchiLabel(v) {
@@ -2649,7 +2765,7 @@
   }
 
   async function downloadBackup() {
-    const payload = { app: 'schedario-colore', esportatoIl: Date.now(), clienti: clients, ispirazione: loadIspirazione(), magazzino: loadMagazzino(), appunti: { time: loadAppunti('time'), green: loadAppunti('green'), gloss: loadAppunti('gloss') } };
+    const payload = { app: 'schedario-colore', esportatoIl: Date.now(), clienti: clients, ispirazione: loadIspirazione(), magazzino: loadMagazzino(), agenda: loadAgenda(), appunti: { time: loadAppunti('time'), green: loadAppunti('green'), gloss: loadAppunti('gloss') } };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const stamp = fmtDate(Date.now()).replace(/\//g, '-');
     const filename = 'schedario-colore-backup-' + stamp + '.json';
@@ -2746,7 +2862,7 @@
     ul.innerHTML = '';
     filtered.forEach(c => {
       const li = document.createElement('li');
-      li.className = (!viewingNotes && !viewingIspirazione && !viewingMagazzino && !viewingSearchApp && !viewingBlankSheet && !viewingOstwald && !viewingHome && c.id === activeId) ? 'active' : '';
+      li.className = (!viewingNotes && !viewingIspirazione && !viewingMagazzino && !viewingAgenda && !viewingSearchApp && !viewingBlankSheet && !viewingOstwald && !viewingHome && c.id === activeId) ? 'active' : '';
       const mesiRic = appSettingsCache.mesiRicontatto;
       const daRicontattare = mesiRic && (Date.now() - c.updatedAt) >= mesiRic * 30 * 24 * 3600 * 1000;
       li.innerHTML = `<span class="name">${escapeHtml(c.nome || 'Senza nome')}${daRicontattare ? '<span class="recontact-badge">Da ricontattare</span>' : ''}</span><span class="date">${fmtDate(c.updatedAt)}</span>`;
@@ -2762,6 +2878,8 @@
     if (ispEntry) ispEntry.className = 'notes-banner-item' + (viewingIspirazione ? ' active' : '');
     const magEntry = document.getElementById('magazzinoEntry');
     if (magEntry) magEntry.className = 'notes-banner-item' + (viewingMagazzino ? ' active' : '');
+    const agendaEntry = document.getElementById('agendaEntry');
+    if (agendaEntry) agendaEntry.className = 'notes-banner-item' + (viewingAgenda ? ' active' : '');
     const searchEntry = document.getElementById('cercaAppEntry');
     if (searchEntry) searchEntry.className = 'notes-banner-item' + (viewingSearchApp ? ' active' : '');
     const blankEntry = document.getElementById('blankSheetEntry');
@@ -3025,6 +3143,48 @@
     `).join('');
   }
 
+  // Agenda: elenco clienti che corrispondono al testo digitato (per l'autocompletamento
+  // del campo "Cliente" di un appuntamento), max 6 risultati.
+  function agendaClientiSuggeriti(term) {
+    const t = (term || '').trim().toLowerCase();
+    if (!t) return [];
+    return clients
+      .filter(c => (c.nome || '').toLowerCase().includes(t))
+      .slice(0, 6);
+  }
+  function renderAgendaRowHtml(a) {
+    const nomeCampo = a.clienteId ? appuntamentoNomeDisplay(a) : (a.nomeManuale || '');
+    return `
+      <div class="agenda-row" data-id="${a.id}">
+        <div class="field agenda-field-ora">
+          <label>Ora</label>
+          <input type="time" class="agenda-input" data-id="${a.id}" data-field="ora" value="${escapeHtml(a.ora || '')}">
+        </div>
+        <div class="field agenda-field-cliente">
+          <label>Cliente</label>
+          <input type="text" class="agenda-input agenda-cliente-input" data-id="${a.id}" data-field="cliente" autocomplete="off"
+            placeholder="Cerca cliente o scrivi un nome…" value="${escapeHtml(nomeCampo)}">
+          <div class="agenda-cliente-suggestions" data-id="${a.id}"></div>
+          ${a.clienteId ? `<button type="button" class="ghost small agenda-open-client" data-id="${a.clienteId}">Apri scheda</button>` : ''}
+        </div>
+        <div class="field agenda-field-servizio">
+          <label>Servizio</label>
+          <input type="text" class="agenda-input" data-id="${a.id}" data-field="servizio" placeholder="Es. piega, colore, taglio…" value="${escapeHtml(a.servizio || '')}">
+        </div>
+        <div class="field agenda-field-note">
+          <label>Note</label>
+          <textarea class="agenda-input" data-id="${a.id}" data-field="note" placeholder="Note per l'appuntamento…">${escapeHtml(a.note || '')}</textarea>
+        </div>
+        <div class="agenda-row-actions">
+          <button type="button" class="magazzino-delete agenda-delete" data-id="${a.id}">Elimina</button>
+        </div>
+      </div>`;
+  }
+  function renderAgendaListHtml(appuntamenti) {
+    if (!appuntamenti.length) return '<p class="hint agenda-empty">Nessun appuntamento per questo giorno.</p>';
+    return `<div class="agenda-list">${appuntamenti.map(renderAgendaRowHtml).join('')}</div>`;
+  }
+
   function renderSheet() {
     const panel = document.getElementById('sheetPanel');
     const floatingSave = document.getElementById('floatingSaveBtn');
@@ -3122,6 +3282,38 @@
         </div>
       `;
       bindMagazzinoEvents();
+      return;
+    }
+
+    if (viewingAgenda) {
+      // Modificabile sia da Erica che da Sara, come il Magazzino.
+      if (floatingSave) floatingSave.hidden = false;
+      const giorno = appuntamentiDelGiorno(agendaDataSelezionata);
+      panel.innerHTML = `
+        <div class="sheet-head">
+          <div class="name-field">
+            <div class="notes-title">Agenda</div>
+          </div>
+        </div>
+        <fieldset>
+          <div class="agenda-date-nav">
+            <button type="button" class="ghost small" id="agendaPrevDay" aria-label="Giorno precedente">‹</button>
+            <input type="date" id="agendaDatePicker" value="${escapeHtml(agendaDataSelezionata)}">
+            <button type="button" class="ghost small" id="agendaNextDay" aria-label="Giorno successivo">›</button>
+            <button type="button" class="ghost small" id="agendaOggiBtn">Oggi</button>
+          </div>
+          <div class="agenda-date-label">${fmtDateISOLong(agendaDataSelezionata)}</div>
+          <div id="agendaList">
+            ${renderAgendaListHtml(giorno)}
+          </div>
+          <button type="button" class="ghost small" id="agendaAddBtn">+ Nuovo appuntamento</button>
+          <p class="hint">Si salva da sola mentre scrivi, come il Magazzino. Scrivendo nel campo "Cliente" puoi collegare l'appuntamento a una scheda già esistente, oppure lasciare solo un nome.</p>
+        </fieldset>
+        <div class="sheet-footer">
+          <span class="save-status" id="agendaSaveStatus"></span>
+        </div>
+      `;
+      bindAgendaEvents();
       return;
     }
 
@@ -3654,6 +3846,121 @@
 
     const importBtn = document.getElementById('magazzinoImportBtn');
     if (importBtn) importBtn.addEventListener('click', openMagImportModal);
+  }
+
+  function agendaNotify(msg, isError) {
+    const el = document.getElementById('agendaSaveStatus');
+    if (!el) return;
+    el.textContent = msg;
+    el.style.color = isError ? '#A8433C' : 'var(--ok)';
+    clearTimeout(agendaNotify._t);
+    agendaNotify._t = setTimeout(() => { if (el) el.textContent = ''; }, 1800);
+  }
+
+  function renderAgendaClienteSuggestions(input) {
+    const id = input.dataset.id;
+    const box = document.querySelector('.agenda-cliente-suggestions[data-id="' + id + '"]');
+    if (!box) return;
+    const matches = agendaClientiSuggeriti(input.value);
+    if (!matches.length) { box.innerHTML = ''; return; }
+    box.innerHTML = matches.map(c => `<div class="agenda-cliente-suggestion" data-id="${id}" data-cliente-id="${c.id}">${escapeHtml(c.nome || 'Senza nome')}</div>`).join('');
+    box.querySelectorAll('.agenda-cliente-suggestion').forEach(sug => {
+      sug.addEventListener('mousedown', (ev) => {
+        ev.preventDefault(); // non far perdere il focus prima del click
+        const a = agendaCache.appuntamenti.find(x => x.id === sug.dataset.id);
+        if (!a) return;
+        a.clienteId = sug.dataset.clienteId;
+        a.nomeManuale = '';
+        saveAgenda();
+        agendaNotify('Salvato.');
+        renderSheet();
+      });
+    });
+  }
+
+  function bindAgendaEvents() {
+    const datePicker = document.getElementById('agendaDatePicker');
+    if (datePicker) {
+      datePicker.addEventListener('change', () => {
+        if (datePicker.value) agendaDataSelezionata = datePicker.value;
+        renderSheet();
+      });
+    }
+    function spostaGiorno(delta) {
+      const [y, m, d] = agendaDataSelezionata.split('-').map(Number);
+      const dt = new Date(y, (m || 1) - 1, (d || 1) + delta);
+      agendaDataSelezionata = fmtDateISO(dt);
+      renderSheet();
+    }
+    const prevBtn = document.getElementById('agendaPrevDay');
+    if (prevBtn) prevBtn.addEventListener('click', () => spostaGiorno(-1));
+    const nextBtn = document.getElementById('agendaNextDay');
+    if (nextBtn) nextBtn.addEventListener('click', () => spostaGiorno(1));
+    const oggiBtn = document.getElementById('agendaOggiBtn');
+    if (oggiBtn) oggiBtn.addEventListener('click', () => { agendaDataSelezionata = fmtDateISO(new Date()); renderSheet(); });
+
+    document.querySelectorAll('.agenda-input').forEach(input => {
+      const field = input.dataset.field;
+      input.addEventListener('input', () => {
+        const a = agendaCache.appuntamenti.find(x => x.id === input.dataset.id);
+        if (!a) return;
+        if (field === 'cliente') {
+          a.clienteId = null;
+          a.nomeManuale = input.value;
+          renderAgendaClienteSuggestions(input);
+          // Non si rifà il render di tutta la riga (si perderebbero focus e suggerimenti aperti):
+          // si toglie subito solo il tasto "Apri scheda", che non ha più senso senza un collegamento.
+          const openBtn = input.closest('.agenda-row').querySelector('.agenda-open-client');
+          if (openBtn) openBtn.remove();
+        } else {
+          a[field] = input.value;
+        }
+        saveAgenda();
+        agendaNotify('Salvato.');
+      });
+      if (field === 'cliente') {
+        input.addEventListener('focus', () => renderAgendaClienteSuggestions(input));
+        input.addEventListener('blur', () => {
+          setTimeout(() => {
+            const box = document.querySelector('.agenda-cliente-suggestions[data-id="' + input.dataset.id + '"]');
+            if (box) box.innerHTML = '';
+          }, 150);
+        });
+      }
+    });
+
+    document.querySelectorAll('.agenda-open-client').forEach(btn => {
+      btn.addEventListener('click', () => switchActive(btn.dataset.id));
+    });
+
+    document.querySelectorAll('.agenda-delete').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!btn.classList.contains('armed')) {
+          btn.classList.add('armed');
+          btn.textContent = 'Confermi?';
+          clearTimeout(btn._armTimer);
+          btn._armTimer = setTimeout(() => {
+            btn.classList.remove('armed');
+            btn.textContent = 'Elimina';
+          }, 4000);
+          return;
+        }
+        clearTimeout(btn._armTimer);
+        deleteAppuntamento(btn.dataset.id);
+        agendaNotify('Appuntamento eliminato.');
+        renderSheet();
+      });
+    });
+
+    const addBtn = document.getElementById('agendaAddBtn');
+    if (addBtn) {
+      addBtn.addEventListener('click', () => {
+        const a = createAppuntamento({ data: agendaDataSelezionata });
+        renderSheet();
+        const input = document.querySelector('.agenda-input[data-field="ora"][data-id="' + a.id + '"]');
+        if (input) input.focus();
+      });
+    }
   }
 
   // ===================== Importa da fattura (FatturaPA XML / .p7m) =====================
@@ -4245,6 +4552,7 @@
     viewingNotes = false;
     viewingIspirazione = false;
     viewingMagazzino = false;
+    viewingAgenda = false;
     viewingSearchApp = false;
     viewingBlankSheet = false;
     viewingOstwald = false;
@@ -4310,6 +4618,7 @@
     viewingNotes = true;
     viewingIspirazione = false;
     viewingMagazzino = false;
+    viewingAgenda = false;
     viewingSearchApp = false;
     viewingBlankSheet = false;
     viewingOstwald = false;
@@ -4322,6 +4631,7 @@
   document.getElementById('ispirazioneEntry').addEventListener('click', () => {
     viewingIspirazione = true;
     viewingMagazzino = false;
+    viewingAgenda = false;
     viewingNotes = false;
     viewingSearchApp = false;
     viewingBlankSheet = false;
@@ -4347,12 +4657,30 @@
     loadMagazzinoFromDb();
   });
 
+  // Agenda: stesso comportamento, apre come una scheda
+  document.getElementById('agendaEntry').addEventListener('click', () => {
+    viewingAgenda = true;
+    viewingNotes = false;
+    viewingIspirazione = false;
+    viewingMagazzino = false;
+    viewingSearchApp = false;
+    viewingBlankSheet = false;
+    viewingOstwald = false;
+    viewingHome = false;
+    agendaClienteQuery = "";
+    agendaClienteSelezionatoId = null;
+    closeMobileMenu();
+    renderAll();
+    loadAgendaFromDb();
+  });
+
   // Cerca nell'app: stesso comportamento, apre come una scheda
   document.getElementById('cercaAppEntry').addEventListener('click', () => {
     viewingSearchApp = true;
     viewingNotes = false;
     viewingIspirazione = false;
     viewingMagazzino = false;
+    viewingAgenda = false;
     viewingBlankSheet = false;
     viewingOstwald = false;
     viewingHome = false;
@@ -4366,6 +4694,7 @@
     viewingNotes = false;
     viewingIspirazione = false;
     viewingMagazzino = false;
+    viewingAgenda = false;
     viewingSearchApp = false;
     viewingOstwald = false;
     viewingHome = false;
@@ -4379,6 +4708,7 @@
     viewingNotes = false;
     viewingIspirazione = false;
     viewingMagazzino = false;
+    viewingAgenda = false;
     viewingSearchApp = false;
     viewingBlankSheet = false;
     viewingHome = false;
@@ -4393,6 +4723,7 @@
     viewingNotes = false;
     viewingIspirazione = false;
     viewingMagazzino = false;
+    viewingAgenda = false;
     viewingSearchApp = false;
     viewingBlankSheet = false;
     viewingOstwald = false;
@@ -4835,7 +5166,7 @@
   // così parte subito, senza aspettare che l'utente clicchi altrove) e compare la stessa
   // conferma "Fatto" della scheda cliente, per avere la stessa certezza visiva.
   document.getElementById('floatingSaveBtn').addEventListener('click', () => {
-    if (viewingIspirazione || viewingMagazzino) {
+    if (viewingIspirazione || viewingMagazzino || viewingAgenda) {
       const active = document.activeElement;
       if (active && document.getElementById('sheetPanel').contains(active)) active.blur();
       showCenterToast('Fatto');
