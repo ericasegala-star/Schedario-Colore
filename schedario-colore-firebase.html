@@ -524,13 +524,13 @@
   .notes-title { font-family: 'Fraunces', serif; font-weight: 600; font-size: 22px; }
 
   .home-view { max-width: 820px; padding: 20px 4px 8px; }
-  .home-date-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-  .home-date { color: var(--ink-soft); font-size: 14px; margin-bottom: 4px; }
+  .home-date-row { display: flex; align-items: baseline; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+  .home-date { color: var(--ink-soft); font-size: 14px; margin: 0 0 20px; }
   .home-duo {
     color: var(--berry); font-size: 12.5px; font-weight: 700; letter-spacing: 0.03em;
     text-transform: uppercase; margin-bottom: 4px;
   }
-  .home-greeting { font-family: 'Fraunces', serif; font-weight: 600; font-size: 26px; margin: 0 0 20px; max-width: 560px; }
+  .home-greeting { font-family: 'Fraunces', serif; font-weight: 600; font-size: 26px; margin: 0 0 4px; max-width: 560px; }
   .home-quote-card {
     background: var(--berry-soft); border: 1px solid var(--berry); border-radius: var(--radius);
     padding: 18px 20px 20px; margin-bottom: 20px; position: relative; max-width: 560px;
@@ -1218,7 +1218,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-11.25-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-11.26-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -3598,10 +3598,10 @@
       panel.innerHTML = `
         <div class="home-view">
           <div class="home-date-row">
-            <div class="home-date">${escapeHtml(todayCap)}</div>
             <div class="home-duo">Erica &amp; Sara</div>
           </div>
           <h2 class="home-greeting">Ciao${op ? ', ' + escapeHtml(op) : ''}.</h2>
+          <div class="home-date">${escapeHtml(todayCap)}</div>
           <div class="home-quote-card">
             <div class="home-quote-mark">“</div>
             <p class="home-quote-text">${escapeHtml(quoteOfTheDay())}</p>
