@@ -1292,7 +1292,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-11.32-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-12.33-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -2730,9 +2730,18 @@
         doc.setFontSize(fontSize);
         textLen = doc.getTextWidth(label);
       }
+      // Se anche al carattere minimo il nome non ci sta (gruppo con pochi prodotti, dorso basso,
+      // nome lunghissimo), lo tronco con "…" invece di farlo sporgere fuori dalla cella colorata.
+      let shown = label;
+      if (textLen > maxTextLen) {
+        while (shown.length > 1 && doc.getTextWidth(shown + '…') > maxTextLen) {
+          shown = shown.slice(0, -1);
+        }
+        shown = shown + '…';
+      }
       // "baseline: middle" centra lo spessore del testo sull'asse verticale della cella: senza,
       // il testo (ruotato di 90°) resta ancorato alla base dei caratteri e sporge da un lato.
-      doc.text(label, margin + sidebarW / 2, startY + h / 2, { angle: 90, align: 'center', baseline: 'middle' });
+      doc.text(shown, margin + sidebarW / 2, startY + h / 2, { angle: 90, align: 'center', baseline: 'middle' });
       doc.setTextColor(30, 24, 20);
     }
 
