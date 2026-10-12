@@ -1292,7 +1292,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-12.34-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-12.35-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -2734,17 +2734,27 @@
     // Il "dorso" verticale a sinistra con il nome del fornitore, alto quanto il blocco appena
     // disegnato (da startY a y): se un fornitore occupa più pagine, ne esce un dorso per pagina,
     // con "(segue)" su quelli successivi al primo.
+    const SIDEBAR_FONT = 8; // dimensione "normale" del nome fornitore nel dorso, quella con cui
+                             // un nome come "Paul Mitchell" sta comodo in un gruppo di più righe.
+    // Quanto deve essere alto il dorso perché il nome ci stia scritto a dimensione normale
+    // (SIDEBAR_FONT), senza doverlo rimpicciolire né tagliare.
+    function neededSidebarHeight(label) {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(SIDEBAR_FONT);
+      return doc.getTextWidth(label) + 6; // piccolo margine sopra e sotto
+    }
     function drawSidebar(marca, startY, endY, continued) {
       const h = Math.max(endY - startY, 16);
       doc.setDrawColor(122, 59, 86); doc.setFillColor(246, 239, 235); doc.setLineWidth(0.8);
       doc.rect(margin, startY, sidebarW, h, 'FD');
       doc.setFont('helvetica', 'bold'); doc.setTextColor(122, 59, 86);
       const label = marca + (continued ? ' (segue)' : '');
-      // Il testo ruotato di 90° cresce in lunghezza lungo l'altezza della cella (h): se il nome
-      // dell'azienda è lungo e il gruppo ha pochi prodotti (h piccola), a font fisso sporgerebbe
-      // sopra/sotto la cella. Si riduce quindi la dimensione finché il testo non ci sta dentro,
-      // con un minimo leggibile di 5.5pt.
-      let fontSize = 8;
+      // Il testo ruotato di 90° cresce in lunghezza lungo l'altezza della cella (h). Il dorso è
+      // già stato reso alto abbastanza (v. sopra, "y += pad" prima di chiamare questa funzione)
+      // perché un nome normale ci stia a dimensione piena: qui si rimpiccolisce il carattere, e
+      // solo come ultima risorsa si tronca con "…", unicamente per i casi davvero estremi in cui
+      // anche quella scorta di spazio non basta (nome lunghissimo su un gruppo con un solo
+      // prodotto, dove allargare ancora il dorso sforerebbe la pagina).
+      let fontSize = SIDEBAR_FONT;
       doc.setFontSize(fontSize);
       const maxTextLen = h - 6; // piccolo margine sopra e sotto
       let textLen = doc.getTextWidth(label);
@@ -2753,8 +2763,6 @@
         doc.setFontSize(fontSize);
         textLen = doc.getTextWidth(label);
       }
-      // Se anche al carattere minimo il nome non ci sta (gruppo con pochi prodotti, dorso basso,
-      // nome lunghissimo), lo tronco con "…" invece di farlo sporgere fuori dalla cella colorata.
       let shown = label;
       if (textLen > maxTextLen) {
         while (shown.length > 1 && doc.getTextWidth(shown + '…') > maxTextLen) {
@@ -2791,6 +2799,17 @@
         drawRow(p);
         groupValore += p.prezzo * p.quantita;
       });
+      // Se il gruppo ha pochi prodotti (dorso basso) il nome a dimensione normale potrebbe non
+      // starci: prima di disegnare il dorso, allungo lo spazio sotto l'ultimo prodotto quanto
+      // serve (entro un limite ragionevole e senza sforare la pagina), così il nome resta a
+      // piena leggibilità come negli altri dorsi, invece di rimpicciolirsi sempre e comunque.
+      const naturalH = y - sidebarStartY;
+      const neededH = neededSidebarHeight(g.marca);
+      if (neededH > naturalH) {
+        const maxPad = 70;
+        const avail = Math.max((pageH - 44) - y, 0);
+        y += Math.min(neededH - naturalH, maxPad, avail);
+      }
       drawSidebar(g.marca, sidebarStartY, y, continued);
       grandTotal += groupValore;
       y += 10;
