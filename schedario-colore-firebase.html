@@ -1292,7 +1292,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-12.33-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-12.34-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -2628,22 +2628,45 @@
     }
   }
 
+  // Normalizza un nome di marca/fornitore per il confronto: minuscolo, senza accenti/punteggiatura
+  // e senza le sigle societarie più comuni (SpA, Srl, Sas, Snc, S.p.A., S.r.l., & C., ecc.), così
+  // "Davines" e "Davines SpA" vengono riconosciuti come la stessa azienda.
+  function normalizzaMarca(s) {
+    let n = (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    n = n.replace(/[.·]/g, '').replace(/&\s*c\b/g, '');
+    n = n.replace(/\b(s\s*p\s*a|s\s*r\s*l|s\s*a\s*s|s\s*n\s*c|s\s*s|ltd|llc|inc|gmbh)\b/g, '');
+    n = n.replace(/[^a-z0-9]+/g, ' ').trim();
+    return n;
+  }
   // Raggruppa un elenco di prodotti per marca/fornitore (ordine alfabetico, "Senza marca" in
   // fondo se vuota), e dentro ogni gruppo per nome: usato sia dal PDF che dall'Excel.
+  // Il raggruppamento ignora le differenze di sigla societaria o maiuscole (v. normalizzaMarca):
+  // nella scheda compare la forma scritta più spesso dagli operatori (o, a parità, la più corta).
   function groupMagazzinoByMarca(list) {
-    const map = new Map();
+    const map = new Map(); // chiave normalizzata -> { varianti: Map(testoOriginale -> conteggio), prodotti: [] }
     list.forEach(p => {
-      const key = (p.marca || '').trim() || 'Senza marca';
-      if (!map.has(key)) map.set(key, []);
-      map.get(key).push(p);
+      const raw = (p.marca || '').trim();
+      const key = raw ? normalizzaMarca(raw) || raw.toLowerCase() : '';
+      if (!map.has(key)) map.set(key, { varianti: new Map(), prodotti: [] });
+      const voce = map.get(key);
+      if (raw) voce.varianti.set(raw, (voce.varianti.get(raw) || 0) + 1);
+      voce.prodotti.push(p);
     });
     return Array.from(map.entries())
-      .sort((a, b) => {
-        if (a[0] === 'Senza marca') return 1;
-        if (b[0] === 'Senza marca') return -1;
-        return a[0].localeCompare(b[0], 'it', { sensitivity: 'base' });
+      .map(([key, voce]) => {
+        let marca = 'Senza marca';
+        if (voce.varianti.size) {
+          marca = Array.from(voce.varianti.entries())
+            .sort((a, b) => b[1] - a[1] || a[0].length - b[0].length)[0][0];
+        }
+        return { key, marca, prodotti: voce.prodotti };
       })
-      .map(([marca, prodotti]) => ({
+      .sort((a, b) => {
+        if (a.marca === 'Senza marca') return 1;
+        if (b.marca === 'Senza marca') return -1;
+        return a.marca.localeCompare(b.marca, 'it', { sensitivity: 'base' });
+      })
+      .map(({ marca, prodotti }) => ({
         marca,
         prodotti: prodotti.slice().sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'it', { sensitivity: 'base' }))
       }));
