@@ -593,7 +593,6 @@
   .agenda-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; width: 100%; }
   .agenda-row .field { margin-bottom: 0; position: relative; }
   .agenda-field-ora { flex: 0.6 1 90px; }
-  .agenda-field-durata { flex: 0.7 1 100px; }
   .agenda-field-cliente { flex: 1.4 1 160px; }
   .agenda-field-servizio { flex: 1.2 1 140px; }
   .agenda-field-note { flex: 1.6 1 180px; }
@@ -1523,7 +1522,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-13.49-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-13.50-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -2110,6 +2109,10 @@
       // Quanti quarti d'ora occupa in agenda (si allunga da sola scegliendo un servizio dal
       // catalogo, coi tempi di lavorazione+posa di quel servizio; 15 min di default altrimenti).
       durataMin: data.durataMin || 15,
+      // Se fa parte di una combo "esplosa" in più blocchi consecutivi (vedi più sotto), tutti i
+      // blocchi condividono lo stesso comboGroupId: serve per tenerli insieme quando si cambia
+      // cliente o si elimina (si elimina tutta la combo, non solo il pezzo su cui si clicca).
+      comboGroupId: data.comboGroupId || null,
       note: data.note || '',
       createdAt: Date.now()
     };
@@ -2120,14 +2123,26 @@
   // Durata (in minuti) occupata in agenda da un appuntamento: quelli creati prima che esistesse
   // questo campo restano su 15 min (un solo quarto d'ora, il comportamento di sempre).
   function appuntamentoDurata(a) { return a.durataMin || 15; }
+  // Durata (in minuti, arrotondata al quarto d'ora successivo) di un servizio del catalogo, somma
+  // di lavorazione+posa; minimo 15 min anche se il servizio non ha tempi impostati.
+  function durataServizioMin(s) {
+    const tempi = servizioTempi(s);
+    const totale = (tempi.lavorazione || 0) + (tempi.posa || 0);
+    return totale > 0 ? Math.ceil(totale / 15) * 15 : 15;
+  }
   function updateAppuntamento(id, patch) {
     const a = agendaCache.appuntamenti.find(x => x.id === id);
     if (!a) return;
     Object.assign(a, patch);
     saveAgenda();
   }
+  // Eliminare un appuntamento che fa parte di una combo esplosa in più blocchi (es. Colore, poi
+  // Taglio, poi Piega, uno via l'altro) elimina tutto il gruppo insieme: altrimenti resterebbero
+  // pezzi orfani di una combo a metà.
   function deleteAppuntamento(id) {
-    agendaCache.appuntamenti = agendaCache.appuntamenti.filter(a => a.id !== id);
+    const a = agendaCache.appuntamenti.find(x => x.id === id);
+    const gruppo = a && a.comboGroupId;
+    agendaCache.appuntamenti = agendaCache.appuntamenti.filter(x => x.id !== id && !(gruppo && x.comboGroupId === gruppo));
     saveAgenda();
   }
   // Nome da mostrare per un appuntamento: se collegato a una cliente usa la scheda (sempre aggiornata
@@ -4392,12 +4407,6 @@
             ${agendaSlots(a.data || agendaDataSelezionata, appuntamentoOperatore(a)).map(t => `<option value="${t}" ${a.ora === t ? 'selected' : ''}>${t}</option>`).join('')}
           </select>
         </div>
-        <div class="field agenda-field-durata">
-          <label>Durata</label>
-          <select class="agenda-input" data-id="${a.id}" data-field="durataMin">
-            ${[15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180, 195, 210, 225, 240].map(min => `<option value="${min}" ${appuntamentoDurata(a) === min ? 'selected' : ''}>${min < 60 ? min + ' min' : (min / 60) + ' h' + (min % 60 ? ' ' + (min % 60) + ' min' : '')}</option>`).join('')}
-          </select>
-        </div>
         ${operatoriGiorno.length > 1 ? `
         <div class="field agenda-field-operatore">
           <label>Chi</label>
@@ -4420,8 +4429,8 @@
         <div class="field agenda-field-cliente">
           <label>Cliente</label>
           <input type="search" class="agenda-input agenda-cliente-input" data-id="${a.id}" data-field="cliente"
-            name="agenda-cliente-${a.id}" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false"
-            placeholder="Cerca cliente o scrivi un nome…" value="${escapeHtml(nomeCampo)}">
+            name="agenda-cliente-${a.id}" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" readonly
+            placeholder="Cerca o scrivi chi viene…" value="${escapeHtml(nomeCampo)}">
           <div class="agenda-cliente-suggestions" data-id="${a.id}"></div>
           ${a.clienteId ? `<button type="button" class="ghost small agenda-open-client" data-id="${a.clienteId}">Apri scheda</button>` : ''}
         </div>
@@ -5510,6 +5519,18 @@
     agendaNotify._t = setTimeout(() => { if (el) el.textContent = ''; }, 1800);
   }
 
+  // Una combo esplosa in più blocchi (Colore, Taglio, Piega…) resta la stessa cliente su tutti i
+  // blocchi: cambiando il nome/collegamento su uno si aggiorna automaticamente anche sugli altri
+  // pezzi dello stesso gruppo, altrimenti si sfaserebbero mostrando clienti diverse.
+  function sincronizzaClienteCombo(a) {
+    if (!a.comboGroupId) return;
+    agendaCache.appuntamenti.forEach(x => {
+      if (x.id !== a.id && x.comboGroupId === a.comboGroupId) {
+        x.clienteId = a.clienteId;
+        x.nomeManuale = a.nomeManuale;
+      }
+    });
+  }
   function renderAgendaClienteSuggestions(input) {
     const id = input.dataset.id;
     const box = document.querySelector('.agenda-cliente-suggestions[data-id="' + id + '"]');
@@ -5524,6 +5545,7 @@
         if (!a) return;
         a.clienteId = sug.dataset.clienteId;
         a.nomeManuale = '';
+        sincronizzaClienteCombo(a);
         saveAgenda();
         agendaNotify('Salvato.');
         renderSheet();
@@ -5557,20 +5579,19 @@
       // "ora", "operatore" e "tipo" sono <select>: cambiandoli l'appuntamento cambia slot/colonna
       // o modulo (cliente↔lavoro), quindi serve ridisegnare tutto. Gli altri campi si salvano
       // mentre si scrive, senza ridisegnare (altrimenti si perderebbe il focus).
-      const isSelect = field === 'ora' || field === 'operatore' || field === 'tipo' || field === 'durataMin';
+      const isSelect = field === 'ora' || field === 'operatore' || field === 'tipo';
       input.addEventListener(isSelect ? 'change' : 'input', () => {
         const a = agendaCache.appuntamenti.find(x => x.id === input.dataset.id);
         if (!a) return;
         if (field === 'cliente') {
           a.clienteId = null;
           a.nomeManuale = input.value;
+          sincronizzaClienteCombo(a);
           renderAgendaClienteSuggestions(input);
           // Non si rifà il render di tutta la riga (si perderebbero focus e suggerimenti aperti):
           // si toglie subito solo il tasto "Apri scheda", che non ha più senso senza un collegamento.
           const openBtn = input.closest('.agenda-row').querySelector('.agenda-open-client');
           if (openBtn) openBtn.remove();
-        } else if (field === 'durataMin') {
-          a.durataMin = parseInt(input.value, 10) || 15;
         } else {
           a[field] = input.value;
         }
@@ -5579,7 +5600,10 @@
         if (isSelect) renderSheet();
       });
       if (field === 'cliente') {
-        input.addEventListener('focus', () => renderAgendaClienteSuggestions(input));
+        // Il campo nasce "readonly" e si sblocca solo al focus: è il trucco che impedisce a
+        // Safari/macOS di proporre i contatti salvati sul dispositivo al posto delle clienti
+        // della scheda (autocomplete="off" da solo non basta, Safari spesso lo ignora).
+        input.addEventListener('focus', () => { input.removeAttribute('readonly'); renderAgendaClienteSuggestions(input); });
         input.addEventListener('blur', () => {
           setTimeout(() => {
             const box = document.querySelector('.agenda-cliente-suggestions[data-id="' + input.dataset.id + '"]');
@@ -5591,20 +5615,47 @@
 
     // Scegliendo un servizio dal catalogo ("Crea servizio") si riempiono da sole il campo
     // "Servizio" (testo), il colore della targhetta e la durata (tempo di lavorazione + posa di
-    // quel servizio, arrotondato al quarto d'ora successivo): così l'agenda occupa da sola tutti
-    // gli slot necessari, non solo il primo.
+    // quel servizio, arrotondato al quarto d'ora successivo). Una combo invece si "sfalda" in più
+    // blocchi consecutivi, uno per servizio scelto — Colore, poi subito dopo Taglio, poi subito
+    // dopo Piega — ciascuno con il proprio tempo, come in agenda Treatwell, invece di un unico
+    // blocco generico lungo quanto la somma di tutti.
     document.querySelectorAll('.agenda-servizio-catalogo').forEach(sel => {
       sel.addEventListener('change', () => {
         const a = agendaCache.appuntamenti.find(x => x.id === sel.dataset.id);
         if (!a) return;
+        // Se questo blocco faceva già parte di una combo esplosa in precedenza, si tolgono prima
+        // i blocchi "fratelli": si ricostruiscono da zero con la nuova scelta.
+        if (a.comboGroupId) {
+          const vecchioGruppo = a.comboGroupId;
+          agendaCache.appuntamenti = agendaCache.appuntamenti.filter(x => x.id === a.id || x.comboGroupId !== vecchioGruppo);
+          a.comboGroupId = null;
+        }
         const s = getServizio(sel.value);
-        a.servizioId = s ? s.id : null;
-        if (s) a.servizio = nomeServizio(s);
-        a.colore = s ? s.colore : null;
-        if (s) {
-          const tempi = servizioTempi(s);
-          const totale = (tempi.lavorazione || 0) + (tempi.posa || 0);
-          a.durataMin = totale > 0 ? Math.ceil(totale / 15) * 15 : 15;
+        const componenti = (s && s.tipo === 'combo') ? (s.comboDi || []).map(id => getServizio(id)).filter(Boolean) : [];
+        if (componenti.length) {
+          const gruppo = uid();
+          a.comboGroupId = gruppo;
+          a.servizioId = componenti[0].id;
+          a.servizio = nomeServizio(componenti[0]);
+          a.colore = componenti[0].colore;
+          a.durataMin = durataServizioMin(componenti[0]);
+          let cursore = hhmmToMinuti(a.ora) + a.durataMin;
+          for (let i = 1; i < componenti.length; i++) {
+            const comp = componenti[i];
+            const durata = durataServizioMin(comp);
+            createAppuntamento({
+              data: a.data, ora: minutiToHHMM(cursore), operatore: a.operatore, tipo: 'cliente',
+              clienteId: a.clienteId, nomeManuale: a.nomeManuale,
+              servizioId: comp.id, servizio: nomeServizio(comp), colore: comp.colore,
+              durataMin: durata, comboGroupId: gruppo
+            });
+            cursore += durata;
+          }
+        } else {
+          a.servizioId = s ? s.id : null;
+          if (s) a.servizio = nomeServizio(s);
+          a.colore = s ? s.colore : null;
+          if (s) a.durataMin = durataServizioMin(s);
         }
         saveAgenda();
         agendaNotify('Salvato.');
