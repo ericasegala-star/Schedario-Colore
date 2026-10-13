@@ -958,13 +958,29 @@
     border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden;
   }
   .magazzino-row {
-    display: grid; grid-template-columns: 2fr 1.3fr 1.6fr 0.9fr 90px 70px;
+    display: grid; grid-template-columns: 26px 2fr 1.3fr 1.6fr 0.9fr 90px 70px;
     align-items: center; gap: 10px;
     padding: 8px 12px; background: var(--paper-raised);
     border-bottom: 1px solid var(--line);
+    overflow: visible;
   }
+  .magazzino-list { overflow: visible; }
   .magazzino-list .magazzino-row:last-child { border-bottom: none; }
   .magazzino-row .field { margin-bottom: 0; }
+  .magazzino-row-check-col { display: flex; align-items: center; justify-content: center; }
+  .magazzino-row-check, #magazzinoSelectAll { width: 17px; height: 17px; cursor: pointer; }
+  /* Nome prodotto: una textarea a una riga invece di un input, così si può allargare di lato
+     (maniglia di ridimensionamento nativa del browser, in basso a destra) per leggere un nome
+     lungo per intero senza che resti tagliato; il testo non va a capo, scorre in orizzontale. */
+  .magazzino-field-nome { position: relative; z-index: 1; }
+  .magazzino-field-nome .magazzino-nome-area {
+    width: 100%; min-width: 100%; max-width: 480px; height: 38px; min-height: 38px;
+    resize: horizontal; overflow-x: auto; overflow-y: hidden; white-space: pre;
+    border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper);
+    color: var(--ink); font-family: inherit; font-size: 14px; line-height: 1.3;
+    padding: 9px 10px; position: relative;
+  }
+  .magazzino-nome-area:focus { z-index: 3; }
   .magazzino-select {
     width: 100%; border: 1px solid var(--line); border-radius: var(--radius);
     background: var(--paper); color: var(--ink); font-family: inherit; font-size: 14px;
@@ -978,6 +994,16 @@
   .magazzino-row-actions { display: flex; align-items: center; justify-content: flex-end; }
   .magazzino-empty { margin-top: 0; }
   .mag-head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  /* Filtri Tipo/Fornitore, sopra la ricerca: stessa logica dei gruppi del PDF, ma selezionabile. */
+  .magazzino-filtri { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 4px; }
+  .magazzino-filtro-field { min-width: 180px; flex: 1; margin-bottom: 0; }
+  .magazzino-bulk-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .magazzino-delete-bulk {
+    border: none; background: none; color: #A8433C; font-size: 13.5px; cursor: pointer;
+    text-decoration: underline; text-decoration-color: transparent; padding: 0;
+  }
+  .magazzino-delete-bulk:hover { text-decoration-color: #A8433C; }
+  .magazzino-delete-bulk.armed { font-weight: 600; }
   /* Intestazione dei campi (Prodotto/Tipo/Marca/Prezzo/Quantità): compare una sola volta, sopra
      tutti i gruppi, invece che ripetuta su ogni riga come prima. Usa la stessa griglia delle
      righe, così le colonne (in particolare Prodotto e Marca/fornitore) restano allineate. */
@@ -989,8 +1015,10 @@
     text-transform: uppercase; color: var(--ink-soft);
   }
   @media (max-width: 640px) {
-    .magazzino-row { grid-template-columns: 1fr; gap: 6px; padding: 10px 12px; }
-    .magazzino-row-actions { justify-content: flex-start; }
+    .magazzino-row { grid-template-columns: 22px 1fr; gap: 6px; padding: 10px 12px; }
+    .magazzino-row-check-col { grid-row: 1; }
+    .magazzino-row-actions { justify-content: flex-start; grid-column: 2; }
+    .magazzino-nome-area { max-width: 100%; }
   }
   @media (max-width: 640px) { .magazzino-header-row { display: none; } }
 
@@ -1014,10 +1042,14 @@
   .mag-import-col-check { width: 30px; text-align: center; }
   .mag-import-col-qty, .mag-import-col-prezzo { width: 80px; }
   .mag-import-col-match { width: 180px; }
+  .mag-import-col-fornitore { width: 130px; }
   .mag-import-row-off { opacity: 0.42; }
   .mag-import-match-new { color: var(--berry); font-weight: 600; font-size: 11.5px; display: block; margin-top: 3px; }
   .mag-import-match-existing { color: var(--ok); font-size: 11.5px; display: block; margin-top: 3px; }
   .mag-import-actions { display: flex; justify-content: flex-end; gap: 10px; }
+  /* Più file importati insieme: un sottotitolo per fattura dentro la stessa tabella. */
+  .mag-import-file-error { color: #A8433C; margin: 0 0 8px; font-size: 13px; }
+  .mag-import-row-separator td { padding: 10px 8px 4px; border-bottom: none; font-weight: 700; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.02em; color: var(--ink-soft); background: var(--paper-raised); }
 
   .settings-font-options { display: flex; flex-wrap: wrap; gap: 8px; }
   .settings-font-option {
@@ -1293,9 +1325,9 @@
         <label>File fattura elettronica</label>
         <label class="ghost import-label" id="magImportFileLabel" style="display:inline-flex; align-items:center; border:1px solid var(--line); border-radius: var(--radius); padding: 9px 14px; cursor:pointer;">
           Scegli file…
-          <input type="file" id="magImportFileInput" accept=".xml,.p7m,text/xml,application/xml" hidden>
+          <input type="file" id="magImportFileInput" accept=".xml,.p7m,text/xml,application/xml" multiple hidden>
         </label>
-        <p class="hint">Accetta il file della fattura elettronica: firmato (.p7m) o già estratto (.xml). Si legge tutto sul tuo dispositivo, non viene inviato a nessun server.</p>
+        <p class="hint">Accetta il file della fattura elettronica: firmato (.p7m) o già estratto (.xml). Puoi scegliere più file insieme (es. tutte le fatture del mese): entrano in un'unica anteprima da controllare prima di importare. Si legge tutto sul tuo dispositivo, non viene inviato a nessun server.</p>
         <p class="hint mag-import-error" id="magImportError" hidden></p>
       </div>
       <div id="magImportReview" hidden></div>
@@ -1382,7 +1414,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-13.37-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-13.38-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -1483,6 +1515,9 @@
   // documento con dentro l'elenco (leggero, non serve una collezione separata per prodotto).
   let magazzinoCache = { prodotti: [] };
   let magazzinoSearchTerm = "";
+  let magazzinoFiltroTipo = 'tutti'; // 'tutti' | 'materiaPrima' | 'vendita'
+  let magazzinoFiltroFornitore = ''; // '' = tutti i fornitori, altrimenti chiave normalizzata (o "__nomarca__")
+  let magazzinoSelezionati = new Set(); // id dei prodotti spuntati, per eliminarli insieme e svuotare il magazzino
   // Catalogo servizi ("Crea servizio"): nome, tempo di lavorazione, tempo di posa (minuti) e un
   // colore per riconoscerlo a vista nell'agenda. Una "combo" somma i tempi di più servizi
   // semplici (comboDi: i loro id) invece di averne propri.
@@ -2899,8 +2934,8 @@
         if (b.marca === 'Senza marca') return -1;
         return a.marca.localeCompare(b.marca, 'it', { sensitivity: 'base' });
       })
-      .map(({ marca, prodotti }) => ({
-        marca,
+      .map(({ key, marca, prodotti }) => ({
+        key, marca,
         prodotti: prodotti.slice().sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'it', { sensitivity: 'base' }))
       }));
   }
@@ -3915,10 +3950,14 @@
   }
 
   function renderMagazzinoRowHtml(p) {
+    const selezionato = magazzinoSelezionati.has(p.id);
     return `
       <div class="magazzino-row" data-id="${p.id}">
+        <div class="magazzino-row-check-col">
+          <input type="checkbox" class="magazzino-row-check" data-id="${p.id}" ${selezionato ? 'checked' : ''} title="Seleziona per eliminare">
+        </div>
         <div class="field magazzino-field-nome">
-          <input type="text" class="magazzino-input" data-id="${p.id}" data-field="nome" placeholder="Es. Shampoo ricostruttore" value="${escapeHtml(p.nome || '')}">
+          <textarea class="magazzino-input magazzino-nome-area" rows="1" wrap="off" data-id="${p.id}" data-field="nome" placeholder="Es. Shampoo ricostruttore" title="Trascina l'angolo in basso a destra per allargare e leggere il nome intero">${escapeHtml(p.nome || '')}</textarea>
         </div>
         <div class="field magazzino-field-tipo">
           <select class="magazzino-input magazzino-select${p.tipo ? '' : ' magazzino-select-unset'}" data-id="${p.id}" data-field="tipo">
@@ -3943,9 +3982,12 @@
   }
   // Le diciture dei campi (Prodotto/Tipo/Marca/Prezzo/Quantità) compaiono una sola volta qui
   // in cima, non ripetute su ogni riga come prima.
-  function renderMagazzinoHeaderRowHtml() {
+  function renderMagazzinoHeaderRowHtml(tuttiSelezionati) {
     return `
       <div class="magazzino-row magazzino-header-row">
+        <div class="magazzino-row-check-col">
+          <input type="checkbox" id="magazzinoSelectAll" title="Seleziona tutto" ${tuttiSelezionati ? 'checked' : ''}>
+        </div>
         <div class="field magazzino-field-nome"><label>Prodotto</label></div>
         <div class="field magazzino-field-tipo"><label>Tipo</label></div>
         <div class="field magazzino-field-marca"><label>Marca/fornitore</label></div>
@@ -3972,7 +4014,8 @@
   }
   function renderMagazzinoListHtml(prodotti, emptyMsg) {
     if (!prodotti.length) return '<p class="hint magazzino-empty">' + emptyMsg + '</p>';
-    return renderMagazzinoHeaderRowHtml() + groupMagazzinoProdotti(prodotti).map(g => `
+    const tuttiSelezionati = prodotti.every(p => magazzinoSelezionati.has(p.id));
+    return renderMagazzinoHeaderRowHtml(tuttiSelezionati) + groupMagazzinoProdotti(prodotti).map(g => `
       <div class="magazzino-group">
         <div class="magazzino-group-title">${escapeHtml(g.tipo.label)}</div>
         <div class="magazzino-list">${g.prodotti.map(renderMagazzinoRowHtml).join('')}</div>
@@ -4192,8 +4235,23 @@
       if (floatingSave) floatingSave.hidden = false;
       const mag = loadMagazzino();
       const term = magazzinoSearchTerm.trim().toLowerCase();
-      const prodotti = mag.prodotti
+      // L'elenco fornitori per il filtro è calcolato su TUTTO il magazzino (non sul filtrato),
+      // così il menu resta completo anche quando si sta già filtrando per tipo.
+      const fornitoriDisponibili = groupMagazzinoByMarca(mag.prodotti);
+      let prodotti = mag.prodotti
         .filter(p => !term || (p.nome || '').toLowerCase().includes(term) || (p.marca || '').toLowerCase().includes(term));
+      if (magazzinoFiltroTipo !== 'tutti') {
+        prodotti = prodotti.filter(p => (p.tipo || '') === magazzinoFiltroTipo);
+      }
+      if (magazzinoFiltroFornitore) {
+        prodotti = prodotti.filter(p => {
+          const raw = (p.marca || '').trim();
+          const key = raw ? (normalizzaMarca(raw) || raw.toLowerCase()) : '__nomarca__';
+          return key === magazzinoFiltroFornitore;
+        });
+      }
+      const nessunRisultato = term || magazzinoFiltroTipo !== 'tutti' || magazzinoFiltroFornitore;
+      const nSel = magazzinoSelezionati.size;
       panel.innerHTML = `
         <div class="sheet-head">
           <div class="name-field">
@@ -4208,14 +4266,38 @@
           </div>
         </div>
         <fieldset>
+          <div class="magazzino-filtri">
+            <div class="field magazzino-filtro-field">
+              <label>Tipo</label>
+              <select id="magazzinoFiltroTipoSel" class="magazzino-select">
+                <option value="tutti" ${magazzinoFiltroTipo === 'tutti' ? 'selected' : ''}>Tutti</option>
+                <option value="materiaPrima" ${magazzinoFiltroTipo === 'materiaPrima' ? 'selected' : ''}>Materie prime</option>
+                <option value="vendita" ${magazzinoFiltroTipo === 'vendita' ? 'selected' : ''}>Merce in vendita</option>
+              </select>
+            </div>
+            <div class="field magazzino-filtro-field">
+              <label>Fornitore</label>
+              <select id="magazzinoFiltroFornitoreSel" class="magazzino-select">
+                <option value="">Tutti</option>
+                ${fornitoriDisponibili.map(f => {
+                  const val = f.key || '__nomarca__';
+                  return `<option value="${escapeHtml(val)}" ${magazzinoFiltroFornitore === val ? 'selected' : ''}>${escapeHtml(f.marca)}</option>`;
+                }).join('')}
+              </select>
+            </div>
+          </div>
           <div class="field">
+            <label>Cerca prodotto</label>
             <input type="text" id="magazzinoSearch" placeholder="Cerca per nome o marca…" value="${escapeHtml(magazzinoSearchTerm)}">
           </div>
           <div id="magazzinoList">
-            ${renderMagazzinoListHtml(prodotti, term ? 'Nessun prodotto trovato.' : 'Nessun prodotto ancora: aggiungine uno con il tasto qui sotto.')}
+            ${renderMagazzinoListHtml(prodotti, nessunRisultato ? 'Nessun prodotto trovato con questi filtri.' : 'Nessun prodotto ancora: aggiungine uno con il tasto qui sotto.')}
           </div>
-          <button type="button" class="ghost small" id="magazzinoAddBtn">+ Aggiungi prodotto</button>
-          <p class="hint">Si salva da sola mentre scrivi, come Ispirazione: non serve un tasto "Salva" dedicato. Scegliendo "Tipo" il prodotto è subito ricollocato nel gruppo giusto.</p>
+          <div class="magazzino-bulk-row">
+            <button type="button" class="ghost small" id="magazzinoAddBtn">+ Aggiungi prodotto</button>
+            ${nSel ? `<button type="button" class="magazzino-delete-bulk" id="magazzinoDeleteSelBtn">Elimina selezionati (${nSel})</button>` : ''}
+          </div>
+          <p class="hint">Si salva da sola mentre scrivi, come Ispirazione: non serve un tasto "Salva" dedicato. Scegliendo "Tipo" il prodotto è subito ricollocato nel gruppo giusto. Spunta la casella a sinistra di ogni riga (o "Seleziona tutto" in cima) per eliminarne tante insieme, anche per svuotare del tutto il magazzino.</p>
         </fieldset>
         <div class="sheet-footer">
           <span class="save-status" id="magazzinoSaveStatus"></span>
@@ -4715,6 +4797,62 @@
       });
       searchInput.focus();
       searchInput.selectionStart = searchInput.selectionEnd = searchInput.value.length;
+    }
+
+    const filtroTipoSel = document.getElementById('magazzinoFiltroTipoSel');
+    if (filtroTipoSel) {
+      filtroTipoSel.addEventListener('change', () => {
+        magazzinoFiltroTipo = filtroTipoSel.value;
+        renderSheet();
+      });
+    }
+    const filtroFornitoreSel = document.getElementById('magazzinoFiltroFornitoreSel');
+    if (filtroFornitoreSel) {
+      filtroFornitoreSel.addEventListener('change', () => {
+        magazzinoFiltroFornitore = filtroFornitoreSel.value;
+        renderSheet();
+      });
+    }
+
+    // "Seleziona tutto" e le caselle per riga: servono a scegliere più prodotti insieme e
+    // poterli eliminare tutti in un colpo (anche per svuotare del tutto il magazzino).
+    const selectAllChk = document.getElementById('magazzinoSelectAll');
+    if (selectAllChk) {
+      selectAllChk.addEventListener('change', () => {
+        const idsVisibili = Array.from(document.querySelectorAll('.magazzino-row-check')).map(c => c.dataset.id);
+        if (selectAllChk.checked) idsVisibili.forEach(id => magazzinoSelezionati.add(id));
+        else idsVisibili.forEach(id => magazzinoSelezionati.delete(id));
+        renderSheet();
+      });
+    }
+    document.querySelectorAll('.magazzino-row-check').forEach(chk => {
+      chk.addEventListener('change', () => {
+        if (chk.checked) magazzinoSelezionati.add(chk.dataset.id);
+        else magazzinoSelezionati.delete(chk.dataset.id);
+        renderSheet();
+      });
+    });
+    const deleteSelBtn = document.getElementById('magazzinoDeleteSelBtn');
+    if (deleteSelBtn) {
+      deleteSelBtn.addEventListener('click', () => {
+        if (!deleteSelBtn.classList.contains('armed')) {
+          deleteSelBtn.classList.add('armed');
+          deleteSelBtn.textContent = 'Confermi? Eliminati per sempre';
+          clearTimeout(deleteSelBtn._armTimer);
+          deleteSelBtn._armTimer = setTimeout(() => {
+            deleteSelBtn.classList.remove('armed');
+            deleteSelBtn.textContent = 'Elimina selezionati (' + magazzinoSelezionati.size + ')';
+          }, 4000);
+          return;
+        }
+        clearTimeout(deleteSelBtn._armTimer);
+        const n = magazzinoSelezionati.size;
+        magazzinoCache.prodotti = magazzinoCache.prodotti.filter(p => !magazzinoSelezionati.has(p.id));
+        magazzinoSelezionati.clear();
+        saveMagazzino();
+        magazzinoNotify('Eliminati ' + n + ' prodotti.');
+        renderSheet();
+      });
     }
 
     document.querySelectorAll('.magazzino-input').forEach(input => {
@@ -5276,7 +5414,7 @@
   }
 
   // --- Stato e interfaccia della finestra di importazione ---
-  let magImportParsed = null; // { fornitore, numero, data, righe: [...] }
+  let magImportRighe = []; // righe di TUTTE le fatture scelte insieme, ciascuna con la propria fornitore/numero/data
 
   function normMagNome(s) { return (s || '').trim().toLowerCase().replace(/\s+/g, ' '); }
   function findMagazzinoMatch(descrizione) {
@@ -5287,7 +5425,7 @@
   function openMagImportModal() {
     const modal = document.getElementById('magImportModal');
     if (!modal) return;
-    magImportParsed = null;
+    magImportRighe = [];
     const fileInput = document.getElementById('magImportFileInput');
     if (fileInput) fileInput.value = '';
     showMagImportError('');
@@ -5334,8 +5472,10 @@
     el.hidden = !msg;
   }
 
-  async function handleMagImportFile(file) {
-    showMagImportError('');
+  // Legge e interpreta un singolo file fattura (XML o .p7m), restituendo { ok, fornitore,
+  // numero, data, righe } oppure { ok:false, nomeFile, errore }. Non tocca lo stato globale:
+  // così si può leggere più file insieme (in parallelo) e unire i risultati dopo.
+  async function parseMagImportFile(file) {
     try {
       const bytes = await readFileAsBytes(file);
       let text;
@@ -5348,25 +5488,47 @@
         text = new TextDecoder('utf-8').decode(bytes);
         if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
       }
-      magImportParsed = parseFatturaPaXml(text);
+      const parsed = parseFatturaPaXml(text);
+      return { ok: true, nomeFile: file.name, fornitore: parsed.fornitore, numero: parsed.numero, data: parsed.data, righe: parsed.righe };
     } catch (e) {
-      showMagImportError('Non sono riuscita a leggere questo file. Controlla che sia la fattura elettronica (XML o .p7m) e riprova.');
-      magImportParsed = null;
-      return;
+      return { ok: false, nomeFile: file.name, errore: 'Non sono riuscita a leggere questo file. Controlla che sia la fattura elettronica (XML o .p7m) e riprova.' };
     }
-    renderMagImportReview();
+  }
+
+  // Legge uno o più file insieme: le righe di tutte le fatture lette con successo finiscono
+  // in un'unica anteprima (ciascuna con la propria fornitore/numero/data); i file che non si
+  // leggono vengono segnalati sopra la tabella, senza bloccare gli altri.
+  async function handleMagImportFiles(fileList) {
+    showMagImportError('');
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    const risultati = await Promise.all(files.map(parseMagImportFile));
+    const falliti = risultati.filter(r => !r.ok);
+    const riusciti = risultati.filter(r => r.ok);
+    magImportRighe = [];
+    riusciti.forEach(r => {
+      r.righe.forEach(riga => {
+        magImportRighe.push(Object.assign({}, riga, { fornitore: r.fornitore, numero: r.numero, data: r.data }));
+      });
+    });
+    if (falliti.length) {
+      showMagImportError(falliti.map(f => f.nomeFile + ': non letto').join(' · '));
+    }
+    if (magImportRighe.length) renderMagImportReview();
+    else if (!falliti.length) showMagImportError('Non ho trovato righe da importare in questi file.');
   }
 
   function renderMagImportReview() {
-    const p = magImportParsed;
+    const righe = magImportRighe;
     const reviewEl = document.getElementById('magImportReview');
-    if (!p || !reviewEl) return;
+    if (!righe.length || !reviewEl) return;
     document.getElementById('magImportStep1').hidden = true;
     reviewEl.hidden = false;
     const esistenti = magazzinoCache.prodotti.slice().sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'it', { sensitivity: 'base' }));
     const optionsHtml = '<option value="__new__">— Nuovo prodotto —</option>' +
       esistenti.map(p2 => `<option value="${p2.id}">${escapeHtml(p2.nome || '(senza nome)')}</option>`).join('');
-    const rowsHtml = p.righe.map((r, i) => {
+    const nFatture = new Set(righe.map(r => (r.fornitore || '') + '|' + (r.numero || '') + '|' + (r.data || ''))).size;
+    const rowsHtml = righe.map((r, i) => {
       const match = findMagazzinoMatch(r.descrizione);
       const matchId = match ? match.id : '__new__';
       const rowOpts = optionsHtml.replace(
@@ -5379,6 +5541,7 @@
             <input type="text" class="mag-import-nome" data-idx="${i}" value="${escapeHtml(r.descrizione)}">
             ${match ? '<span class="mag-import-match-existing">Aggiorna prodotto esistente</span>' : '<span class="mag-import-match-new">Nuovo prodotto</span>'}
           </td>
+          <td class="mag-import-col-fornitore">${escapeHtml(r.fornitore || '—')}</td>
           <td class="mag-import-col-match">
             <select class="mag-import-match" data-idx="${i}">${rowOpts}</select>
           </td>
@@ -5388,15 +5551,16 @@
     }).join('');
     reviewEl.innerHTML = `
       <p class="mag-import-summary">
-        Fornitore: <strong>${escapeHtml(p.fornitore || '—')}</strong>
-        ${p.numero ? ' · Fattura n. ' + escapeHtml(p.numero) : ''}${p.data ? ' del ' + escapeHtml(p.data) : ''}
-        <br>${p.righe.length} righe trovate. La quantità indicata si <strong>aggiunge</strong> a quella già a magazzino; il prezzo sostituisce quello attuale. Controlla e correggi prima di confermare.
+        ${nFatture > 1 ? '<strong>' + nFatture + ' fatture</strong> scelte insieme' : 'Fornitore: <strong>' + escapeHtml(righe[0].fornitore || '—') + '</strong>' +
+          (righe[0].numero ? ' · Fattura n. ' + escapeHtml(righe[0].numero) : '') + (righe[0].data ? ' del ' + escapeHtml(righe[0].data) : '')}
+        <br>${righe.length} righe trovate in totale. La quantità indicata si <strong>aggiunge</strong> a quella già a magazzino; il prezzo sostituisce quello attuale. Controlla e correggi prima di confermare.
       </p>
       <div class="mag-import-table-wrap">
         <table class="mag-import-table">
           <thead><tr>
             <th class="mag-import-col-check"></th>
             <th>Prodotto (dalla fattura)</th>
+            <th class="mag-import-col-fornitore">Fornitore</th>
             <th>Abbina a</th>
             <th class="mag-import-col-qty">Quantità</th>
             <th class="mag-import-col-prezzo">Prezzo €</th>
@@ -5420,14 +5584,15 @@
   }
 
   function confirmMagImport() {
-    const p = magImportParsed;
+    const righe = magImportRighe;
     const reviewEl = document.getElementById('magImportReview');
-    if (!p || !reviewEl) return;
+    if (!righe.length || !reviewEl) return;
     let nuovi = 0, aggiornati = 0;
     reviewEl.querySelectorAll('.mag-import-row').forEach(row => {
-      const idx = row.dataset.idx;
+      const idx = Number(row.dataset.idx);
       const checked = row.querySelector('.mag-import-check').checked;
       if (!checked) return;
+      const fornitoreRiga = (righe[idx] && righe[idx].fornitore) || '';
       const nome = row.querySelector('.mag-import-nome').value.trim();
       const matchSel = row.querySelector('.mag-import-match').value;
       const qty = parseFloat(row.querySelector('.mag-import-qty').value) || 0;
@@ -5437,7 +5602,7 @@
       if (matchSel === '__new__') {
         const prod = createMagazzinoProdotto();
         prod.nome = nome;
-        prod.marca = p.fornitore || '';
+        prod.marca = fornitoreRiga;
         prod.tipo = 'materiaPrima';
         prod.quantita = qty;
         prod.prezzo = prezzo;
@@ -5447,7 +5612,7 @@
         if (!prod) return;
         prod.quantita = (prod.quantita || 0) + qty;
         if (prezzo != null) prod.prezzo = prezzo;
-        if (!prod.marca && p.fornitore) prod.marca = p.fornitore;
+        if (!prod.marca && fornitoreRiga) prod.marca = fornitoreRiga;
         aggiornati++;
       }
     });
@@ -5870,6 +6035,9 @@
     viewingOstwald = false;
     viewingHome = false;
     magazzinoSearchTerm = "";
+    magazzinoFiltroTipo = 'tutti';
+    magazzinoFiltroFornitore = '';
+    magazzinoSelezionati.clear();
     closeMobileMenu();
     renderAll();
     loadMagazzinoFromDb();
@@ -5966,8 +6134,7 @@
     if (e.target.id === 'magImportModal') closeMagImportModal();
   });
   document.getElementById('magImportFileInput').addEventListener('change', (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (file) handleMagImportFile(file);
+    if (e.target.files && e.target.files.length) handleMagImportFiles(e.target.files);
   });
 
   // ---- Turni di lavoro / Ferie e permessi: pulsanti statici dei due modali ----
