@@ -611,6 +611,19 @@
   .agenda-slot-assente-label { font-size: 12.5px; }
   .agenda-chip-lavoro { border-style: dashed; }
 
+  /* "Crea servizio": stessa struttura a righe di .agenda-row. */
+  .servizio-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; width: 100%; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .servizio-row .field { margin-bottom: 0; }
+  .servizio-field-nome { flex: 1.4 1 160px; }
+  .servizio-field-tipo { flex: 1 1 150px; }
+  .servizio-field-tempo { flex: 0.8 1 120px; }
+  .servizio-field-colore { flex: 0.5 1 70px; }
+  .servizio-field-colore input[type="color"] { width: 100%; height: 36px; padding: 2px; cursor: pointer; }
+  .servizio-field-combo-lista { flex: 2 1 240px; }
+  .servizio-combo-opzioni { display: flex; flex-wrap: wrap; gap: 10px; }
+  .servizio-combo-opzione { display: flex; align-items: center; gap: 5px; font-size: 13.5px; }
+  .servizio-row-actions { display: flex; align-items: center; margin-left: auto; }
+
   /* Modali "Turni di lavoro" e "Ferie/permessi" (stessa struttura di .settings-modal). */
   .turni-day { margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
   .turni-day:last-child { border-bottom: none; }
@@ -1175,6 +1188,11 @@
           </div>
         </aside>
         <aside class="panel notes-banner">
+          <div class="notes-banner-item" id="serviziEntry">
+            <span class="name">Crea servizio</span>
+          </div>
+        </aside>
+        <aside class="panel notes-banner">
           <div class="notes-banner-item" id="cercaAppEntry">
             <span class="name">Cerca nell'app</span>
           </div>
@@ -1364,7 +1382,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-13.36-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-13.37-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -1465,6 +1483,10 @@
   // documento con dentro l'elenco (leggero, non serve una collezione separata per prodotto).
   let magazzinoCache = { prodotti: [] };
   let magazzinoSearchTerm = "";
+  // Catalogo servizi ("Crea servizio"): nome, tempo di lavorazione, tempo di posa (minuti) e un
+  // colore per riconoscerlo a vista nell'agenda. Una "combo" somma i tempi di più servizi
+  // semplici (comboDi: i loro id) invece di averne propri.
+  let serviziCache = { servizi: [] };
   // Agenda: appuntamenti condivisi tra tutte (stessa logica del Magazzino).
   let agendaCache = { appuntamenti: [] };
   // Turni di lavoro: chi lavora quali giorni della settimana (0=domenica…6=sabato) e con quale
@@ -1747,6 +1769,49 @@
       .then(() => { hideStorageError(); return true; })
       .catch(() => { showStorageError('Non sono riuscita a salvare il magazzino. Riprova tra poco.'); return false; });
   }
+  // ---- Catalogo servizi ("Crea servizio"): stessa logica del Magazzino ----
+  function loadServiziFromDb() {
+    if (!db) { showStorageError(); return; }
+    db.doc('app/servizi').get().then(doc => {
+      serviziCache.servizi = (doc.exists && doc.data() && doc.data().servizi) || [];
+      hideStorageError();
+      if (viewingServizi) renderSheet();
+    }).catch(() => { /* resta quello che c'era: si riprova riaprendo la sezione */ });
+  }
+  function saveServizi() {
+    if (!db) { showStorageError(); return Promise.resolve(false); }
+    return db.doc('app/servizi').set({ servizi: serviziCache.servizi })
+      .then(() => { hideStorageError(); return true; })
+      .catch(() => { showStorageError('Non sono riuscita a salvare i servizi. Riprova tra poco.'); return false; });
+  }
+  function getServizio(id) { return serviziCache.servizi.find(s => s.id === id) || null; }
+  // Tempo di lavorazione/posa di un servizio: per una combo è la somma dei servizi che la
+  // compongono (ricalcolata sempre al volo, così resta corretta anche se i servizi semplici
+  // cambiano tempo dopo che la combo è stata creata).
+  function servizioTempi(s) {
+    if (!s) return { lavorazione: 0, posa: 0 };
+    if (s.tipo === 'combo') {
+      return (s.comboDi || []).reduce((tot, id) => {
+        const sub = getServizio(id);
+        if (!sub) return tot;
+        return { lavorazione: tot.lavorazione + (sub.tempoLavorazione || 0), posa: tot.posa + (sub.tempoPosa || 0) };
+      }, { lavorazione: 0, posa: 0 });
+    }
+    return { lavorazione: s.tempoLavorazione || 0, posa: s.tempoPosa || 0 };
+  }
+  function creaServizio() {
+    const s = { id: uid(), nome: '', tempoLavorazione: 0, tempoPosa: 0, colore: '#C9A0AE', tipo: 'semplice', comboDi: [] };
+    serviziCache.servizi.push(s);
+    saveServizi();
+    return s;
+  }
+  function eliminaServizio(id) {
+    serviziCache.servizi = serviziCache.servizi.filter(s => s.id !== id);
+    // Una combo che citava questo servizio lo perde semplicemente dalla somma (non si elimina
+    // la combo stessa: resta con gli altri servizi che la compongono).
+    serviziCache.servizi.forEach(s => { if (s.comboDi) s.comboDi = s.comboDi.filter(id2 => id2 !== id); });
+    saveServizi();
+  }
   // "Materia prima" (quello che si usa in salone, es. tinte, ossidanti) vs "Merce in vendita"
   // (quello che si vende alle clienti, es. shampoo da banco): raggruppa l'elenco e il PDF.
   const MAGAZZINO_TIPI = [
@@ -1859,6 +1924,8 @@
       clienteId: data.clienteId || null,
       nomeManuale: data.nomeManuale || '',
       servizio: data.servizio || '',
+      servizioId: data.servizioId || null,
+      colore: data.colore || null,
       note: data.note || '',
       createdAt: Date.now()
     };
@@ -2134,9 +2201,10 @@
           db.doc('impostazioni/backup').get(),
           db.doc('app/agenda').get(),
           db.doc('app/agendaTurni').get(),
-          db.doc('app/assenze').get()
+          db.doc('app/assenze').get(),
+          db.doc('app/servizi').get()
         ]);
-      }).then(([aTime, aGreen, aGloss, aspetto, backup, agenda, turni, assenze]) => migrateLegacyAppuntiIfNeeded([aTime, aGreen, aGloss]).then(migrated => migrated.concat([aspetto, backup, agenda, turni, assenze]))).then(([aTime, aGreen, aGloss, aspetto, backup, agenda, turni, assenze]) => {
+      }).then(([aTime, aGreen, aGloss, aspetto, backup, agenda, turni, assenze, servizi]) => migrateLegacyAppuntiIfNeeded([aTime, aGreen, aGloss]).then(migrated => migrated.concat([aspetto, backup, agenda, turni, assenze, servizi]))).then(([aTime, aGreen, aGloss, aspetto, backup, agenda, turni, assenze, servizi]) => {
         ispirazioneCache = { libri: [] };
         appuntiCache = {
           time: normalizeAppuntiList(aTime.exists ? aTime.data().list : []),
@@ -2148,6 +2216,7 @@
         agendaCache.appuntamenti = (agenda.exists && agenda.data() && agenda.data().appuntamenti) || [];
         if (turni.exists && turni.data() && turni.data().turni) agendaTurniCache = turni.data().turni;
         assenzeCache.assenze = (assenze.exists && assenze.data() && assenze.data().assenze) || [];
+        serviziCache.servizi = (servizi.exists && servizi.data() && servizi.data().servizi) || [];
         const aspettoData = aspetto.exists ? aspetto.data() : {};
         appSettingsCache = {
           nome: aspettoData.nome || null,
@@ -2312,6 +2381,7 @@
   let viewingNotes = false; // true quando il pannello principale mostra "Consigli di utilizzo" invece di una scheda cliente
   let viewingIspirazione = false; // true quando il pannello principale mostra "Ispirazione"
   let viewingMagazzino = false; // true quando il pannello principale mostra "Magazzino"
+  let viewingServizi = false; // true quando il pannello principale mostra "Crea servizio"
   let viewingAgenda = false; // true quando il pannello principale mostra "Agenda"
   let viewingSearchApp = false; // true quando il pannello principale mostra "Cerca nell'app"
   let searchAppTerm = "";
@@ -2359,6 +2429,7 @@
     viewingNotes = false;
     viewingIspirazione = false;
     viewingMagazzino = false;
+    viewingServizi = false;
     viewingAgenda = false;
     viewingSearchApp = false;
     viewingBlankSheet = false;
@@ -3623,7 +3694,7 @@
     ul.innerHTML = '';
     filtered.forEach(c => {
       const li = document.createElement('li');
-      li.className = (!viewingNotes && !viewingIspirazione && !viewingMagazzino && !viewingAgenda && !viewingSearchApp && !viewingBlankSheet && !viewingOstwald && !viewingHome && c.id === activeId) ? 'active' : '';
+      li.className = (!viewingNotes && !viewingIspirazione && !viewingMagazzino && !viewingServizi && !viewingAgenda && !viewingSearchApp && !viewingBlankSheet && !viewingOstwald && !viewingHome && c.id === activeId) ? 'active' : '';
       const mesiRic = appSettingsCache.mesiRicontatto;
       const daRicontattare = mesiRic && (Date.now() - c.updatedAt) >= mesiRic * 30 * 24 * 3600 * 1000;
       li.innerHTML = `<span class="name">${escapeHtml(c.nome || 'Senza nome')}${daRicontattare ? '<span class="recontact-badge">Da ricontattare</span>' : ''}</span><span class="date">${fmtDate(c.updatedAt)}</span>`;
@@ -3639,6 +3710,8 @@
     if (ispEntry) ispEntry.className = 'notes-banner-item' + (viewingIspirazione ? ' active' : '');
     const magEntry = document.getElementById('magazzinoEntry');
     if (magEntry) magEntry.className = 'notes-banner-item' + (viewingMagazzino ? ' active' : '');
+    const serviziEntry = document.getElementById('serviziEntry');
+    if (serviziEntry) serviziEntry.className = 'notes-banner-item' + (viewingServizi ? ' active' : '');
     const searchEntry = document.getElementById('cercaAppEntry');
     if (searchEntry) searchEntry.className = 'notes-banner-item' + (viewingSearchApp ? ' active' : '');
     const blankEntry = document.getElementById('blankSheetEntry');
@@ -3973,6 +4046,11 @@
         </div>
         <div class="field agenda-field-servizio">
           <label>Servizio</label>
+          ${serviziCache.servizi.length ? `
+          <select class="agenda-input agenda-servizio-catalogo" data-id="${a.id}">
+            <option value="">— scegli dal catalogo —</option>
+            ${serviziCache.servizi.map(s => `<option value="${s.id}" ${a.servizioId === s.id ? 'selected' : ''}>${escapeHtml(s.nome || 'Senza nome')}</option>`).join('')}
+          </select>` : ''}
           <input type="text" class="agenda-input" data-id="${a.id}" data-field="servizio" placeholder="Es. piega, colore, taglio…" value="${escapeHtml(a.servizio || '')}">
         </div>`}
         <div class="field agenda-field-note">
@@ -3989,8 +4067,11 @@
   // tasto ✎) si apre il modulo completo (renderAgendaRowHtml) per modificarlo.
   function renderAgendaChipHtml(a) {
     const isLavoro = a.tipo === 'lavoro';
+    // Il colore scelto in "Crea servizio" si vede subito sulla targhetta, per riconoscere il
+    // servizio a vista senza dover aprire l'appuntamento.
+    const style = a.colore ? ` style="border-color:${escapeHtml(a.colore)};background:${escapeHtml(a.colore)}2A;"` : '';
     return `
-      <div class="agenda-chip${isLavoro ? ' agenda-chip-lavoro' : ''}" data-id="${a.id}">
+      <div class="agenda-chip${isLavoro ? ' agenda-chip-lavoro' : ''}" data-id="${a.id}"${style}>
         <div class="agenda-chip-main">
           <span class="agenda-chip-nome">${escapeHtml(appuntamentoNomeDisplay(a))}</span>
           ${!isLavoro && a.servizio ? `<span class="agenda-chip-servizio">${escapeHtml(a.servizio)}</span>` : ''}
@@ -4141,6 +4222,30 @@
         </div>
       `;
       bindMagazzinoEvents();
+      return;
+    }
+
+    if (viewingServizi) {
+      // Modificabile sia da Erica che da Sara: nessuna restrizione, come il Magazzino.
+      if (floatingSave) floatingSave.hidden = false;
+      panel.innerHTML = `
+        <div class="sheet-head">
+          <div class="name-field">
+            <div class="notes-title">Crea servizio</div>
+          </div>
+        </div>
+        <fieldset>
+          <div id="serviziList">
+            ${renderServiziListHtml(serviziCache.servizi, 'Nessun servizio ancora: aggiungine uno con il tasto qui sotto.')}
+          </div>
+          <button type="button" class="ghost small" id="servizioAddBtn">+ Aggiungi servizio</button>
+          <p class="hint">Si salva da solo mentre scrivi. Scegliendo un servizio nell'Agenda si userà automaticamente il suo tempo e il suo colore in cella.</p>
+        </fieldset>
+        <div class="sheet-footer">
+          <span class="save-status" id="serviziSaveStatus"></span>
+        </div>
+      `;
+      bindServiziEvents();
       return;
     }
 
@@ -4783,6 +4888,22 @@
       }
     });
 
+    // Scegliendo un servizio dal catalogo ("Crea servizio") si riempiono da sole il campo
+    // "Servizio" (testo) e il colore della targhetta, senza bisogno di scriverli a mano.
+    document.querySelectorAll('.agenda-servizio-catalogo').forEach(sel => {
+      sel.addEventListener('change', () => {
+        const a = agendaCache.appuntamenti.find(x => x.id === sel.dataset.id);
+        if (!a) return;
+        const s = getServizio(sel.value);
+        a.servizioId = s ? s.id : null;
+        if (s) a.servizio = s.nome;
+        a.colore = s ? s.colore : null;
+        saveAgenda();
+        agendaNotify('Salvato.');
+        renderSheet();
+      });
+    });
+
     document.querySelectorAll('.agenda-open-client').forEach(btn => {
       btn.addEventListener('click', () => switchActive(btn.dataset.id));
     });
@@ -4927,6 +5048,106 @@
     renderAssenzaLista();
     renderSheet();
     agendaNotify('Aggiunto.');
+  }
+
+  // ---- "Crea servizio": catalogo con tempo di lavorazione, tempo di posa, combo e colore ----
+  function renderServizioRowHtml(s) {
+    const isCombo = s.tipo === 'combo';
+    const tempi = servizioTempi(s);
+    const opzioniCombo = serviziCache.servizi.filter(x => x.id !== s.id && x.tipo !== 'combo');
+    return `
+      <div class="servizio-row" data-id="${s.id}">
+        <div class="field servizio-field-nome">
+          <label>Nome</label>
+          <input type="text" class="servizio-input" data-id="${s.id}" data-field="nome" placeholder="Piega, colore, taglio…" value="${escapeHtml(s.nome || '')}">
+        </div>
+        <div class="field servizio-field-tipo">
+          <label>Tipo</label>
+          <select class="servizio-input" data-id="${s.id}" data-field="tipo">
+            <option value="semplice" ${!isCombo ? 'selected' : ''}>Servizio semplice</option>
+            <option value="combo" ${isCombo ? 'selected' : ''}>Combo di più servizi</option>
+          </select>
+        </div>
+        ${isCombo ? `
+        <div class="field servizio-field-combo-lista">
+          <label>Servizi inclusi</label>
+          <div class="servizio-combo-opzioni">
+            ${opzioniCombo.length ? opzioniCombo.map(o => `
+              <label class="servizio-combo-opzione">
+                <input type="checkbox" class="servizio-combo-check" data-id="${s.id}" data-sub="${o.id}" ${(s.comboDi || []).includes(o.id) ? 'checked' : ''}>
+                ${escapeHtml(o.nome || 'Senza nome')}
+              </label>`).join('') : '<p class="hint">Crea prima qualche servizio semplice da combinare.</p>'}
+          </div>
+          <p class="hint">Tempo totale: ${tempi.lavorazione} min lavorazione + ${tempi.posa} min posa (somma automatica dei servizi scelti).</p>
+        </div>` : `
+        <div class="field servizio-field-tempo">
+          <label>Tempo di lavorazione (min)</label>
+          <input type="number" min="0" step="5" class="servizio-input" data-id="${s.id}" data-field="tempoLavorazione" value="${s.tempoLavorazione || 0}">
+        </div>
+        <div class="field servizio-field-tempo">
+          <label>Tempo di posa (min)</label>
+          <input type="number" min="0" step="5" class="servizio-input" data-id="${s.id}" data-field="tempoPosa" value="${s.tempoPosa || 0}">
+        </div>`}
+        <div class="field servizio-field-colore">
+          <label>Colore cella</label>
+          <input type="color" class="servizio-input" data-id="${s.id}" data-field="colore" value="${s.colore || '#C9A0AE'}">
+        </div>
+        <div class="servizio-row-actions">
+          <button type="button" class="magazzino-delete servizio-delete" data-id="${s.id}">Elimina</button>
+        </div>
+      </div>`;
+  }
+  function renderServiziListHtml(list, emptyMsg) {
+    if (!list.length) return `<p class="hint">${emptyMsg}</p>`;
+    return list.map(renderServizioRowHtml).join('');
+  }
+  function bindServiziEvents() {
+    const addBtn = document.getElementById('servizioAddBtn');
+    if (addBtn) addBtn.addEventListener('click', () => { creaServizio(); renderSheet(); });
+
+    document.querySelectorAll('.servizio-input').forEach(input => {
+      const field = input.dataset.field;
+      const isSelect = field === 'tipo';
+      input.addEventListener(isSelect ? 'change' : 'input', () => {
+        const s = serviziCache.servizi.find(x => x.id === input.dataset.id);
+        if (!s) return;
+        if (field === 'tempoLavorazione' || field === 'tempoPosa') {
+          s[field] = Math.max(0, parseInt(input.value, 10) || 0);
+        } else {
+          s[field] = input.value;
+        }
+        saveServizi();
+        // Cambiando tipo cambiano i campi mostrati (tempo manuale ↔ lista combo): va ridisegnato.
+        if (isSelect) renderSheet();
+      });
+    });
+
+    document.querySelectorAll('.servizio-combo-check').forEach(chk => {
+      chk.addEventListener('change', () => {
+        const s = serviziCache.servizi.find(x => x.id === chk.dataset.id);
+        if (!s) return;
+        s.comboDi = s.comboDi || [];
+        if (chk.checked) { if (!s.comboDi.includes(chk.dataset.sub)) s.comboDi.push(chk.dataset.sub); }
+        else { s.comboDi = s.comboDi.filter(id => id !== chk.dataset.sub); }
+        saveServizi();
+        renderSheet(); // per aggiornare subito il tempo totale mostrato
+      });
+    });
+
+    document.querySelectorAll('.servizio-delete').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!btn.classList.contains('armed')) {
+          btn.classList.add('armed');
+          btn.textContent = 'Confermi?';
+          clearTimeout(btn._armTimer);
+          btn._armTimer = setTimeout(() => { btn.classList.remove('armed'); btn.textContent = 'Elimina'; }, 4000);
+          return;
+        }
+        clearTimeout(btn._armTimer);
+        eliminaServizio(btn.dataset.id);
+        renderSheet();
+      });
+    });
   }
 
   // ===================== Importa da fattura (FatturaPA XML / .p7m) =====================
@@ -5545,6 +5766,7 @@
     viewingNotes = false;
     viewingIspirazione = false;
     viewingMagazzino = false;
+    viewingServizi = false;
     viewingAgenda = false;
     viewingSearchApp = false;
     viewingBlankSheet = false;
@@ -5611,6 +5833,7 @@
     viewingNotes = true;
     viewingIspirazione = false;
     viewingMagazzino = false;
+    viewingServizi = false;
     viewingAgenda = false;
     viewingSearchApp = false;
     viewingBlankSheet = false;
@@ -5624,6 +5847,7 @@
   document.getElementById('ispirazioneEntry').addEventListener('click', () => {
     viewingIspirazione = true;
     viewingMagazzino = false;
+    viewingServizi = false;
     viewingAgenda = false;
     viewingNotes = false;
     viewingSearchApp = false;
@@ -5638,6 +5862,7 @@
   // Magazzino: stesso comportamento, apre come una scheda
   document.getElementById('magazzinoEntry').addEventListener('click', () => {
     viewingMagazzino = true;
+    viewingServizi = false;
     viewingNotes = false;
     viewingIspirazione = false;
     viewingSearchApp = false;
@@ -5650,12 +5875,28 @@
     loadMagazzinoFromDb();
   });
 
+  // Crea servizio: stesso comportamento, apre come una scheda
+  document.getElementById('serviziEntry').addEventListener('click', () => {
+    viewingServizi = true;
+    viewingMagazzino = false;
+    viewingNotes = false;
+    viewingIspirazione = false;
+    viewingSearchApp = false;
+    viewingBlankSheet = false;
+    viewingOstwald = false;
+    viewingHome = false;
+    closeMobileMenu();
+    renderAll();
+    loadServiziFromDb();
+  });
+
   // Cerca nell'app: stesso comportamento, apre come una scheda
   document.getElementById('cercaAppEntry').addEventListener('click', () => {
     viewingSearchApp = true;
     viewingNotes = false;
     viewingIspirazione = false;
     viewingMagazzino = false;
+    viewingServizi = false;
     viewingAgenda = false;
     viewingBlankSheet = false;
     viewingOstwald = false;
@@ -5670,6 +5911,7 @@
     viewingNotes = false;
     viewingIspirazione = false;
     viewingMagazzino = false;
+    viewingServizi = false;
     viewingAgenda = false;
     viewingSearchApp = false;
     viewingOstwald = false;
@@ -5684,6 +5926,7 @@
     viewingNotes = false;
     viewingIspirazione = false;
     viewingMagazzino = false;
+    viewingServizi = false;
     viewingAgenda = false;
     viewingSearchApp = false;
     viewingBlankSheet = false;
@@ -5699,6 +5942,7 @@
     viewingNotes = false;
     viewingIspirazione = false;
     viewingMagazzino = false;
+    viewingServizi = false;
     viewingAgenda = false;
     viewingSearchApp = false;
     viewingBlankSheet = false;
