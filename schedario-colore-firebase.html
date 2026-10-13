@@ -1009,13 +1009,24 @@
   /* Quantità: solo l'input con le freccette native del browser (su/giù), niente più tasti +/-
      di fianco, come richiesto. */
   .magazzino-row .magazzino-field-qty .magazzino-qty-input { width: 100%; text-align: center; }
+  /* Prezzo: via le freccette su/giù native del browser, come richiesto. */
+  .magazzino-input[data-field="prezzo"]::-webkit-outer-spin-button,
+  .magazzino-input[data-field="prezzo"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .magazzino-input[data-field="prezzo"] { -moz-appearance: textfield; }
   .magazzino-row-actions { display: flex; align-items: center; justify-content: flex-end; }
   .magazzino-empty { margin-top: 0; }
   .mag-head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
   /* Filtri Tipo/Fornitore, sopra la ricerca: stessa logica dei gruppi del PDF, ma selezionabile. */
   .magazzino-filtri { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 4px; }
   .magazzino-filtro-field { min-width: 180px; flex: 1; margin-bottom: 0; }
-  .magazzino-bulk-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  /* Sopra l'elenco (non più sotto, dove si doveva scorrere fino in fondo per trovarla) e
+     "sticky": resta visibile anche scorrendo la lista, così dopo aver spuntato dei prodotti più
+     in basso i tasti "Sposta in…"/"Elimina" sono sempre a portata senza dover risalire. */
+  .magazzino-bulk-row {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    position: sticky; top: 0; z-index: 3; background: var(--paper-raised);
+    padding: 8px 0; margin-bottom: 8px; border-bottom: 1px solid var(--line);
+  }
   .magazzino-delete-bulk {
     border: none; background: none; color: #A8433C; font-size: 13.5px; cursor: pointer;
     text-decoration: underline; text-decoration-color: transparent; padding: 0;
@@ -1432,7 +1443,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-13.41-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-13.43-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -4328,15 +4339,15 @@
             <label>Cerca prodotto</label>
             <input type="text" id="magazzinoSearch" placeholder="Cerca per nome o marca…" value="${escapeHtml(magazzinoSearchTerm)}">
           </div>
-          <div id="magazzinoList">
-            ${renderMagazzinoListHtml(prodotti, nessunRisultato ? 'Nessun prodotto trovato con questi filtri.' : 'Nessun prodotto ancora: aggiungine uno con il tasto qui sotto.')}
-          </div>
           <div class="magazzino-bulk-row">
             <button type="button" class="ghost small" id="magazzinoAddBtn">+ Aggiungi prodotto</button>
             ${nSel ? `
             <button type="button" class="ghost small" id="magazzinoBulkVenditaBtn">Sposta in Merce in vendita (${nSel})</button>
             <button type="button" class="ghost small" id="magazzinoBulkMateriaBtn">Sposta in Materia prima (${nSel})</button>
             <button type="button" class="magazzino-delete-bulk" id="magazzinoDeleteSelBtn">Elimina selezionati (${nSel})</button>` : ''}
+          </div>
+          <div id="magazzinoList">
+            ${renderMagazzinoListHtml(prodotti, nessunRisultato ? 'Nessun prodotto trovato con questi filtri.' : 'Nessun prodotto ancora: aggiungine uno con il tasto qui sotto.')}
           </div>
           <p class="hint">Si salva da sola mentre scrivi, come Ispirazione: non serve un tasto "Salva" dedicato. Scegliendo "Tipo" il prodotto è subito ricollocato nel gruppo giusto. Spunta la casella a sinistra di ogni riga (o "Seleziona tutto" in cima) per spostarne o eliminarne tante insieme, anche per svuotare del tutto il magazzino.</p>
         </fieldset>
