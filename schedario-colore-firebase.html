@@ -978,16 +978,19 @@
      serve) dentro una colonna che si allarga/stringe con la maniglia qui a fianco. */
   .magazzino-field-nome { position: relative; display: flex; align-items: center; gap: 2px; }
   .magazzino-nome-area {
-    width: 100%; height: 38px; min-height: 38px;
+    flex: 1 1 auto; min-width: 0; height: 38px; min-height: 38px;
     resize: none; overflow-x: auto; overflow-y: hidden; white-space: pre;
     border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper);
     color: var(--ink); font-family: inherit; font-size: 14px; line-height: 1.3;
     padding: 9px 10px;
   }
+  .magazzino-header-row .magazzino-field-nome label { flex: 1 1 auto; }
   /* Maniglia per allargare/stringere TUTTA la colonna "Prodotto" (su ogni riga, con lo stesso
-     effetto): una barretta sottile sul bordo destro del campo, trascinabile in entrambi i versi. */
+     effetto): una barretta sottile sul bordo destro del campo, trascinabile in entrambi i versi.
+     "margin-left: auto" la tiene SEMPRE ancorata al bordo destro della colonna, anche nella riga
+     di intestazione dove prima (senza) restava appiccicata subito dopo la scritta "Prodotto". */
   .magazzino-nome-resizer {
-    flex: 0 0 auto; align-self: stretch; width: 10px; margin-left: -6px;
+    flex: 0 0 auto; align-self: stretch; width: 14px; margin-left: auto;
     cursor: ew-resize; display: flex; align-items: center; justify-content: center;
     touch-action: none; z-index: 2;
   }
@@ -1429,7 +1432,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-13.39-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-13.41-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -3028,40 +3031,54 @@
       doc.setFont('helvetica', 'bold'); doc.setFontSize(SIDEBAR_FONT);
       return doc.getTextWidth(label) + SIDEBAR_PAD;
     }
+    // Il nome del fornitore si disegna come IMMAGINE, non come testo ruotato nativo di jsPDF:
+    // con jsPDF, in certi casi, un testo ruotato (angle+align+baseline insieme) viene piazzato
+    // dalla libreria fuori dalla cella invece che dentro, un difetto della libreria su cui non
+    // si può intervenire direttamente. Scrivendo invece il nome su un disegno a parte (un
+    // canvas), ruotandolo lì, e "ritagliandolo" esattamente ai bordi della cella prima di
+    // incollarlo nel PDF, il nome resta DENTRO il rettangolo colorato per costruzione: qualunque
+    // errore di calcolo al massimo accorcia o rimpicciolisce il nome, non lo fa mai comparire
+    // altrove nella pagina.
     function drawSidebar(marca, startY, endY, continued) {
       const h = Math.max(endY - startY, 16);
       doc.setDrawColor(122, 59, 86); doc.setFillColor(246, 239, 235); doc.setLineWidth(0.8);
       doc.rect(margin, startY, sidebarW, h, 'FD');
-      doc.setFont('helvetica', 'bold'); doc.setTextColor(122, 59, 86);
       const label = marca + (continued ? ' (segue)' : '');
-      // Il testo ruotato di 90° cresce in lunghezza lungo l'altezza della cella (h). Il dorso è
-      // già stato reso alto abbastanza (v. sopra, "y += pad" prima di chiamare questa funzione)
-      // perché un nome normale ci stia a dimensione piena: qui si rimpiccolisce il carattere, e
-      // solo come ultima risorsa si tronca con "…", unicamente per i casi davvero estremi in cui
-      // anche quella scorta di spazio non basta (nome lunghissimo su un gruppo con un solo
-      // prodotto, dove allargare ancora il dorso sforerebbe la pagina).
+      const scale = 4; // risoluzione alta, altrimenti il nome nel PDF risulta sgranato
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(sidebarW * scale));
+      canvas.height = Math.max(1, Math.round(h * scale));
+      const ctx = canvas.getContext('2d');
+      ctx.scale(scale, scale);
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0, 0, sidebarW, h); ctx.clip(); // non esce MAI dalla cella
+      ctx.translate(sidebarW / 2, h / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillStyle = '#7A3B56';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
       let fontSize = SIDEBAR_FONT;
-      doc.setFontSize(fontSize);
       const maxTextLen = Math.max(h - SIDEBAR_PAD, 8); // mai sotto zero/negativo su celle minuscole
-      let textLen = doc.getTextWidth(label);
+      ctx.font = '700 ' + fontSize + 'px Helvetica, Arial, sans-serif';
+      let textLen = ctx.measureText(label).width;
+      // Si rimpicciolisce il carattere, e solo come ultima risorsa si tronca con "…",
+      // unicamente per i casi davvero estremi in cui anche la scorta di spazio data dal
+      // "pad" (v. sopra, prima di chiamare questa funzione) non basta.
       while (textLen > maxTextLen && fontSize > 5) {
         fontSize -= 0.5;
-        doc.setFontSize(fontSize);
-        textLen = doc.getTextWidth(label);
+        ctx.font = '700 ' + fontSize + 'px Helvetica, Arial, sans-serif';
+        textLen = ctx.measureText(label).width;
       }
       let shown = label;
       if (textLen > maxTextLen) {
-        while (shown.length > 1 && doc.getTextWidth(shown + '…') > maxTextLen) {
+        while (shown.length > 1 && ctx.measureText(shown + '…').width > maxTextLen) {
           shown = shown.slice(0, -1);
         }
         shown = shown + '…';
       }
-      // "baseline: middle" centra lo spessore del testo sull'asse verticale della cella: senza,
-      // il testo (ruotato di 90°) resta ancorato alla base dei caratteri e sporge da un lato.
-      // Il dorso (sidebarW) è tenuto volutamente più largo del necessario per questa dimensione
-      // di carattere, così il nome resta sempre dentro, anche ai bordi, senza mai sforare.
-      doc.text(shown, margin + sidebarW / 2, startY + h / 2, { angle: 90, align: 'center', baseline: 'middle' });
-      doc.setTextColor(30, 24, 20);
+      ctx.fillText(shown, 0, 0);
+      ctx.restore();
+      doc.addImage(canvas.toDataURL('image/png'), 'PNG', margin, startY, sidebarW, h);
     }
 
     const prodotti = magazzinoEsportabili(tipoKey);
@@ -4316,9 +4333,12 @@
           </div>
           <div class="magazzino-bulk-row">
             <button type="button" class="ghost small" id="magazzinoAddBtn">+ Aggiungi prodotto</button>
-            ${nSel ? `<button type="button" class="magazzino-delete-bulk" id="magazzinoDeleteSelBtn">Elimina selezionati (${nSel})</button>` : ''}
+            ${nSel ? `
+            <button type="button" class="ghost small" id="magazzinoBulkVenditaBtn">Sposta in Merce in vendita (${nSel})</button>
+            <button type="button" class="ghost small" id="magazzinoBulkMateriaBtn">Sposta in Materia prima (${nSel})</button>
+            <button type="button" class="magazzino-delete-bulk" id="magazzinoDeleteSelBtn">Elimina selezionati (${nSel})</button>` : ''}
           </div>
-          <p class="hint">Si salva da sola mentre scrivi, come Ispirazione: non serve un tasto "Salva" dedicato. Scegliendo "Tipo" il prodotto è subito ricollocato nel gruppo giusto. Spunta la casella a sinistra di ogni riga (o "Seleziona tutto" in cima) per eliminarne tante insieme, anche per svuotare del tutto il magazzino.</p>
+          <p class="hint">Si salva da sola mentre scrivi, come Ispirazione: non serve un tasto "Salva" dedicato. Scegliendo "Tipo" il prodotto è subito ricollocato nel gruppo giusto. Spunta la casella a sinistra di ogni riga (o "Seleziona tutto" in cima) per spostarne o eliminarne tante insieme, anche per svuotare del tutto il magazzino.</p>
         </fieldset>
         <div class="sheet-footer">
           <span class="save-status" id="magazzinoSaveStatus"></span>
@@ -4853,6 +4873,21 @@
         renderSheet();
       });
     });
+    // Sposta in blocco i prodotti selezionati tra "Merce in vendita" e "Materia prima", senza
+    // doverli cambiare uno per uno.
+    function spostaSelezionatiInTipo(nuovoTipo) {
+      const n = magazzinoSelezionati.size;
+      magazzinoCache.prodotti.forEach(p => { if (magazzinoSelezionati.has(p.id)) p.tipo = nuovoTipo; });
+      magazzinoSelezionati.clear();
+      saveMagazzino();
+      magazzinoNotify('Spostati ' + n + ' prodotti.');
+      renderSheet();
+    }
+    const bulkVenditaBtn = document.getElementById('magazzinoBulkVenditaBtn');
+    if (bulkVenditaBtn) bulkVenditaBtn.addEventListener('click', () => spostaSelezionatiInTipo('vendita'));
+    const bulkMateriaBtn = document.getElementById('magazzinoBulkMateriaBtn');
+    if (bulkMateriaBtn) bulkMateriaBtn.addEventListener('click', () => spostaSelezionatiInTipo('materiaPrima'));
+
     const deleteSelBtn = document.getElementById('magazzinoDeleteSelBtn');
     if (deleteSelBtn) {
       deleteSelBtn.addEventListener('click', () => {
