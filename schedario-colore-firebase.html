@@ -1057,6 +1057,18 @@
   }
   @media (max-width: 640px) { .magazzino-header-row { display: none; } }
 
+  /* Statistiche riordini del Magazzino: grafico a torta dei prodotti più riordinati (fatture
+     importate su un prodotto già esistente) nell'anno solare in corso. */
+  .mag-stats-card { width: min(640px, 100%); }
+  .mag-stats-empty { color: var(--ink-soft); }
+  .mag-stats-wrap { display: flex; gap: 28px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+  .mag-stats-pie { flex: 0 0 auto; width: 200px; height: 200px; }
+  .mag-stats-legend { flex: 1 1 220px; min-width: 200px; list-style: none; margin: 0; padding: 0; }
+  .mag-stats-legend li { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 13.5px; }
+  .mag-stats-legend .mag-stats-swatch { width: 12px; height: 12px; border-radius: 3px; flex: 0 0 auto; }
+  .mag-stats-legend .mag-stats-nome { flex: 1 1 auto; color: var(--ink); }
+  .mag-stats-legend .mag-stats-count { color: var(--ink-soft); white-space: nowrap; }
+
   /* Importazione fattura in Magazzino: anteprima a tabella prima di confermare. */
   .mag-import-card { width: min(760px, 100%); }
   .mag-import-error { color: #A8433C; }
@@ -1098,7 +1110,7 @@
   .settings-number-row input[type="number"] { width: 80px; }
 
   @media print {
-    .sidebar, .notes-banner, .top-actions, .sheet-footer, .top .sub { display: none !important; }
+    .sidebar, .notes-banner, .top-actions, .sheet-footer, .top .sub, #printBlankBtn { display: none !important; }
     body { background: #fff; }
     .layout { grid-template-columns: 1fr; }
     .panel { border: none; }
@@ -1106,6 +1118,11 @@
     /* Gli "Es. ..." nei campi vuoti sono solo un suggerimento per chi compila a schermo:
        in stampa non devono comparire, altrimenti sembrano scritti per davvero. */
     input::placeholder, textarea::placeholder { color: transparent !important; opacity: 0 !important; }
+    /* Senza questa riga i browser, per risparmiare inchiostro, tolgono di default sfondi e
+       colori in stampa: la scheda stampata risultava diversa (più "spoglia") da come si vede
+       a video. Così colori di sfondo (es. le intestazioni colorate Time/Green Mix) ed
+       effetti restano identici alla schermata. */
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -1370,6 +1387,14 @@
   </div>
 </div>
 
+<div class="settings-modal" id="magStatsModal" hidden>
+  <div class="settings-card mag-stats-card">
+    <button type="button" class="settings-close" id="magStatsClose" aria-label="Chiudi">×</button>
+    <h2>Prodotti più riordinati nell'anno</h2>
+    <div id="magStatsBody"></div>
+  </div>
+</div>
+
 <div class="settings-modal" id="agendaTurniModal" hidden>
   <div class="settings-card">
     <button type="button" class="settings-close" id="agendaTurniClose" aria-label="Chiudi">×</button>
@@ -1449,7 +1474,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-13.44-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-13.45-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -1548,7 +1573,10 @@
   let appuntiCache = { time: [], green: [], gloss: [] };
   // Magazzino prodotti: condiviso fra Erica e Sara (entrambe possono modificarlo), un unico
   // documento con dentro l'elenco (leggero, non serve una collezione separata per prodotto).
-  let magazzinoCache = { prodotti: [] };
+  // "storicoRiordini": una riga per ogni volta che una fattura importata aggiorna la quantità
+  // di un prodotto già esistente (un vero riordino, non la prima volta che si aggiunge un
+  // prodotto nuovo). Serve solo per le statistiche "prodotti più riordinati nell'anno".
+  let magazzinoCache = { prodotti: [], storicoRiordini: [] };
   let magazzinoSearchTerm = "";
   let magazzinoFiltroTipo = 'tutti'; // 'tutti' | 'materiaPrima' | 'vendita'
   let magazzinoFiltroFornitore = ''; // '' = tutti i fornitori, altrimenti chiave normalizzata (o "__nomarca__")
@@ -1830,13 +1858,14 @@
     if (!db) { showStorageError(); return; }
     db.doc('app/magazzino').get().then(doc => {
       magazzinoCache.prodotti = (doc.exists && doc.data() && doc.data().prodotti) || [];
+      magazzinoCache.storicoRiordini = (doc.exists && doc.data() && doc.data().storicoRiordini) || [];
       hideStorageError();
       if (viewingMagazzino) renderSheet();
     }).catch(() => { /* resta quello che c'era (vuoto, la prima volta): si riprova riaprendo la sezione */ });
   }
   function saveMagazzino() {
     if (!db) { showStorageError(); return Promise.resolve(false); }
-    return db.doc('app/magazzino').set({ prodotti: magazzinoCache.prodotti })
+    return db.doc('app/magazzino').set({ prodotti: magazzinoCache.prodotti, storicoRiordini: magazzinoCache.storicoRiordini })
       .then(() => { hideStorageError(); return true; })
       .catch(() => { showStorageError('Non sono riuscita a salvare il magazzino. Riprova tra poco.'); return false; });
   }
@@ -2834,93 +2863,6 @@
   async function downloadClientPdf(c) {
     const blob = buildClientPdf(c);
     const filename = (c.nome || 'scheda-cliente').replace(/[^\p{L}\p{N}\-_ ]/gu, '').trim() + '.pdf';
-    const dl = window.claude ? await window.claude.use('downloads') : null;
-    if (dl) {
-      await dl.save({ filename, data: blob });
-    } else {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = filename; document.body.appendChild(a); a.click();
-      a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
-    }
-  }
-
-  // PDF del modulo vuoto "Scheda da stampare": a differenza di buildClientPdf,
-  // qui ogni campo va mostrato comunque (anche vuoto), con una riga da compilare a mano.
-  function buildBlankSheetPdf() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-    const left = 42;
-    const pageH = doc.internal.pageSize.getHeight();
-    const pageW = doc.internal.pageSize.getWidth();
-    let y = 54;
-
-    function ensureSpace(extra) {
-      if (y + extra > pageH - 40) { doc.addPage(); y = 54; }
-    }
-    function h1(text) {
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.setTextColor(30, 24, 20);
-      ensureSpace(26); doc.text(text, left, y); y += 10;
-      doc.setDrawColor(122, 59, 86); doc.setLineWidth(1.2);
-      doc.line(left, y, pageW - left, y); y += 22;
-    }
-    function h2(text) {
-      ensureSpace(20);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(122, 59, 86);
-      doc.text(text.toUpperCase(), left, y); doc.setTextColor(30, 24, 20); y += 16;
-    }
-    function blankField(label) {
-      ensureSpace(20);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5);
-      doc.text(label + ':', left, y);
-      doc.setDrawColor(180, 170, 160); doc.setLineWidth(0.6);
-      doc.line(left + 140, y + 2, pageW - left, y + 2);
-      y += 20;
-    }
-    function blankLines(label, count) {
-      ensureSpace(14 + count * 16);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5);
-      doc.text(label + ':', left, y); y += 14;
-      doc.setDrawColor(180, 170, 160); doc.setLineWidth(0.6);
-      for (let i = 0; i < count; i++) { doc.line(left, y, pageW - left, y); y += 16; }
-      y += 4;
-    }
-    function spacer() { y += 8; }
-
-    h1('Scheda cliente — modulo vuoto');
-    blankField('Nome cliente');
-    spacer();
-    blankLines('Note/preferenze', 2);
-    blankLines('Allergie', 2);
-    spacer();
-    h2('Diagnosi capello');
-    blankField('Bianchi davanti'); blankField('Bianchi dietro');
-    blankField('Livello fondo'); blankField('Livello lunghezze'); blankField('Livello punte');
-    blankLines('Obiettivo', 2);
-    spacer();
-    h2('Linea Time');
-    blankLines('Formula colore base', 2);
-    blankField('Mordenzatura'); blankField('Correttore/booster');
-    blankField('Lunghezze'); blankField('Tonalizzazione');
-    blankLines('Tecnica e servizi', 2);
-    blankField('Tonalizzazione Forever Gloss');
-    spacer();
-    h2('Linea Green Mix');
-    blankLines('Formula colore base', 2);
-    blankField('Mordenzatura'); blankField('Correttore/booster');
-    blankField('Lunghezze'); blankField('Tonalizzazione');
-    blankLines('Tecnica e servizi', 2);
-    blankField('Tonalizzazione Forever Gloss');
-    spacer();
-    h2('Per la prossima volta');
-    blankLines('Note', 3);
-
-    return doc.output('blob');
-  }
-
-  async function downloadBlankSheetPdf() {
-    const blob = buildBlankSheetPdf();
-    const filename = 'scheda-vuota.pdf';
     const dl = window.claude ? await window.claude.use('downloads') : null;
     if (dl) {
       await dl.save({ filename, data: blob });
@@ -4249,10 +4191,9 @@
 
     if (viewingIspirazione) {
       const canEdit = canEditIspirazione();
-      // Ogni cosa qui si salva già da sola mentre scrivi (nomi, foto, procedimento nel libro),
-      // ma il tasto resta comunque visibile per chi può modificare: dà la conferma visiva che
-      // il client-save ha sulle schede clienti. Chi può solo vedere non ha nulla da salvare.
-      if (floatingSave) floatingSave.hidden = !canEdit;
+      // Ogni cosa qui si salva già da sola mentre scrivi (nomi, foto, procedimento nel libro):
+      // niente tasto "Salva", come richiesto per tutto ciò che si salva in automatico.
+      if (floatingSave) floatingSave.hidden = true;
       const ins = loadIspirazione();
       panel.innerHTML = `
         <div class="sheet-head">
@@ -4286,7 +4227,8 @@
 
     if (viewingMagazzino) {
       // Modificabile sia da Erica che da Sara: nessuna restrizione, a differenza di Ispirazione.
-      if (floatingSave) floatingSave.hidden = false;
+      // Si salva da solo: niente tasto "Salva".
+      if (floatingSave) floatingSave.hidden = true;
       const mag = loadMagazzino();
       const term = magazzinoSearchTerm.trim().toLowerCase();
       // L'elenco fornitori per il filtro è calcolato su TUTTO il magazzino (non sul filtrato),
@@ -4317,6 +4259,7 @@
             <button class="ghost small" id="magazzinoPdfVenditaBtn">PDF merci in vendita</button>
             <button class="ghost small" id="magazzinoPdfMateriaBtn">PDF materie prime</button>
             <button class="ghost small" id="magazzinoExcelBtn">Scarica Excel</button>
+            <button class="ghost small" id="magazzinoStatsBtn">Statistiche riordini</button>
             <button class="ghost small" id="businessPlanBtn">Business Plan</button>
           </div>
         </div>
@@ -4370,7 +4313,8 @@
 
     if (viewingServizi) {
       // Modificabile sia da Erica che da Sara: nessuna restrizione, come il Magazzino.
-      if (floatingSave) floatingSave.hidden = false;
+      // Si salva da solo: niente tasto "Salva".
+      if (floatingSave) floatingSave.hidden = true;
       panel.innerHTML = `
         <div class="sheet-head">
           <div class="name-field">
@@ -5043,6 +4987,89 @@
 
     const bizPlanBtn = document.getElementById('businessPlanBtn');
     if (bizPlanBtn) bizPlanBtn.addEventListener('click', openBusinessPlanModal);
+
+    const statsBtn = document.getElementById('magazzinoStatsBtn');
+    if (statsBtn) statsBtn.addEventListener('click', openMagazzinoStatsModal);
+  }
+
+  // ---- Statistiche riordini: grafico a torta dei prodotti più riordinati nell'anno solare ----
+  const MAG_STATS_PALETTE = ['#A8433C', '#C9A0AE', '#7A3B56', '#D9B189', '#6B8F71', '#5C7A99', '#C97B4A', '#8E7CC3', '#B5B5B5'];
+  // Un riordino = una fattura importata che ha rifornito un prodotto GIÀ a magazzino (non la
+  // prima volta che si aggiunge un prodotto nuovo). Conta quante volte, nell'anno scelto,
+  // ciascun prodotto compare in magazzinoCache.storicoRiordini.
+  function magazzinoRiordiniPerAnno(anno) {
+    const counts = new Map(); // prodottoId (o nome, se il prodotto non ha più id) -> {nome, count}
+    (magazzinoCache.storicoRiordini || []).forEach(r => {
+      const y = parseInt((r.data || '').slice(0, 4), 10);
+      if (y !== anno) return;
+      const key = r.prodottoId || r.nome || '?';
+      const prodottoAttuale = magazzinoCache.prodotti.find(p => p.id === r.prodottoId);
+      const nome = (prodottoAttuale && prodottoAttuale.nome) || r.nome || 'Prodotto eliminato';
+      if (!counts.has(key)) counts.set(key, { nome, count: 0 });
+      counts.get(key).count++;
+    });
+    return Array.from(counts.values()).sort((a, b) => b.count - a.count);
+  }
+  // Disegna un grafico a torta SVG dalle fette {value, color}; un solo valore diventa un
+  // cerchio pieno (l'arco degenera se inizio e fine coincidono).
+  function buildPieChartSvg(slices, size) {
+    const r = size / 2, cx = r, cy = r;
+    const total = slices.reduce((s, x) => s + x.value, 0) || 1;
+    if (slices.length === 1) {
+      return `<svg viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg"><circle cx="${cx}" cy="${cy}" r="${r}" fill="${slices[0].color}"></circle></svg>`;
+    }
+    let angle = -Math.PI / 2;
+    let paths = '';
+    slices.forEach(s => {
+      const frac = s.value / total;
+      const theta = frac * Math.PI * 2;
+      const x1 = cx + r * Math.cos(angle), y1 = cy + r * Math.sin(angle);
+      const endAngle = angle + theta;
+      const x2 = cx + r * Math.cos(endAngle), y2 = cy + r * Math.sin(endAngle);
+      const largeArc = theta > Math.PI ? 1 : 0;
+      paths += `<path d="M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z" fill="${s.color}"></path>`;
+      angle = endAngle;
+    });
+    return `<svg viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">${paths}</svg>`;
+  }
+  function renderMagazzinoStatsModal() {
+    const body = document.getElementById('magStatsBody');
+    if (!body) return;
+    const anno = new Date().getFullYear();
+    const dati = magazzinoRiordiniPerAnno(anno);
+    if (!dati.length) {
+      body.innerHTML = `<p class="hint mag-stats-empty">Nessun riordino registrato nel ${anno}. Il conteggio parte da quando importi una fattura su un prodotto già presente a magazzino (non sulla prima volta che lo aggiungi).</p>`;
+      return;
+    }
+    const top = dati.slice(0, 7);
+    const resto = dati.slice(7);
+    const slices = top.map((d, i) => ({ nome: d.nome, value: d.count, color: MAG_STATS_PALETTE[i % MAG_STATS_PALETTE.length] }));
+    if (resto.length) {
+      slices.push({ nome: 'Altri ' + resto.length + ' prodotti', value: resto.reduce((s, d) => s + d.count, 0), color: MAG_STATS_PALETTE[7 % MAG_STATS_PALETTE.length] });
+    }
+    const svg = buildPieChartSvg(slices, 200);
+    const legend = slices.map(s => `
+      <li>
+        <span class="mag-stats-swatch" style="background:${s.color}"></span>
+        <span class="mag-stats-nome">${escapeHtml(s.nome)}</span>
+        <span class="mag-stats-count">${s.value}×</span>
+      </li>`).join('');
+    body.innerHTML = `
+      <p class="hint">Conta quante volte, nel ${anno}, una fattura importata ha rifornito un prodotto già a magazzino.</p>
+      <div class="mag-stats-wrap">
+        <div class="mag-stats-pie">${svg}</div>
+        <ul class="mag-stats-legend">${legend}</ul>
+      </div>`;
+  }
+  function openMagazzinoStatsModal() {
+    const modal = document.getElementById('magStatsModal');
+    if (!modal) return;
+    renderMagazzinoStatsModal();
+    modal.hidden = false;
+  }
+  function closeMagazzinoStatsModal() {
+    const modal = document.getElementById('magStatsModal');
+    if (modal) modal.hidden = true;
   }
 
   function agendaNotify(msg, isError) {
@@ -5719,6 +5746,13 @@
         if (prezzo != null) prod.prezzo = prezzo;
         if (!prod.marca && fornitoreRiga) prod.marca = fornitoreRiga;
         aggiornati++;
+        // È un vero riordino (prodotto già a magazzino, rifornito con questa fattura): si
+        // registra per le statistiche "prodotti più riordinati nell'anno". La data della
+        // fattura è in formato AAAA-MM-GG; se manca si usa oggi.
+        const dataRiordino = /^\d{4}-\d{2}-\d{2}/.test((righe[idx] && righe[idx].data) || '')
+          ? righe[idx].data.slice(0, 10)
+          : new Date().toISOString().slice(0, 10);
+        magazzinoCache.storicoRiordini.push({ id: uid(), prodottoId: prod.id, nome: prod.nome, data: dataRiordino, quantita: qty });
       }
     });
     saveMagazzino();
@@ -6242,6 +6276,12 @@
     if (e.target.files && e.target.files.length) handleMagImportFiles(e.target.files);
   });
 
+  // ---- Statistiche riordini (dentro Magazzino) ----
+  document.getElementById('magStatsClose').addEventListener('click', closeMagazzinoStatsModal);
+  document.getElementById('magStatsModal').addEventListener('click', (e) => {
+    if (e.target.id === 'magStatsModal') closeMagazzinoStatsModal();
+  });
+
   // ---- Turni di lavoro / Ferie e permessi: pulsanti statici dei due modali ----
   document.getElementById('agendaTurniClose').addEventListener('click', closeAgendaTurniModal);
   document.getElementById('agendaTurniModal').addEventListener('click', (e) => {
@@ -6378,9 +6418,10 @@
   document.getElementById('sheetPanel').addEventListener('click', (e) => {
     const printBlankBtn = e.target.closest('#printBlankBtn');
     if (printBlankBtn) {
-      downloadBlankSheetPdf()
-        .then(() => notifyTop('PDF pronto: aprilo e stampalo da lì.'))
-        .catch((err) => { if (!(err && err.code === 'declined')) notifyTop('Non sono riuscito a generare il PDF.', true); });
+      // Stampa direttamente quello che si vede a schermo (window.print), non più un PDF
+      // ricostruito a parte: così la stampa è SEMPRE identica alla videata, senza doverle
+      // tenere aggiornate a mano in due posti diversi.
+      window.print();
       return;
     }
     const pdfDownloadBtn = e.target.closest('.pdf-card-download');
@@ -6592,6 +6633,8 @@
     if (settingsModalEl && !settingsModalEl.hidden && e.key === 'Escape') { closeSettingsModal(); return; }
     const magImportModalEl = document.getElementById('magImportModal');
     if (magImportModalEl && !magImportModalEl.hidden && e.key === 'Escape') { closeMagImportModal(); return; }
+    const magStatsModalEl = document.getElementById('magStatsModal');
+    if (magStatsModalEl && !magStatsModalEl.hidden && e.key === 'Escape') { closeMagazzinoStatsModal(); return; }
     const bizViewerEl = document.getElementById('businessPlanViewer');
     if (bizViewerEl && !bizViewerEl.hidden && e.key === 'Escape') { closeBusinessPlanViewer(); return; }
     if (imgModal.hidden) return;
@@ -6687,19 +6730,10 @@
     try { input.setSelectionRange(len, len); } catch (e2) { /* alcuni input non supportano setSelectionRange */ }
   });
 
-  // Tasto "Salva" fisso di lato: su una scheda cliente richiama il Salva vero e proprio
-  // (quello in fondo alla scheda). In Ispirazione ogni campo si salva già da solo mentre
-  // scrivi (nome del libro, foto, procedimento), ma premendo qui si forza comunque il
-  // salvataggio di quello che si sta scrivendo in quel momento (uscendo dal campo attivo,
-  // così parte subito, senza aspettare che l'utente clicchi altrove) e compare la stessa
-  // conferma "Fatto" della scheda cliente, per avere la stessa certezza visiva.
+  // Tasto "Salva" fisso di lato: compare solo sulla vera scheda cliente (le sezioni che si
+  // salvano da sole, come Ispirazione, Magazzino e Servizi, non lo mostrano più) e richiama il
+  // Salva vero e proprio, quello in fondo alla scheda.
   document.getElementById('floatingSaveBtn').addEventListener('click', () => {
-    if (viewingIspirazione || viewingMagazzino || viewingAgenda) {
-      const active = document.activeElement;
-      if (active && document.getElementById('sheetPanel').contains(active)) active.blur();
-      showCenterToast('Fatto');
-      return;
-    }
     const realSaveBtn = document.getElementById('saveBtn');
     if (realSaveBtn) realSaveBtn.click();
   });
