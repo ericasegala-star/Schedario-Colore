@@ -1510,7 +1510,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-13.47-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-13.48-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -2005,6 +2005,15 @@
   // Operatore di un appuntamento: quelli creati prima dei turni divisi non l'avevano (era solo
   // Erica a usare l'agenda), quindi senza il campo si assume Erica.
   function appuntamentoOperatore(a) { return a.operatore || 'Erica'; }
+  // Nome del servizio da mostrare per un appuntamento: normalmente è a.servizio (scritto a mano o
+  // copiato dal catalogo al momento della scelta). Per gli appuntamenti con una combo scelta PRIMA
+  // che le combo senza nome si costruissero da sole (vedi nomeServizio), a.servizio era rimasto
+  // vuoto: qui si ricalcola comunque dal catalogo, così tornano visibili senza doverli ritoccare.
+  function appuntamentoServizioNome(a) {
+    if (a.servizio) return a.servizio;
+    if (a.servizioId) { const s = getServizio(a.servizioId); if (s) return nomeServizio(s); }
+    return '';
+  }
   // Colore per distinguere a colpo d'occhio le due colonne (Erica/Sara) nei giorni in cui
   // lavorano entrambe: Erica resta sul colore del brand (personalizzabile in Impostazioni),
   // Sara su un viola già presente nella tavolozza dell'app, per non introdurne uno nuovo.
@@ -4397,7 +4406,7 @@
             <option value="">— scegli dal catalogo —</option>
             ${serviziCache.servizi.map(s => `<option value="${s.id}" ${a.servizioId === s.id ? 'selected' : ''}>${escapeHtml(nomeServizio(s))}</option>`).join('')}
           </select>` : ''}
-          <input type="text" class="agenda-input" data-id="${a.id}" data-field="servizio" placeholder="Es. piega, colore, taglio…" value="${escapeHtml(a.servizio || '')}">
+          <input type="text" class="agenda-input" data-id="${a.id}" data-field="servizio" placeholder="Es. piega, colore, taglio…" value="${escapeHtml(appuntamentoServizioNome(a))}">
         </div>`}
         <div class="field agenda-field-note">
           <label>Note</label>
@@ -4423,7 +4432,7 @@
       <div class="agenda-chip${isLavoro ? ' agenda-chip-lavoro' : ''}" data-id="${a.id}"${style}>
         <div class="agenda-chip-main">
           <span class="agenda-chip-nome">${escapeHtml(appuntamentoNomeDisplay(a))}</span>
-          ${!isLavoro && a.servizio ? `<span class="agenda-chip-servizio">${escapeHtml(a.servizio)}</span>` : ''}
+          ${!isLavoro && appuntamentoServizioNome(a) ? `<span class="agenda-chip-servizio">${escapeHtml(appuntamentoServizioNome(a))}</span>` : ''}
         </div>
         <button type="button" class="agenda-chip-edit" data-id="${a.id}" aria-label="Modifica appuntamento">✎</button>
       </div>`;
