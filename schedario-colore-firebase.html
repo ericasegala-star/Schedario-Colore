@@ -597,6 +597,31 @@
   .agenda-cliente-suggestion:hover { background: var(--berry-soft); }
   .agenda-open-client { margin-top: 6px; }
   .agenda-row-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+  .agenda-field-operatore { flex: 0.6 1 90px; }
+  .agenda-field-tipo { flex: 0.9 1 120px; }
+  .agenda-field-titolo { flex: 1.8 1 200px; }
+  /* Giorni in cui lavorano sia Erica che Sara (es. sabato): due calendari affiancati. */
+  .agenda-columns { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-start; }
+  .agenda-column { flex: 1 1 260px; min-width: 220px; }
+  .agenda-column-head {
+    font-size: 12.5px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase;
+    color: var(--berry); margin-bottom: 6px;
+  }
+  .agenda-slot-assente { background: rgba(122, 59, 86, 0.08); font-style: italic; color: var(--ink-soft); }
+  .agenda-slot-assente-label { font-size: 12.5px; }
+  .agenda-chip-lavoro { border-style: dashed; }
+
+  /* Modali "Turni di lavoro" e "Ferie/permessi" (stessa struttura di .settings-modal). */
+  .turni-day { margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+  .turni-day:last-child { border-bottom: none; }
+  .turni-day-label { font-weight: 700; font-size: 13.5px; margin-bottom: 6px; }
+  .turni-op-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+  .turni-op-check { display: flex; align-items: center; gap: 6px; width: 64px; flex: none; font-size: 13.5px; }
+  .turni-time { width: auto; flex: none; }
+  .assenza-date-row { display: flex; align-items: center; gap: 8px; }
+  .assenza-date-row input { width: auto; flex: 1 1 auto; }
+  .assenza-lista { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 10px; }
+  .assenza-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; font-size: 13.5px; }
 
   .brand { cursor: pointer; }
   .notes-static { font-size: 14px; line-height: 1.6; max-width: 640px; }
@@ -1260,6 +1285,53 @@
   </div>
 </div>
 
+<div class="settings-modal" id="agendaTurniModal" hidden>
+  <div class="settings-card">
+    <button type="button" class="settings-close" id="agendaTurniClose" aria-label="Chiudi">×</button>
+    <h2>Turni di lavoro</h2>
+    <p class="hint">Scegli, per ogni giorno, chi lavora e con quale orario. Un giorno senza nessuna spunta resta chiuso.</p>
+    <div id="agendaTurniBody"></div>
+    <button type="button" class="primary" id="agendaTurniSave" style="margin-top:14px;">Salva turni</button>
+  </div>
+</div>
+
+<div class="settings-modal" id="agendaAssenzaModal" hidden>
+  <div class="settings-card">
+    <button type="button" class="settings-close" id="agendaAssenzaClose" aria-label="Chiudi">×</button>
+    <h2>Ferie e permessi</h2>
+    <div class="settings-section">
+      <label>Chi</label>
+      <select id="assenzaOperatore"><option value="Erica">Erica</option><option value="Sara">Sara</option></select>
+    </div>
+    <div class="settings-section">
+      <label>Tipo</label>
+      <select id="assenzaTipo"><option value="ferie">Ferie</option><option value="permesso">Permesso</option></select>
+    </div>
+    <div class="settings-section">
+      <label>Dal / al</label>
+      <div class="assenza-date-row">
+        <input type="date" id="assenzaDataInizio">
+        <span>–</span>
+        <input type="date" id="assenzaDataFine">
+      </div>
+    </div>
+    <div class="settings-section">
+      <label>Solo una fascia oraria (lascia vuoto per bloccare tutto il giorno)</label>
+      <div class="assenza-date-row">
+        <input type="time" id="assenzaOraInizio">
+        <span>–</span>
+        <input type="time" id="assenzaOraFine">
+      </div>
+    </div>
+    <div class="settings-section">
+      <label>Nota (facoltativa)</label>
+      <input type="text" id="assenzaNote" placeholder="Visita medica, corso…">
+    </div>
+    <button type="button" class="primary" id="assenzaAggiungiBtn">Aggiungi</button>
+    <div id="assenzaLista" class="assenza-lista"></div>
+  </div>
+</div>
+
 <div class="settings-modal" id="businessPlanModal" hidden>
   <div class="settings-card">
     <button type="button" class="settings-close" id="businessPlanClose" aria-label="Chiudi">×</button>
@@ -1292,7 +1364,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-12.35-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-13.36-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -1395,6 +1467,20 @@
   let magazzinoSearchTerm = "";
   // Agenda: appuntamenti condivisi tra tutte (stessa logica del Magazzino).
   let agendaCache = { appuntamenti: [] };
+  // Turni di lavoro: chi lavora quali giorni della settimana (0=domenica…6=sabato) e con quale
+  // orario. Erica c'è sempre nei giorni in cui il salone è aperto; i giorni/orari di Sara si
+  // possono cambiare da "Turni di lavoro" (predefinito: solo sabato, 8:30-16:30). Gli orari sono
+  // in minuti dalla mezzanotte.
+  function defaultAgendaTurni() {
+    return {
+      Erica: { 2: [8 * 60 + 30, 15 * 60 + 30], 3: [8 * 60 + 30, 15 * 60 + 30], 4: [8 * 60 + 30, 19 * 60], 5: [8 * 60 + 30, 19 * 60], 6: [8 * 60, 18 * 60] },
+      Sara: { 6: [8 * 60 + 30, 16 * 60 + 30] }
+    };
+  }
+  let agendaTurniCache = defaultAgendaTurni();
+  // Ferie e permessi: per operatore, a giornata intera (oraInizio/oraFine assenti) o su una
+  // fascia oraria di un singolo giorno.
+  let assenzeCache = { assenze: [] };
   let agendaDataSelezionata = fmtDateISO(new Date()); // giorno mostrato nella vista lista (YYYY-MM-DD)
   let agendaClienteQuery = ""; // testo digitato nel campo di ricerca cliente del form nuovo appuntamento
   let agendaClienteSelezionatoId = null; // id cliente collegato all'appuntamento in creazione/modifica (null = nome libero)
@@ -1696,11 +1782,80 @@
       .then(() => { hideStorageError(); return true; })
       .catch(() => { showStorageError('Non sono riuscita a salvare l\'agenda. Riprova tra poco.'); return false; });
   }
+  // Operatore di un appuntamento: quelli creati prima dei turni divisi non l'avevano (era solo
+  // Erica a usare l'agenda), quindi senza il campo si assume Erica.
+  function appuntamentoOperatore(a) { return a.operatore || 'Erica'; }
+  function loadAgendaTurniFromDb() {
+    if (!db) return;
+    db.doc('app/agendaTurni').get().then(doc => {
+      if (doc.exists && doc.data() && doc.data().turni) agendaTurniCache = doc.data().turni;
+      if (viewingHome || viewingAgenda) renderSheet();
+    }).catch(() => { /* resta il predefinito: si riprova riaprendo la sezione */ });
+  }
+  function saveAgendaTurni() {
+    if (!db) { showStorageError(); return Promise.resolve(false); }
+    return db.doc('app/agendaTurni').set({ turni: agendaTurniCache })
+      .then(() => { hideStorageError(); return true; })
+      .catch(() => { showStorageError('Non sono riuscita a salvare i turni. Riprova tra poco.'); return false; });
+  }
+  // Operatori che lavorano in un certo giorno (in ordine: Erica prima di Sara), secondo i turni.
+  function agendaOperatoriDelGiorno(dateISO) {
+    if (!dateISO) return [];
+    const [y, m, d] = dateISO.split('-').map(Number);
+    const day = new Date(y, m - 1, d).getDay();
+    return ['Erica', 'Sara'].filter(op => agendaTurniCache[op] && agendaTurniCache[op][day]);
+  }
+  function loadAssenzeFromDb() {
+    if (!db) return;
+    db.doc('app/assenze').get().then(doc => {
+      assenzeCache.assenze = (doc.exists && doc.data() && doc.data().assenze) || [];
+      if (viewingHome || viewingAgenda) renderSheet();
+    }).catch(() => { /* resta quello che c'era: si riprova riaprendo la sezione */ });
+  }
+  function saveAssenze() {
+    if (!db) { showStorageError(); return Promise.resolve(false); }
+    return db.doc('app/assenze').set({ assenze: assenzeCache.assenze })
+      .then(() => { hideStorageError(); return true; })
+      .catch(() => { showStorageError('Non sono riuscita a salvare ferie/permessi. Riprova tra poco.'); return false; });
+  }
+  function creaAssenza(data) {
+    const a = {
+      id: uid(),
+      operatore: data.operatore || 'Erica',
+      tipo: data.tipo === 'permesso' ? 'permesso' : 'ferie',
+      dataInizio: data.dataInizio || agendaDataSelezionata,
+      dataFine: data.dataFine || data.dataInizio || agendaDataSelezionata,
+      oraInizio: data.oraInizio || '',
+      oraFine: data.oraFine || '',
+      note: data.note || ''
+    };
+    assenzeCache.assenze.push(a);
+    saveAssenze();
+    return a;
+  }
+  function eliminaAssenza(id) {
+    assenzeCache.assenze = assenzeCache.assenze.filter(a => a.id !== id);
+    saveAssenze();
+  }
+  // Le assenze di un operatore che riguardano un certo giorno (giornata intera o che includono
+  // quella data nell'intervallo).
+  function assenzeOperatoreGiorno(operatore, dateISO) {
+    return assenzeCache.assenze.filter(a => a.operatore === operatore && a.dataInizio <= dateISO && a.dataFine >= dateISO);
+  }
+  // Se quello slot (hh:mm di quel giorno, per quell'operatore) è bloccato da una ferie/permesso,
+  // restituisce l'assenza; altrimenti null. Una assenza senza orario blocca tutta la giornata.
+  function assenzaSuSlot(operatore, dateISO, time) {
+    const assenze = assenzeOperatoreGiorno(operatore, dateISO);
+    return assenze.find(a => !a.oraInizio || (time >= a.oraInizio && time < a.oraFine)) || null;
+  }
   function createAppuntamento(data) {
     const a = {
       id: uid(),
       data: data.data || agendaDataSelezionata,
       ora: data.ora || '',
+      operatore: data.operatore || currentOperator() || 'Erica',
+      tipo: data.tipo === 'lavoro' ? 'lavoro' : 'cliente',
+      titolo: data.titolo || '',
       clienteId: data.clienteId || null,
       nomeManuale: data.nomeManuale || '',
       servizio: data.servizio || '',
@@ -1724,15 +1879,18 @@
   // Nome da mostrare per un appuntamento: se collegato a una cliente usa la scheda (sempre aggiornata
   // anche se la cliente viene rinominata dopo), altrimenti il nome libero digitato a mano.
   function appuntamentoNomeDisplay(a) {
+    if (a.tipo === 'lavoro') return a.titolo || 'Impegno di lavoro';
     if (a.clienteId) {
       const c = getClient(a.clienteId);
       if (c) return c.nome || 'Senza nome';
     }
     return a.nomeManuale || 'Senza nome';
   }
-  function appuntamentiDelGiorno(iso) {
+  // Gli appuntamenti di un giorno, oppure solo quelli di un operatore se indicato (per le
+  // colonne divise dei giorni in cui lavora più di una persona).
+  function appuntamentiDelGiorno(iso, operatore) {
     return agendaCache.appuntamenti
-      .filter(a => a.data === iso)
+      .filter(a => a.data === iso && (!operatore || appuntamentoOperatore(a) === operatore))
       .slice()
       .sort((a, b) => (a.ora || '').localeCompare(b.ora || ''));
   }
@@ -1974,9 +2132,11 @@
           db.doc(appuntiDocPath('gloss')).get(),
           db.doc('impostazioni/aspetto').get(),
           db.doc('impostazioni/backup').get(),
-          db.doc('app/agenda').get()
+          db.doc('app/agenda').get(),
+          db.doc('app/agendaTurni').get(),
+          db.doc('app/assenze').get()
         ]);
-      }).then(([aTime, aGreen, aGloss, aspetto, backup, agenda]) => migrateLegacyAppuntiIfNeeded([aTime, aGreen, aGloss]).then(migrated => migrated.concat([aspetto, backup, agenda]))).then(([aTime, aGreen, aGloss, aspetto, backup, agenda]) => {
+      }).then(([aTime, aGreen, aGloss, aspetto, backup, agenda, turni, assenze]) => migrateLegacyAppuntiIfNeeded([aTime, aGreen, aGloss]).then(migrated => migrated.concat([aspetto, backup, agenda, turni, assenze]))).then(([aTime, aGreen, aGloss, aspetto, backup, agenda, turni, assenze]) => {
         ispirazioneCache = { libri: [] };
         appuntiCache = {
           time: normalizeAppuntiList(aTime.exists ? aTime.data().list : []),
@@ -1986,6 +2146,8 @@
         // Agenda: caricata subito all'avvio (non solo aprendo una sezione dedicata), perché ora
         // vive sotto la schermata iniziale, sempre visibile.
         agendaCache.appuntamenti = (agenda.exists && agenda.data() && agenda.data().appuntamenti) || [];
+        if (turni.exists && turni.data() && turni.data().turni) agendaTurniCache = turni.data().turni;
+        assenzeCache.assenze = (assenze.exists && assenze.data() && assenze.data().assenze) || [];
         const aspettoData = aspetto.exists ? aspetto.data() : {};
         appSettingsCache = {
           nome: aspettoData.nome || null,
@@ -3754,44 +3916,54 @@
       .filter(c => (c.nome || '').toLowerCase().includes(t))
       .slice(0, 6);
   }
-  // Orario di apertura del salone, diverso per giorno della settimana (0=domenica…6=sabato):
-  // martedì e mercoledì 8:30-15:30, giovedì e venerdì 8:30-19:00, sabato 8:00-18:00. Lunedì e
-  // domenica non sono elencati: il salone è chiuso, niente slot in quei giorni.
-  const AGENDA_ORARI = {
-    2: [8 * 60 + 30, 15 * 60 + 30],
-    3: [8 * 60 + 30, 15 * 60 + 30],
-    4: [8 * 60 + 30, 19 * 60],
-    5: [8 * 60 + 30, 19 * 60],
-    6: [8 * 60, 18 * 60]
-  };
-  // Calendario a quarti d'ora, secondo l'orario di apertura del giorno indicato (se non si sa
-  // ancora il giorno, usa un intervallo generico 8:00-20:00 come ripiego).
-  function agendaSlots(dateISO) {
-    let range = [8 * 60, 20 * 60];
-    if (dateISO) {
-      const [y, m, d] = dateISO.split('-').map(Number);
-      const day = new Date(y, m - 1, d).getDay();
-      range = AGENDA_ORARI[day] || null;
-    }
+  // Calendario a quarti d'ora, secondo il turno di quell'operatore in quel giorno (v. "Turni di
+  // lavoro"/agendaTurniCache). Senza operatore si usa quello di Erica, come ripiego.
+  function agendaSlots(dateISO, operatore) {
+    if (!dateISO) return [];
+    const [y, m, d] = dateISO.split('-').map(Number);
+    const day = new Date(y, m - 1, d).getDay();
+    const turniOp = agendaTurniCache[operatore || 'Erica'];
+    const range = (turniOp && turniOp[day]) || null;
     if (!range) return [];
     const slots = [];
-    for (let m = range[0]; m < range[1]; m += 15) {
-      const hh = String(Math.floor(m / 60)).padStart(2, '0');
-      const mm = String(m % 60).padStart(2, '0');
+    for (let mnt = range[0]; mnt < range[1]; mnt += 15) {
+      const hh = String(Math.floor(mnt / 60)).padStart(2, '0');
+      const mm = String(mnt % 60).padStart(2, '0');
       slots.push(hh + ':' + mm);
     }
     return slots;
   }
   function renderAgendaRowHtml(a) {
     const nomeCampo = a.clienteId ? appuntamentoNomeDisplay(a) : (a.nomeManuale || '');
+    const operatoriGiorno = agendaOperatoriDelGiorno(a.data || agendaDataSelezionata);
+    const isLavoro = a.tipo === 'lavoro';
     return `
       <div class="agenda-row" data-id="${a.id}">
         <div class="field agenda-field-ora">
           <label>Ora</label>
           <select class="agenda-input" data-id="${a.id}" data-field="ora">
-            ${agendaSlots(a.data || agendaDataSelezionata).map(t => `<option value="${t}" ${a.ora === t ? 'selected' : ''}>${t}</option>`).join('')}
+            ${agendaSlots(a.data || agendaDataSelezionata, appuntamentoOperatore(a)).map(t => `<option value="${t}" ${a.ora === t ? 'selected' : ''}>${t}</option>`).join('')}
           </select>
         </div>
+        ${operatoriGiorno.length > 1 ? `
+        <div class="field agenda-field-operatore">
+          <label>Chi</label>
+          <select class="agenda-input" data-id="${a.id}" data-field="operatore">
+            ${operatoriGiorno.map(op => `<option value="${op}" ${appuntamentoOperatore(a) === op ? 'selected' : ''}>${op}</option>`).join('')}
+          </select>
+        </div>` : ''}
+        <div class="field agenda-field-tipo">
+          <label>Tipo</label>
+          <select class="agenda-input" data-id="${a.id}" data-field="tipo">
+            <option value="cliente" ${!isLavoro ? 'selected' : ''}>Appuntamento cliente</option>
+            <option value="lavoro" ${isLavoro ? 'selected' : ''}>Impegno di lavoro</option>
+          </select>
+        </div>
+        ${isLavoro ? `
+        <div class="field agenda-field-titolo">
+          <label>Cosa</label>
+          <input type="text" class="agenda-input" data-id="${a.id}" data-field="titolo" placeholder="Consegna fornitore, riunione…" value="${escapeHtml(a.titolo || '')}">
+        </div>` : `
         <div class="field agenda-field-cliente">
           <label>Cliente</label>
           <input type="text" class="agenda-input agenda-cliente-input" data-id="${a.id}" data-field="cliente" autocomplete="off"
@@ -3802,7 +3974,7 @@
         <div class="field agenda-field-servizio">
           <label>Servizio</label>
           <input type="text" class="agenda-input" data-id="${a.id}" data-field="servizio" placeholder="Es. piega, colore, taglio…" value="${escapeHtml(a.servizio || '')}">
-        </div>
+        </div>`}
         <div class="field agenda-field-note">
           <label>Note</label>
           <textarea class="agenda-input" data-id="${a.id}" data-field="note" placeholder="Note per l'appuntamento…">${escapeHtml(a.note || '')}</textarea>
@@ -3816,22 +3988,34 @@
   // Un appuntamento "chiuso" compare come una targhetta compatta nel suo slot; cliccandola (o il
   // tasto ✎) si apre il modulo completo (renderAgendaRowHtml) per modificarlo.
   function renderAgendaChipHtml(a) {
+    const isLavoro = a.tipo === 'lavoro';
     return `
-      <div class="agenda-chip" data-id="${a.id}">
+      <div class="agenda-chip${isLavoro ? ' agenda-chip-lavoro' : ''}" data-id="${a.id}">
         <div class="agenda-chip-main">
           <span class="agenda-chip-nome">${escapeHtml(appuntamentoNomeDisplay(a))}</span>
-          ${a.servizio ? `<span class="agenda-chip-servizio">${escapeHtml(a.servizio)}</span>` : ''}
+          ${!isLavoro && a.servizio ? `<span class="agenda-chip-servizio">${escapeHtml(a.servizio)}</span>` : ''}
         </div>
         <button type="button" class="agenda-chip-edit" data-id="${a.id}" aria-label="Modifica appuntamento">✎</button>
       </div>`;
   }
-  function renderAgendaSlotHtml(time, appuntamenti) {
+  // Uno slot può essere: vuoto (tasto "+"), con appuntamenti, oppure bloccato da una ferie/
+  // permesso di quell'operatore (niente tasto "+", solo l'etichetta).
+  function renderAgendaSlotHtml(time, appuntamenti, operatore, dateISO) {
     const items = appuntamenti.filter(a => a.ora === time);
+    const assenza = operatore ? assenzaSuSlot(operatore, dateISO, time) : null;
+    if (assenza && !items.length) {
+      const label = assenza.tipo === 'permesso' ? 'Permesso' : 'Ferie';
+      return `
+        <div class="agenda-slot agenda-slot-assente" data-time="${time}">
+          <div class="agenda-slot-time">${time}</div>
+          <div class="agenda-slot-assente-label">${label}${assenza.note ? ' — ' + escapeHtml(assenza.note) : ''}</div>
+        </div>`;
+    }
     if (!items.length) {
       return `
         <div class="agenda-slot" data-time="${time}">
           <div class="agenda-slot-time">${time}</div>
-          <button type="button" class="agenda-slot-add" data-time="${time}" aria-label="Nuovo appuntamento alle ${time}">+</button>
+          <button type="button" class="agenda-slot-add" data-time="${time}" data-operatore="${escapeHtml(operatore || '')}" aria-label="Nuovo appuntamento alle ${time}">+</button>
         </div>`;
     }
     return `
@@ -3842,10 +4026,21 @@
         </div>
       </div>`;
   }
-  function renderAgendaGridHtml(appuntamenti, dateISO) {
-    const slots = agendaSlots(dateISO);
-    if (!slots.length) return '<p class="hint agenda-closed">Il salone è chiuso questo giorno.</p>';
-    return `<div class="agenda-grid">${slots.map(t => renderAgendaSlotHtml(t, appuntamenti)).join('')}</div>`;
+  // Una colonna per ogni operatore che lavora quel giorno (una sola se è solo Erica, due
+  // affiancate nei giorni in cui lavora anche Sara, come il sabato).
+  function renderAgendaGridHtml(dateISO) {
+    const operatori = agendaOperatoriDelGiorno(dateISO);
+    if (!operatori.length) return '<p class="hint agenda-closed">Il salone è chiuso questo giorno.</p>';
+    if (operatori.length === 1) {
+      const op = operatori[0];
+      const slots = agendaSlots(dateISO, op);
+      return `<div class="agenda-grid">${slots.map(t => renderAgendaSlotHtml(t, appuntamentiDelGiorno(dateISO, op), op, dateISO)).join('')}</div>`;
+    }
+    return `<div class="agenda-columns">${operatori.map(op => `
+      <div class="agenda-column">
+        <div class="agenda-column-head">${escapeHtml(op)}</div>
+        <div class="agenda-grid">${agendaSlots(dateISO, op).map(t => renderAgendaSlotHtml(t, appuntamentiDelGiorno(dateISO, op), op, dateISO)).join('')}</div>
+      </div>`).join('')}</div>`;
   }
 
   function renderSheet() {
@@ -4101,11 +4296,13 @@
                 <input type="date" id="agendaDatePicker" value="${escapeHtml(agendaDataSelezionata)}">
                 <button type="button" class="ghost small" id="agendaNextDay" aria-label="Giorno successivo">›</button>
                 <button type="button" class="ghost small" id="agendaOggiBtn">Oggi</button>
+                <button type="button" class="ghost small" id="agendaTurniBtn">Turni di lavoro</button>
+                <button type="button" class="ghost small" id="agendaAssenzaBtn">Ferie/permesso</button>
               </div>
             </div>
             <div class="agenda-date-label">${fmtDateISOLong(agendaDataSelezionata)}</div>
             <div id="agendaGridWrap">
-              ${renderAgendaGridHtml(appuntamentiDelGiorno(agendaDataSelezionata), agendaDataSelezionata)}
+              ${renderAgendaGridHtml(agendaDataSelezionata)}
             </div>
             <span class="save-status" id="agendaSaveStatus"></span>
           </div>
@@ -4553,8 +4750,11 @@
 
     document.querySelectorAll('.agenda-input').forEach(input => {
       const field = input.dataset.field;
-      const isOra = field === 'ora';
-      input.addEventListener(isOra ? 'change' : 'input', () => {
+      // "ora", "operatore" e "tipo" sono <select>: cambiandoli l'appuntamento cambia slot/colonna
+      // o modulo (cliente↔lavoro), quindi serve ridisegnare tutto. Gli altri campi si salvano
+      // mentre si scrive, senza ridisegnare (altrimenti si perderebbe il focus).
+      const isSelect = field === 'ora' || field === 'operatore' || field === 'tipo';
+      input.addEventListener(isSelect ? 'change' : 'input', () => {
         const a = agendaCache.appuntamenti.find(x => x.id === input.dataset.id);
         if (!a) return;
         if (field === 'cliente') {
@@ -4570,8 +4770,7 @@
         }
         saveAgenda();
         agendaNotify('Salvato.');
-        // Cambiando l'ora l'appuntamento si sposta in un altro slot: va ridisegnato tutto.
-        if (isOra) renderSheet();
+        if (isSelect) renderSheet();
       });
       if (field === 'cliente') {
         input.addEventListener('focus', () => renderAgendaClienteSuggestions(input));
@@ -4612,13 +4811,18 @@
     // per scegliere il nome/cliente.
     document.querySelectorAll('.agenda-slot-add').forEach(btn => {
       btn.addEventListener('click', () => {
-        const a = createAppuntamento({ data: agendaDataSelezionata, ora: btn.dataset.time });
+        const a = createAppuntamento({ data: agendaDataSelezionata, ora: btn.dataset.time, operatore: btn.dataset.operatore || undefined });
         agendaEditingId = a.id;
         renderSheet();
         const input = document.querySelector('.agenda-cliente-input[data-id="' + a.id + '"]');
         if (input) input.focus();
       });
     });
+
+    const turniBtn = document.getElementById('agendaTurniBtn');
+    if (turniBtn) turniBtn.addEventListener('click', openAgendaTurniModal);
+    const assenzaBtn = document.getElementById('agendaAssenzaBtn');
+    if (assenzaBtn) assenzaBtn.addEventListener('click', openAgendaAssenzaModal);
 
     // Targhetta compatta di un appuntamento già preso: cliccandola (o il tasto ✎) si apre il
     // modulo completo per modificarlo; "Chiudi" lo richiude tornando alla targhetta.
@@ -4635,6 +4839,94 @@
     document.querySelectorAll('.agenda-close-edit').forEach(btn => {
       btn.addEventListener('click', () => { agendaEditingId = null; renderSheet(); });
     });
+  }
+
+  // ---- "Turni di lavoro": per ogni giorno della settimana, chi lavora e con quale orario ----
+  const GIORNI_SETTIMANA_ORDINE = [1, 2, 3, 4, 5, 6, 0];
+  const GIORNI_SETTIMANA_NOMI = { 0: 'Domenica', 1: 'Lunedì', 2: 'Martedì', 3: 'Mercoledì', 4: 'Giovedì', 5: 'Venerdì', 6: 'Sabato' };
+  function minutiToHHMM(m) { return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); }
+  function hhmmToMinuti(s) { const parts = (s || '0:0').split(':').map(Number); return (parts[0] || 0) * 60 + (parts[1] || 0); }
+  function renderAgendaTurniModalBody() {
+    return GIORNI_SETTIMANA_ORDINE.map(day => `
+      <div class="turni-day" data-day="${day}">
+        <div class="turni-day-label">${GIORNI_SETTIMANA_NOMI[day]}</div>
+        ${['Erica', 'Sara'].map(op => {
+          const range = agendaTurniCache[op] && agendaTurniCache[op][day];
+          return `
+          <div class="turni-op-row">
+            <label class="turni-op-check"><input type="checkbox" class="turni-check" data-op="${op}" data-day="${day}" ${range ? 'checked' : ''}> ${op}</label>
+            <input type="time" class="turni-time turni-time-start" data-op="${op}" data-day="${day}" value="${minutiToHHMM(range ? range[0] : 8 * 60 + 30)}" ${range ? '' : 'disabled'}>
+            <span>–</span>
+            <input type="time" class="turni-time turni-time-end" data-op="${op}" data-day="${day}" value="${minutiToHHMM(range ? range[1] : 18 * 60)}" ${range ? '' : 'disabled'}>
+          </div>`;
+        }).join('')}
+      </div>`).join('');
+  }
+  function openAgendaTurniModal() {
+    const body = document.getElementById('agendaTurniBody');
+    if (body) body.innerHTML = renderAgendaTurniModalBody();
+    document.querySelectorAll('.turni-check').forEach(chk => {
+      chk.addEventListener('change', () => {
+        const row = chk.closest('.turni-op-row');
+        row.querySelectorAll('.turni-time').forEach(t => { t.disabled = !chk.checked; });
+      });
+    });
+    document.getElementById('agendaTurniModal').hidden = false;
+  }
+  function closeAgendaTurniModal() { document.getElementById('agendaTurniModal').hidden = true; }
+  function salvaAgendaTurniDaModal() {
+    const nuovo = { Erica: {}, Sara: {} };
+    document.querySelectorAll('.turni-check').forEach(chk => {
+      if (!chk.checked) return;
+      const op = chk.dataset.op, day = Number(chk.dataset.day);
+      const row = chk.closest('.turni-op-row');
+      const start = hhmmToMinuti(row.querySelector('.turni-time-start').value);
+      const end = hhmmToMinuti(row.querySelector('.turni-time-end').value);
+      if (end > start) nuovo[op][day] = [start, end];
+    });
+    agendaTurniCache = nuovo;
+    saveAgendaTurni();
+    closeAgendaTurniModal();
+    agendaNotify('Turni salvati.');
+    renderSheet();
+  }
+
+  // ---- "Ferie e permessi": assenze per operatore, a giornata intera o su fascia oraria ----
+  function renderAssenzaLista() {
+    const box = document.getElementById('assenzaLista');
+    if (!box) return;
+    const items = assenzeCache.assenze.slice().sort((a, b) => (a.dataInizio || '').localeCompare(b.dataInizio || ''));
+    box.innerHTML = items.length ? items.map(a => `
+      <div class="assenza-item" data-id="${a.id}">
+        <span>${escapeHtml(a.operatore)} — ${a.tipo === 'permesso' ? 'Permesso' : 'Ferie'} — ${escapeHtml(a.dataInizio)}${a.dataFine !== a.dataInizio ? ' → ' + escapeHtml(a.dataFine) : ''}${a.oraInizio ? ' (' + escapeHtml(a.oraInizio) + '–' + escapeHtml(a.oraFine) + ')' : ''}${a.note ? ' — ' + escapeHtml(a.note) : ''}</span>
+        <button type="button" class="magazzino-delete assenza-delete" data-id="${a.id}">Elimina</button>
+      </div>`).join('') : '<p class="hint">Nessuna ferie/permesso inserito.</p>';
+    box.querySelectorAll('.assenza-delete').forEach(btn => {
+      btn.addEventListener('click', () => { eliminaAssenza(btn.dataset.id); renderAssenzaLista(); renderSheet(); });
+    });
+  }
+  function openAgendaAssenzaModal() {
+    const dIn = document.getElementById('assenzaDataInizio'), dFine = document.getElementById('assenzaDataFine');
+    if (dIn) dIn.value = agendaDataSelezionata;
+    if (dFine) dFine.value = agendaDataSelezionata;
+    const oIn = document.getElementById('assenzaOraInizio'), oFine = document.getElementById('assenzaOraFine'), note = document.getElementById('assenzaNote');
+    if (oIn) oIn.value = ''; if (oFine) oFine.value = ''; if (note) note.value = '';
+    renderAssenzaLista();
+    document.getElementById('agendaAssenzaModal').hidden = false;
+  }
+  function closeAgendaAssenzaModal() { document.getElementById('agendaAssenzaModal').hidden = true; }
+  function aggiungiAssenzaDaModal() {
+    const operatore = document.getElementById('assenzaOperatore').value;
+    const tipo = document.getElementById('assenzaTipo').value;
+    const dataInizio = document.getElementById('assenzaDataInizio').value || agendaDataSelezionata;
+    const dataFine = document.getElementById('assenzaDataFine').value || dataInizio;
+    const oraInizio = document.getElementById('assenzaOraInizio').value;
+    const oraFine = document.getElementById('assenzaOraFine').value;
+    const note = document.getElementById('assenzaNote').value;
+    creaAssenza({ operatore, tipo, dataInizio, dataFine, oraInizio, oraFine, note });
+    renderAssenzaLista();
+    renderSheet();
+    agendaNotify('Aggiunto.');
   }
 
   // ===================== Importa da fattura (FatturaPA XML / .p7m) =====================
@@ -5433,6 +5725,18 @@
     const file = e.target.files && e.target.files[0];
     if (file) handleMagImportFile(file);
   });
+
+  // ---- Turni di lavoro / Ferie e permessi: pulsanti statici dei due modali ----
+  document.getElementById('agendaTurniClose').addEventListener('click', closeAgendaTurniModal);
+  document.getElementById('agendaTurniModal').addEventListener('click', (e) => {
+    if (e.target.id === 'agendaTurniModal') closeAgendaTurniModal();
+  });
+  document.getElementById('agendaTurniSave').addEventListener('click', salvaAgendaTurniDaModal);
+  document.getElementById('agendaAssenzaClose').addEventListener('click', closeAgendaAssenzaModal);
+  document.getElementById('agendaAssenzaModal').addEventListener('click', (e) => {
+    if (e.target.id === 'agendaAssenzaModal') closeAgendaAssenzaModal();
+  });
+  document.getElementById('assenzaAggiungiBtn').addEventListener('click', aggiungiAssenzaDaModal);
 
   // ---- Business Plan (dentro Magazzino): protetto da codice ----
   document.getElementById('businessPlanClose').addEventListener('click', closeBusinessPlanModal);
