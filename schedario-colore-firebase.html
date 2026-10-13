@@ -977,7 +977,11 @@
   /* Nome prodotto: una textarea a una riga (non va a capo, scorre in orizzontale se proprio
      serve) dentro una colonna che si allarga/stringe con la maniglia qui a fianco. */
   .magazzino-field-nome { position: relative; display: flex; align-items: center; gap: 2px; }
-  .magazzino-nome-area {
+  /* Specificità alzata (due classi) per vincere su ".field textarea { resize: vertical }" più
+     sopra: altrimenti quella regola, più specifica di una singola classe, restava comunque
+     attiva e mostrava la maniglietta nativa del browser (le due lineette oblique in basso a
+     destra), anche col "resize: none" scritto qui sotto. */
+  .magazzino-field-nome .magazzino-nome-area {
     flex: 1 1 auto; min-width: 0; height: 38px; min-height: 38px;
     resize: none; overflow-x: auto; overflow-y: hidden; white-space: pre;
     border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper);
@@ -1019,13 +1023,15 @@
   /* Filtri Tipo/Fornitore, sopra la ricerca: stessa logica dei gruppi del PDF, ma selezionabile. */
   .magazzino-filtri { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 4px; }
   .magazzino-filtro-field { min-width: 180px; flex: 1; margin-bottom: 0; }
-  /* Sopra l'elenco (non più sotto, dove si doveva scorrere fino in fondo per trovarla) e
-     "sticky": resta visibile anche scorrendo la lista, così dopo aver spuntato dei prodotti più
-     in basso i tasti "Sposta in…"/"Elimina" sono sempre a portata senza dover risalire. */
-  .magazzino-bulk-row {
-    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  /* Contenitore "sticky" per la barra azioni + l'intestazione dei campi: sopra l'elenco (non più
+     sotto, dove si doveva scorrere fino in fondo per trovarla) e resta fisso mentre si scorre su
+     e giù la lista, così tasti e diciture delle colonne sono sempre a portata. */
+  .magazzino-sticky-top {
     position: sticky; top: 0; z-index: 3; background: var(--paper-raised);
-    padding: 8px 0; margin-bottom: 8px; border-bottom: 1px solid var(--line);
+    padding-bottom: 4px; margin-bottom: 8px; border-bottom: 1px solid var(--line);
+  }
+  .magazzino-bulk-row {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 0 4px;
   }
   .magazzino-delete-bulk {
     border: none; background: none; color: #A8433C; font-size: 13.5px; cursor: pointer;
@@ -1037,7 +1043,7 @@
      tutti i gruppi, invece che ripetuta su ogni riga come prima. Usa la stessa griglia delle
      righe, così le colonne (in particolare Prodotto e Marca/fornitore) restano allineate. */
   .magazzino-header-row {
-    padding: 6px 12px; margin-bottom: 8px; background: none; border: none;
+    padding: 6px 12px; margin-bottom: 0; background: none; border: none;
   }
   .magazzino-header-row label {
     margin-bottom: 0; font-size: 11.5px; font-weight: 700; letter-spacing: 0.02em;
@@ -1443,7 +1449,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-13.43-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-13.44-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -4063,8 +4069,7 @@
   }
   function renderMagazzinoListHtml(prodotti, emptyMsg) {
     if (!prodotti.length) return '<p class="hint magazzino-empty">' + emptyMsg + '</p>';
-    const tuttiSelezionati = prodotti.every(p => magazzinoSelezionati.has(p.id));
-    return renderMagazzinoHeaderRowHtml(tuttiSelezionati) + groupMagazzinoProdotti(prodotti).map(g => `
+    return groupMagazzinoProdotti(prodotti).map(g => `
       <div class="magazzino-group">
         <div class="magazzino-group-title">${escapeHtml(g.tipo.label)}</div>
         <div class="magazzino-list">${g.prodotti.map(renderMagazzinoRowHtml).join('')}</div>
@@ -4301,6 +4306,7 @@
       }
       const nessunRisultato = term || magazzinoFiltroTipo !== 'tutti' || magazzinoFiltroFornitore;
       const nSel = magazzinoSelezionati.size;
+      const tuttiSelezionati = prodotti.length > 0 && prodotti.every(p => magazzinoSelezionati.has(p.id));
       panel.innerHTML = `
         <div class="sheet-head">
           <div class="name-field">
@@ -4339,12 +4345,15 @@
             <label>Cerca prodotto</label>
             <input type="text" id="magazzinoSearch" placeholder="Cerca per nome o marca…" value="${escapeHtml(magazzinoSearchTerm)}">
           </div>
-          <div class="magazzino-bulk-row">
-            <button type="button" class="ghost small" id="magazzinoAddBtn">+ Aggiungi prodotto</button>
-            ${nSel ? `
-            <button type="button" class="ghost small" id="magazzinoBulkVenditaBtn">Sposta in Merce in vendita (${nSel})</button>
-            <button type="button" class="ghost small" id="magazzinoBulkMateriaBtn">Sposta in Materia prima (${nSel})</button>
-            <button type="button" class="magazzino-delete-bulk" id="magazzinoDeleteSelBtn">Elimina selezionati (${nSel})</button>` : ''}
+          <div class="magazzino-sticky-top">
+            <div class="magazzino-bulk-row">
+              <button type="button" class="ghost small" id="magazzinoAddBtn">+ Aggiungi prodotto</button>
+              ${nSel ? `
+              <button type="button" class="ghost small" id="magazzinoBulkVenditaBtn">Sposta in Merce in vendita (${nSel})</button>
+              <button type="button" class="ghost small" id="magazzinoBulkMateriaBtn">Sposta in Materia prima (${nSel})</button>
+              <button type="button" class="magazzino-delete-bulk" id="magazzinoDeleteSelBtn">Elimina selezionati (${nSel})</button>` : ''}
+            </div>
+            ${prodotti.length ? renderMagazzinoHeaderRowHtml(tuttiSelezionati) : ''}
           </div>
           <div id="magazzinoList">
             ${renderMagazzinoListHtml(prodotti, nessunRisultato ? 'Nessun prodotto trovato con questi filtri.' : 'Nessun prodotto ancora: aggiungine uno con il tasto qui sotto.')}
