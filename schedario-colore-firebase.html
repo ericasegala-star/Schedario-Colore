@@ -240,6 +240,17 @@
   .client-list .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .client-list .date { color: var(--ink-soft); font-size: 12px; white-space: nowrap; }
   .client-list li.empty-list { color: var(--ink-soft); font-size: 13px; padding: 10px; display: block; }
+  /* Scorciatoia "Agenda" appena sotto l'elenco delle schede: sta nella sidebar vera e propria,
+     non nel menu (che su tablet/cellulare diventa la barra a icone in basso), quindi resta
+     raggiungibile allo stesso modo su qualunque dispositivo o browser (richiesta di Erica, 14/10). */
+  .agenda-shortcut {
+    display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+    margin-top: 10px; padding: 10px; border-radius: var(--radius); border: 1px solid var(--berry);
+    background: var(--berry-soft); color: var(--berry); font-family: inherit; font-size: 14px;
+    font-weight: 600; cursor: pointer;
+  }
+  .agenda-shortcut:hover { background: var(--berry); color: #fff; }
+  .agenda-shortcut svg { width: 17px; height: 17px; flex: none; }
 
   .sheet { padding: 24px 26px 28px; }
   .sheet-head {
@@ -347,6 +358,9 @@
   .choice input { margin-right: 6px; }
   .choice.checked { background: var(--berry-soft); border-color: var(--berry); }
   .hint { font-size: 12.5px; color: var(--ink-soft); margin-top: 6px; line-height: 1.4; }
+  /* I contatti (scheda a schermo e scheda da stampare): più grandi e visibili, non persi in mezzo
+     agli altri avvisi piccoli e grigi (richiesta di Erica, 14/10). */
+  .hint-contatti { font-size: 16px; font-weight: 700; color: var(--berry); line-height: 1.45; }
 
   .foto-grid { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
   .foto-card { width: 90px; display: flex; flex-direction: column; gap: 4px; }
@@ -1022,7 +1036,7 @@
   }
 
   /* Magazzino: una tabella piatta e semplice (come un foglio Excel), raggruppata per "Tipo"
-     (materie prime / merci in vendita). Niente più "doppia cella" (riquadro di riga sopra i
+     (materie prime / merci vendita). Niente più "doppia cella" (riquadro di riga sopra i
      riquadri dei singoli campi): le colonne sono allineate con una griglia comune, condivisa
      dall'intestazione e da ogni riga, così Prodotto e Marca/fornitore restano sempre in colonna. */
   .magazzino-group { margin-bottom: 20px; }
@@ -1049,7 +1063,9 @@
   .magazzino-list { overflow-x: auto; }
   .magazzino-list .magazzino-row:last-child { border-bottom: none; }
   .magazzino-row .field { margin-bottom: 0; }
-  .magazzino-row-check-col { display: flex; align-items: center; justify-content: center; }
+  /* L'intera colonna è cliccabile (non solo il quadratino 17x17, troppo piccolo per un dito:
+     serviva un secondo tocco più preciso per far scattare la spunta su tablet/cellulare). */
+  .magazzino-row-check-col { display: flex; align-items: center; justify-content: center; min-width: 40px; padding: 10px 4px; cursor: pointer; }
   .magazzino-row-check, #magazzinoSelectAll { width: 17px; height: 17px; cursor: pointer; }
   /* Nome prodotto: una textarea a una riga (non va a capo, scorre in orizzontale se proprio
      serve) dentro una colonna che si allarga/stringe con la maniglia qui a fianco. */
@@ -1094,8 +1110,35 @@
   .magazzino-input[data-field="prezzo"]::-webkit-outer-spin-button,
   .magazzino-input[data-field="prezzo"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   .magazzino-input[data-field="prezzo"] { -moz-appearance: textfield; }
-  .magazzino-row-actions { display: flex; align-items: center; justify-content: flex-end; }
+  .magazzino-row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
   .magazzino-empty { margin-top: 0; }
+  /* Riga compatta (vista di sempre): solo testo, nessun campo scrivibile, per non far saltare
+     fuori la tastiera con un semplice tap. Un tap sulla riga seleziona; la matitina ✎ apre la
+     modifica vera e propria (stesso schema della targhetta/riga dell'agenda). */
+  .magazzino-row-compatta { cursor: pointer; }
+  .magazzino-row-compatta:hover { background: var(--berry-soft); }
+  .magazzino-row-selezionata { background: var(--berry-soft); }
+  .magazzino-vista-testo, .magazzino-vista-nome {
+    display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: 14px; color: var(--ink); padding: 9px 2px;
+  }
+  .magazzino-vista-nome { font-weight: 600; flex: 1 1 auto; min-width: 0; }
+  .magazzino-field-nome-vista { min-width: 0; }
+  .magazzino-edit-btn {
+    flex: none; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper);
+    cursor: pointer; font-size: 14px; color: var(--berry); padding: 6px 9px;
+  }
+  .magazzino-edit-btn:hover { background: var(--berry-soft); }
+  .magazzino-edit-done {
+    flex: none; border: 1px solid var(--berry); border-radius: var(--radius); background: var(--berry-soft);
+    color: var(--berry); font-family: inherit; font-weight: 600; cursor: pointer; font-size: 13px; padding: 7px 10px;
+  }
+  /* Rinomina in blocco: compare solo quando c'è almeno un prodotto selezionato. */
+  .magazzino-bulk-rename { display: flex; align-items: center; gap: 6px; }
+  .magazzino-bulk-rename input {
+    border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); color: var(--ink);
+    font-family: inherit; font-size: 13.5px; padding: 7px 9px; width: 220px;
+  }
   .mag-head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
   /* Filtri Tipo/Fornitore, sopra la ricerca: stessa logica dei gruppi del PDF, ma selezionabile. */
   .magazzino-filtri { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 4px; }
@@ -1317,6 +1360,10 @@
           <button type="button" class="search-clear" id="searchClear" title="Cancella la ricerca" hidden>×</button>
         </div>
         <ul class="client-list" id="clientList"></ul>
+        <button type="button" class="agenda-shortcut" id="agendaShortcutBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/></svg>
+          <span>Agenda</span>
+        </button>
       </aside>
       <button type="button" class="menu-toggle" id="menuToggle">
         <span>Menu</span>
@@ -1576,7 +1623,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-14.57-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-14.58-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -1684,6 +1731,16 @@
   let magazzinoFiltroFornitore = ''; // '' = tutti i fornitori, altrimenti chiave normalizzata (o "__nomarca__")
   let magazzinoSelezionati = new Set(); // id dei prodotti spuntati, per eliminarli insieme e svuotare il magazzino
   let magazzinoNomeColWidth = null; // px della colonna "Prodotto" (null = larghezza di sempre); vale per tutte le righe insieme
+  // id del prodotto aperto per la modifica (null = tutte le righe compatte, di sola lettura):
+  // un tap su una riga compatta la seleziona (non apre la tastiera), un tap sulla matitina ✎
+  // apre quella riga coi campi scrivibili, come già succede per le targhette dell'agenda.
+  let magazzinoEditingId = null;
+  // Timestamp fino a cui ignorare un "click" sulla riga compatta: trascinando la maniglia di
+  // ridimensionamento colonna, il mouseup può finire sopra un punto diverso da dove si è
+  // iniziato (la riga si è appena allargata/stretta sotto il dito), e il browser genera comunque
+  // un click sull'antenato comune — che altrimenti selezionerebbe/deselezionerebbe per sbaglio
+  // una riga durante un trascinamento.
+  let magazzinoSuppressRowClickFinoA = 0;
   // Catalogo servizi ("Crea servizio"): nome, tempo di lavorazione, tempo di posa (minuti) e un
   // colore per riconoscerlo a vista nell'agenda. Una "combo" somma i tempi di più servizi
   // semplici (comboDi: i loro id) invece di averne propri.
@@ -2026,11 +2083,11 @@
     serviziCache.servizi.forEach(s => { if (s.comboDi) s.comboDi = s.comboDi.filter(id2 => id2 !== id); });
     saveServizi();
   }
-  // "Materia prima" (quello che si usa in salone, es. tinte, ossidanti) vs "Merce in vendita"
+  // "Materie prime" (quello che si usa in salone, es. tinte, ossidanti) vs "Merci vendita"
   // (quello che si vende alle clienti, es. shampoo da banco): raggruppa l'elenco e il PDF.
   const MAGAZZINO_TIPI = [
     { key: 'materiaPrima', label: 'Materie prime' },
-    { key: 'vendita', label: 'Merci in vendita' },
+    { key: 'vendita', label: 'Merci vendita' },
     { key: '', label: 'Senza categoria' }
   ];
 
@@ -3229,15 +3286,17 @@
       }));
   }
   // Solo i prodotti con quantità e prezzo diversi da zero vanno esportati (PDF ed Excel): una
-  // riga a zero non serve nell'inventario che si scarica.
+  // riga a zero non serve nell'inventario che si scarica. Senza "tipoKey" prende tutti i
+  // prodotti esportabili, materie prime e merci vendita insieme (richiesta di Erica, 14/10: nel
+  // PDF non serve più tenerli distinti, basta un unico elenco per entrambi).
   function magazzinoEsportabili(tipoKey) {
-    return magazzinoCache.prodotti.filter(p => p.tipo === tipoKey && (p.quantita || 0) > 0 && p.prezzo != null && p.prezzo > 0);
+    return magazzinoCache.prodotti.filter(p => (!tipoKey || p.tipo === tipoKey) && (p.quantita || 0) > 0 && p.prezzo != null && p.prezzo > 0);
   }
 
-  // PDF dell'inventario di Magazzino, UN FILE PER TIPO (materie prime / merci in vendita), con
-  // i prodotti raggruppati per marca: il nome del fornitore compare solo nella cella verticale
-  // a sinistra del blocco (non ripetuto riga per riga), come un dorso di raccoglitore.
-  function buildMagazzinoPdfTipo(tipoKey, tipoLabel, logo) {
+  // PDF dell'inventario di Magazzino, un unico file con materie prime e merci vendita insieme,
+  // con i prodotti raggruppati per marca: il nome del fornitore compare solo nella cella
+  // verticale a sinistra del blocco (non ripetuto riga per riga), come un dorso di raccoglitore.
+  function buildMagazzinoPdf(logo) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
     const margin = 42;
@@ -3351,8 +3410,8 @@
       doc.addImage(canvas.toDataURL('image/png'), 'PNG', margin, startY, sidebarW, h);
     }
 
-    const prodotti = magazzinoEsportabili(tipoKey);
-    h1(tipoLabel + ' — Inventario al ' + fmtDateLong(Date.now()));
+    const prodotti = magazzinoEsportabili();
+    h1('Magazzino — Inventario al ' + fmtDateLong(Date.now()));
     if (!prodotti.length) {
       doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5);
       doc.text('Nessun prodotto con quantità e prezzo diversi da zero.', margin, y);
@@ -3421,14 +3480,13 @@
     const src = appSettingsCache.logo || DEFAULT_LOGO_SRC;
     return await loadImageAsPngDataUrl(src, 160);
   }
-  async function downloadMagazzinoPdfTipo(tipoKey, tipoLabel) {
+  async function downloadMagazzinoPdf() {
     const logo = await getMagazzinoPdfLogo();
-    const blob = buildMagazzinoPdfTipo(tipoKey, tipoLabel, logo);
-    const slug = tipoKey === 'vendita' ? 'merci-vendita' : 'materie-prime';
-    await saveBlobAsFile(blob, 'magazzino-' + slug + '-' + fmtDate(Date.now()).replace(/\//g, '-') + '.pdf');
+    const blob = buildMagazzinoPdf(logo);
+    await saveBlobAsFile(blob, 'magazzino-' + fmtDate(Date.now()).replace(/\//g, '-') + '.pdf');
   }
 
-  // Excel (.xlsx): una cartella con un foglio per tipo (Materie prime / Merci in vendita),
+  // Excel (.xlsx): una cartella con un foglio per tipo (Materie prime / Merci vendita),
   // righe raggruppate per marca con la cella "Marca/fornitore" unita verticalmente sul gruppo
   // (l'equivalente, su un foglio di calcolo, del dorso verticale del PDF). Si apre anche in
   // Numbers: non esiste un formato ".numbers" scrivibile da fuori Apple, ma Numbers importa
@@ -4366,10 +4424,35 @@
       </div>`;
   }
 
-  function renderMagazzinoRowHtml(p) {
+  // Riga COMPATTA (di sola lettura): è quella che si vede normalmente. Un tap sulla riga
+  // seleziona il prodotto (nessuna tastiera salta fuori); solo il tap sulla matitina ✎ apre i
+  // campi scrivibili (renderMagazzinoRowEditHtml). Stesso schema già usato in Agenda
+  // (targhetta compatta vs. riga completa, vedi agendaEditingId).
+  function renderMagazzinoRowCompattaHtml(p) {
+    const selezionato = magazzinoSelezionati.has(p.id);
+    const tipoLabel = p.tipo === 'materiaPrima' ? 'Materie prime' : (p.tipo === 'vendita' ? 'Merci vendita' : '—');
+    return `
+      <div class="magazzino-row magazzino-row-compatta${selezionato ? ' magazzino-row-selezionata' : ''}" data-id="${p.id}">
+        <div class="magazzino-row-check-col">
+          <input type="checkbox" class="magazzino-row-check" data-id="${p.id}" ${selezionato ? 'checked' : ''} title="Seleziona per eliminare">
+        </div>
+        <div class="field magazzino-field-nome magazzino-field-nome-vista">
+          <span class="magazzino-vista-nome">${escapeHtml(p.nome || '—')}</span>
+          <div class="magazzino-nome-resizer" title="Trascina per allargare o stringere la colonna Prodotto (su tutte le righe)"></div>
+        </div>
+        <div class="field magazzino-field-tipo"><span class="magazzino-vista-testo">${escapeHtml(tipoLabel)}</span></div>
+        <div class="field magazzino-field-marca"><span class="magazzino-vista-testo">${escapeHtml(p.marca || '—')}</span></div>
+        <div class="field magazzino-field-prezzo"><span class="magazzino-vista-testo">${p.prezzo != null ? p.prezzo.toFixed(2).replace('.', ',') : '—'}</span></div>
+        <div class="field magazzino-field-qty"><span class="magazzino-vista-testo">${p.quantita != null ? p.quantita : 0}</span></div>
+        <div class="magazzino-row-actions">
+          <button type="button" class="magazzino-edit-btn" data-id="${p.id}" title="Modifica questo prodotto" aria-label="Modifica questo prodotto">✎</button>
+        </div>
+      </div>`;
+  }
+  function renderMagazzinoRowEditHtml(p) {
     const selezionato = magazzinoSelezionati.has(p.id);
     return `
-      <div class="magazzino-row" data-id="${p.id}">
+      <div class="magazzino-row magazzino-row-edit" data-id="${p.id}">
         <div class="magazzino-row-check-col">
           <input type="checkbox" class="magazzino-row-check" data-id="${p.id}" ${selezionato ? 'checked' : ''} title="Seleziona per eliminare">
         </div>
@@ -4380,8 +4463,8 @@
         <div class="field magazzino-field-tipo">
           <select class="magazzino-input magazzino-select${p.tipo ? '' : ' magazzino-select-unset'}" data-id="${p.id}" data-field="tipo">
             <option value="" ${!p.tipo ? 'selected' : ''}>— da scegliere —</option>
-            <option value="materiaPrima" ${p.tipo === 'materiaPrima' ? 'selected' : ''}>Materia prima</option>
-            <option value="vendita" ${p.tipo === 'vendita' ? 'selected' : ''}>Merce in vendita</option>
+            <option value="materiaPrima" ${p.tipo === 'materiaPrima' ? 'selected' : ''}>Materie prime</option>
+            <option value="vendita" ${p.tipo === 'vendita' ? 'selected' : ''}>Merci vendita</option>
           </select>
         </div>
         <div class="field magazzino-field-marca">
@@ -4394,6 +4477,7 @@
           <input type="number" class="magazzino-input magazzino-qty-input" data-id="${p.id}" data-field="quantita" min="0" step="1" value="${p.quantita != null ? p.quantita : 0}">
         </div>
         <div class="magazzino-row-actions">
+          <button type="button" class="magazzino-edit-done" data-id="${p.id}" title="Fatto">Fatto</button>
           <button type="button" class="magazzino-delete" data-id="${p.id}">Elimina</button>
         </div>
       </div>`;
@@ -4423,7 +4507,7 @@
       (a.nome || '').localeCompare(b.nome || '', 'it', { sensitivity: 'base' })
     );
   }
-  // Raggruppa in Materie prime / Merci in vendita / Senza categoria, nell'ordine fisso di
+  // Raggruppa in Materie prime / Merci vendita / Senza categoria, nell'ordine fisso di
   // MAGAZZINO_TIPI, saltando i gruppi vuoti (eccetto quando l'elenco intero è vuoto).
   function groupMagazzinoProdotti(list) {
     return MAGAZZINO_TIPI
@@ -4435,7 +4519,7 @@
     return groupMagazzinoProdotti(prodotti).map(g => `
       <div class="magazzino-group">
         <div class="magazzino-group-title">${escapeHtml(g.tipo.label)}</div>
-        <div class="magazzino-list">${g.prodotti.map(renderMagazzinoRowHtml).join('')}</div>
+        <div class="magazzino-list">${g.prodotti.map(p => p.id === magazzinoEditingId ? renderMagazzinoRowEditHtml(p) : renderMagazzinoRowCompattaHtml(p)).join('')}</div>
       </div>
     `).join('');
   }
@@ -4825,8 +4909,7 @@
           </div>
           <div class="mag-head-actions">
             <button class="ghost small" id="magazzinoImportBtn">Importa da fattura</button>
-            <button class="ghost small" id="magazzinoPdfVenditaBtn">PDF merci in vendita</button>
-            <button class="ghost small" id="magazzinoPdfMateriaBtn">PDF materie prime</button>
+            <button class="ghost small" id="magazzinoPdfBtn">Scarica PDF</button>
             <button class="ghost small" id="magazzinoExcelBtn">Scarica Excel</button>
             <button class="ghost small" id="magazzinoStatsBtn">Statistiche riordini</button>
             <button class="ghost small" id="businessPlanBtn">Business Plan</button>
@@ -4839,7 +4922,7 @@
               <select id="magazzinoFiltroTipoSel" class="magazzino-select">
                 <option value="tutti" ${magazzinoFiltroTipo === 'tutti' ? 'selected' : ''}>Tutti</option>
                 <option value="materiaPrima" ${magazzinoFiltroTipo === 'materiaPrima' ? 'selected' : ''}>Materie prime</option>
-                <option value="vendita" ${magazzinoFiltroTipo === 'vendita' ? 'selected' : ''}>Merce in vendita</option>
+                <option value="vendita" ${magazzinoFiltroTipo === 'vendita' ? 'selected' : ''}>Merci vendita</option>
               </select>
             </div>
             <div class="field magazzino-filtro-field">
@@ -4861,16 +4944,20 @@
             <div class="magazzino-bulk-row">
               <button type="button" class="ghost small" id="magazzinoAddBtn">+ Aggiungi prodotto</button>
               ${nSel ? `
-              <button type="button" class="ghost small" id="magazzinoBulkVenditaBtn">Sposta in Merce in vendita (${nSel})</button>
-              <button type="button" class="ghost small" id="magazzinoBulkMateriaBtn">Sposta in Materia prima (${nSel})</button>
-              <button type="button" class="magazzino-delete-bulk" id="magazzinoDeleteSelBtn">Elimina selezionati (${nSel})</button>` : ''}
+              <button type="button" class="ghost small" id="magazzinoBulkVenditaBtn">Sposta in Merci vendita (${nSel})</button>
+              <button type="button" class="ghost small" id="magazzinoBulkMateriaBtn">Sposta in Materie prime (${nSel})</button>
+              <button type="button" class="magazzino-delete-bulk" id="magazzinoDeleteSelBtn">Elimina selezionati (${nSel})</button>
+              <span class="magazzino-bulk-rename">
+                <input type="text" id="magazzinoBulkRenameInput" placeholder="Nuovo nome per i ${nSel} selezionati…">
+                <button type="button" class="ghost small" id="magazzinoBulkRenameBtn">Rinomina selezionati</button>
+              </span>` : ''}
             </div>
             ${prodotti.length ? renderMagazzinoHeaderRowHtml(tuttiSelezionati) : ''}
           </div>
           <div id="magazzinoList">
             ${renderMagazzinoListHtml(prodotti, nessunRisultato ? 'Nessun prodotto trovato con questi filtri.' : 'Nessun prodotto ancora: aggiungine uno con il tasto qui sotto.')}
           </div>
-          <p class="hint">Si salva da sola mentre scrivi, come Ispirazione: non serve un tasto "Salva" dedicato. Scegliendo "Tipo" il prodotto è subito ricollocato nel gruppo giusto. Spunta la casella a sinistra di ogni riga (o "Seleziona tutto" in cima) per spostarne o eliminarne tante insieme, anche per svuotare del tutto il magazzino.</p>
+          <p class="hint">Si salva da sola mentre scrivi, come Ispirazione: non serve un tasto "Salva" dedicato. Scegliendo "Tipo" il prodotto è subito ricollocato nel gruppo giusto. Tocca una riga (o la casella a sinistra, o "Seleziona tutto" in cima) per selezionarla: puoi poi spostare, rinominare o eliminare insieme tutte quelle scelte, anche per svuotare del tutto il magazzino. Per modificare un prodotto tocca la matitina ✎: solo lì compare la tastiera.</p>
         </fieldset>
         <div class="sheet-footer">
           <span class="save-status" id="magazzinoSaveStatus"></span>
@@ -5013,13 +5100,13 @@
         <fieldset>
           <legend>Per la prossima volta</legend>
           <div class="field">
-            <textarea placeholder="Note per il prossimo appuntamento…" readonly></textarea>
+            <textarea readonly></textarea>
           </div>
         </fieldset>
 
         <fieldset class="contatti-tecnico">
           <legend>Contatti</legend>
-          <p class="hint">Per dubbi, domande o perplessità sul colore: ${escapeHtml(CONTATTO_TECNICO_COLORE)}.</p>
+          <p class="hint hint-contatti">Per dubbi, domande o perplessità sul colore: ${escapeHtml(CONTATTO_TECNICO_COLORE)}.</p>
         </fieldset>
       `;
       return;
@@ -5306,7 +5393,7 @@
 
       <fieldset class="contatti-tecnico">
         <legend>Contatti</legend>
-        <p class="hint">Per dubbi, domande o perplessità sul colore: ${escapeHtml(CONTATTO_TECNICO_COLORE)}.</p>
+        <p class="hint hint-contatti">Per dubbi, domande o perplessità sul colore: ${escapeHtml(CONTATTO_TECNICO_COLORE)}.</p>
       </fieldset>
 
       <div class="sheet-footer">
@@ -5423,6 +5510,18 @@
     }
   }
 
+  // Stesso problema già risolto in Agenda (richiesta di Erica, 14/10): toccare una casellina di
+  // una voce a metà dell'elenco (una spunta, il "Tipo", "Elimina"…) non deve far "tornare su" la
+  // pagina — chi ridisegna il Magazzino per un'azione "sul posto" (non una vera ragione per
+  // tornare in cima, come aprire o cercare) avvolge renderSheet() con questa funzione, che
+  // ricorda la posizione dello scroll e la ripristina subito dopo.
+  function renderMagazzinoMantenendoScroll() {
+    const scrollEl = document.scrollingElement || document.documentElement;
+    const scrollY = scrollEl.scrollTop;
+    renderSheet();
+    requestAnimationFrame(() => { scrollEl.scrollTop = scrollY; });
+  }
+
   function magazzinoNotify(msg, isError) {
     const el = document.getElementById('magazzinoSaveStatus');
     if (!el) return;
@@ -5447,14 +5546,14 @@
     if (filtroTipoSel) {
       filtroTipoSel.addEventListener('change', () => {
         magazzinoFiltroTipo = filtroTipoSel.value;
-        renderSheet();
+        renderMagazzinoMantenendoScroll();
       });
     }
     const filtroFornitoreSel = document.getElementById('magazzinoFiltroFornitoreSel');
     if (filtroFornitoreSel) {
       filtroFornitoreSel.addEventListener('change', () => {
         magazzinoFiltroFornitore = filtroFornitoreSel.value;
-        renderSheet();
+        renderMagazzinoMantenendoScroll();
       });
     }
 
@@ -5466,17 +5565,29 @@
         const idsVisibili = Array.from(document.querySelectorAll('.magazzino-row-check')).map(c => c.dataset.id);
         if (selectAllChk.checked) idsVisibili.forEach(id => magazzinoSelezionati.add(id));
         else idsVisibili.forEach(id => magazzinoSelezionati.delete(id));
-        renderSheet();
+        renderMagazzinoMantenendoScroll();
       });
     }
+    // La casella di spunta vera e propria, 17x17, è piccola per un dito: su tablet/cellulare si
+    // tocca tutta la colonna (vedi "touch-action"/area più larga qui sotto), non solo il
+    // quadratino, altrimenti serviva un secondo tocco più preciso per far scattare la spunta
+    // (segnalato da Erica, 14/10: "devo fare doppio tap per selezionare").
     document.querySelectorAll('.magazzino-row-check').forEach(chk => {
       chk.addEventListener('change', () => {
         if (chk.checked) magazzinoSelezionati.add(chk.dataset.id);
         else magazzinoSelezionati.delete(chk.dataset.id);
-        renderSheet();
+        renderMagazzinoMantenendoScroll();
       });
     });
-    // Sposta in blocco i prodotti selezionati tra "Merce in vendita" e "Materia prima", senza
+    document.querySelectorAll('.magazzino-row-check-col').forEach(col => {
+      col.addEventListener('click', (e) => {
+        if (Date.now() < magazzinoSuppressRowClickFinoA) return;
+        if (e.target.closest('.magazzino-row-check')) return; // la spunta gestisce già se stessa
+        const chk = col.querySelector('.magazzino-row-check');
+        if (chk) { chk.checked = !chk.checked; chk.dispatchEvent(new Event('change', { bubbles: true })); }
+      });
+    });
+    // Sposta in blocco i prodotti selezionati tra "Merci vendita" e "Materie prime", senza
     // doverli cambiare uno per uno.
     function spostaSelezionatiInTipo(nuovoTipo) {
       const n = magazzinoSelezionati.size;
@@ -5484,12 +5595,29 @@
       magazzinoSelezionati.clear();
       saveMagazzino();
       magazzinoNotify('Spostati ' + n + ' prodotti.');
-      renderSheet();
+      renderMagazzinoMantenendoScroll();
     }
     const bulkVenditaBtn = document.getElementById('magazzinoBulkVenditaBtn');
     if (bulkVenditaBtn) bulkVenditaBtn.addEventListener('click', () => spostaSelezionatiInTipo('vendita'));
     const bulkMateriaBtn = document.getElementById('magazzinoBulkMateriaBtn');
     if (bulkMateriaBtn) bulkMateriaBtn.addEventListener('click', () => spostaSelezionatiInTipo('materiaPrima'));
+
+    // Rinomina in blocco: scrive lo stesso nome su tutti i prodotti selezionati in un colpo,
+    // senza doverli aprire uno a uno.
+    const bulkRenameBtn = document.getElementById('magazzinoBulkRenameBtn');
+    const bulkRenameInput = document.getElementById('magazzinoBulkRenameInput');
+    if (bulkRenameBtn && bulkRenameInput) {
+      bulkRenameBtn.addEventListener('click', () => {
+        const nuovoNome = bulkRenameInput.value.trim();
+        if (!nuovoNome) { magazzinoNotify('Scrivi il nuovo nome prima di applicarlo.', true); return; }
+        const n = magazzinoSelezionati.size;
+        magazzinoCache.prodotti.forEach(p => { if (magazzinoSelezionati.has(p.id)) p.nome = nuovoNome; });
+        magazzinoSelezionati.clear();
+        saveMagazzino();
+        magazzinoNotify('Rinominati ' + n + ' prodotti.');
+        renderMagazzinoMantenendoScroll();
+      });
+    }
 
     const deleteSelBtn = document.getElementById('magazzinoDeleteSelBtn');
     if (deleteSelBtn) {
@@ -5510,7 +5638,7 @@
         magazzinoSelezionati.clear();
         saveMagazzino();
         magazzinoNotify('Eliminati ' + n + ' prodotti.');
-        renderSheet();
+        renderMagazzinoMantenendoScroll();
       });
     }
 
@@ -5532,6 +5660,9 @@
         }
         function onUp() {
           handle.classList.remove('dragging');
+          // Il click "fantasma" generato dal trascinamento arriva subito dopo il pointerup:
+          // lo ignoro per una manciata di millisecondi, così non seleziona/deseleziona righe.
+          magazzinoSuppressRowClickFinoA = Date.now() + 300;
           document.removeEventListener('pointermove', onMove);
           document.removeEventListener('pointerup', onUp);
         }
@@ -5545,7 +5676,7 @@
 
     document.querySelectorAll('.magazzino-input').forEach(input => {
       const isTipo = input.dataset.field === 'tipo';
-      // Il "Tipo" cambia gruppo (Materie prime/Merci in vendita): qui serve ridisegnare tutto,
+      // Il "Tipo" cambia gruppo (Materie prime/Merci vendita): qui serve ridisegnare tutto,
       // non solo aggiornare il bollino di scorta come per gli altri campi.
       input.addEventListener(isTipo ? 'change' : 'input', () => {
         const id = input.dataset.id;
@@ -5561,7 +5692,7 @@
         }
         saveMagazzino();
         magazzinoNotify('Salvato.');
-        if (isTipo) renderSheet();
+        if (isTipo) renderMagazzinoMantenendoScroll();
       });
     });
 
@@ -5578,9 +5709,40 @@
           return;
         }
         clearTimeout(btn._armTimer);
+        if (magazzinoEditingId === btn.dataset.id) magazzinoEditingId = null;
         deleteMagazzinoProdotto(btn.dataset.id);
         magazzinoNotify('Prodotto eliminato.');
-        renderSheet();
+        renderMagazzinoMantenendoScroll();
+      });
+    });
+
+    // Matitina ✎ sulla riga compatta: apre SOLO quella riga coi campi scrivibili (tastiera
+    // permessa solo qui). "Fatto" la richiude tornando alla vista compatta.
+    document.querySelectorAll('.magazzino-edit-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        magazzinoEditingId = btn.dataset.id;
+        renderMagazzinoMantenendoScroll();
+        requestAnimationFrame(() => {
+          const input = document.querySelector('.magazzino-input[data-field="nome"][data-id="' + btn.dataset.id + '"]');
+          if (input) input.focus();
+        });
+      });
+    });
+    document.querySelectorAll('.magazzino-edit-done').forEach(btn => {
+      btn.addEventListener('click', () => {
+        magazzinoEditingId = null;
+        renderMagazzinoMantenendoScroll();
+      });
+    });
+    // Tap su una riga compatta (fuori dalla casella e dalla matitina): seleziona il prodotto,
+    // senza aprire nessun campo scrivibile e senza far saltare fuori la tastiera — è quello
+    // che vuole Erica per poter scegliere più prodotti con un tap e poi rinominarli in blocco.
+    document.querySelectorAll('.magazzino-row-compatta').forEach(row => {
+      row.addEventListener('click', (e) => {
+        if (Date.now() < magazzinoSuppressRowClickFinoA) return;
+        if (e.target.closest('.magazzino-row-check-col') || e.target.closest('.magazzino-edit-btn') || e.target.closest('.magazzino-nome-resizer')) return;
+        const chk = row.querySelector('.magazzino-row-check');
+        if (chk) { chk.checked = !chk.checked; chk.dispatchEvent(new Event('change', { bubbles: true })); }
       });
     });
 
@@ -5589,25 +5751,19 @@
       addBtn.addEventListener('click', () => {
         // Nome vuoto: finché non si scrive nulla, l'ordinamento alfabetico lo mette in cima,
         // quindi si cerca il nuovo prodotto per id (non per posizione) per metterci il focus.
+        // Nasce già aperta in modifica (serve subito la tastiera per scriverci il nome).
         const p = createMagazzinoProdotto();
+        magazzinoEditingId = p.id;
         renderSheet();
         const input = document.querySelector('.magazzino-input[data-field="nome"][data-id="' + p.id + '"]');
         if (input) input.focus();
       });
     }
 
-    const pdfVenditaBtn = document.getElementById('magazzinoPdfVenditaBtn');
-    if (pdfVenditaBtn) {
-      pdfVenditaBtn.addEventListener('click', () => {
-        downloadMagazzinoPdfTipo('vendita', 'Merci in vendita')
-          .then(() => notifyTop('PDF scaricato.'))
-          .catch((err) => { if (!(err && err.code === 'declined')) notifyTop('Non sono riuscita a generare il PDF.', true); });
-      });
-    }
-    const pdfMateriaBtn = document.getElementById('magazzinoPdfMateriaBtn');
-    if (pdfMateriaBtn) {
-      pdfMateriaBtn.addEventListener('click', () => {
-        downloadMagazzinoPdfTipo('materiaPrima', 'Materie prime')
+    const pdfBtn = document.getElementById('magazzinoPdfBtn');
+    if (pdfBtn) {
+      pdfBtn.addEventListener('click', () => {
+        downloadMagazzinoPdf()
           .then(() => notifyTop('PDF scaricato.'))
           .catch((err) => { if (!(err && err.code === 'declined')) notifyTop('Non sono riuscita a generare il PDF.', true); });
       });
@@ -6989,6 +7145,33 @@
     renderAll();
     agendaScrollA830();
   });
+
+  // Scorciatoia "Agenda" appena sotto l'elenco delle schede (richiesta di Erica, 14/10): porta
+  // dritta all'Agenda da qualunque punto dell'app, indipendentemente dal menu — su tablet/
+  // cellulare il menu diventa la barra a icone in basso, ma questo tasto sta nella sidebar vera e
+  // propria, quindi è raggiungibile allo stesso modo su ogni dispositivo/browser. L'Agenda vive
+  // dentro la schermata iniziale, quindi il risultato è lo stesso del logo: si torna alla home e
+  // ci si posiziona subito sulle 8:30 dell'Agenda.
+  const agendaShortcutBtn = document.getElementById('agendaShortcutBtn');
+  if (agendaShortcutBtn) {
+    agendaShortcutBtn.addEventListener('click', () => {
+      if (activeId) { const prev = getClient(activeId); if (prev) { commitVersion(prev); save(clients); } }
+      activeId = null;
+      viewingNotes = false;
+      viewingIspirazione = false;
+      viewingMagazzino = false;
+      viewingServizi = false;
+      viewingAgenda = false;
+      viewingSearchApp = false;
+      viewingBlankSheet = false;
+      viewingOstwald = false;
+      viewingCatalogoHp = false;
+      viewingHome = true;
+      closeMobileMenu();
+      renderAll();
+      agendaScrollA830();
+    });
+  }
 
   // Backup: esporta tutte le schede in un file, importa schede da un file esportato prima
   // ---- Impostazioni: logo, nome, colore (si apre dal tastino ingranaggio in alto) ----
