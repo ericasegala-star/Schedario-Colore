@@ -1527,7 +1527,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-14.53-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-14.54-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -4424,6 +4424,17 @@
   // colorate in modo diverso.
   const AGENDA_VISTA_INIZIO_MIN = 7 * 60;
   const AGENDA_VISTA_FINE_MIN = 20 * 60;
+  // Su qualunque dispositivo, la vista dell'agenda si posiziona da sola sulle 8:30 (il vero inizio
+  // della giornata quasi sempre) invece di partire dalle 7:00, quasi sempre "chiuso". Si chiama
+  // solo quando si "entra" di nuovo nell'agenda (apertura dell'app, cambio giorno): durante le
+  // normali modifiche (aprire un appuntamento, confermare, cambiare servizio…) lo scroll resta
+  // fermo dov'è, con renderSheetMantenendoScroll qui sotto.
+  function agendaScrollA830() {
+    requestAnimationFrame(() => {
+      const target = document.querySelector('.agenda-slot[data-time="08:30"]');
+      if (target) target.scrollIntoView({ block: 'start' });
+    });
+  }
   function agendaSlotsVista() {
     const slots = [];
     for (let mnt = AGENDA_VISTA_INIZIO_MIN; mnt < AGENDA_VISTA_FINE_MIN; mnt += 15) {
@@ -5623,7 +5634,7 @@
         sincronizzaClienteCombo(a);
         saveAgenda();
         agendaNotify('Salvato.');
-        renderSheet();
+        renderSheetMantenendoScroll();
       });
     });
   }
@@ -5634,6 +5645,7 @@
       datePicker.addEventListener('change', () => {
         if (datePicker.value) agendaDataSelezionata = datePicker.value;
         renderSheet();
+        agendaScrollA830();
       });
     }
     function spostaGiorno(delta) {
@@ -5641,13 +5653,14 @@
       const dt = new Date(y, (m || 1) - 1, (d || 1) + delta);
       agendaDataSelezionata = fmtDateISO(dt);
       renderSheet();
+      agendaScrollA830();
     }
     const prevBtn = document.getElementById('agendaPrevDay');
     if (prevBtn) prevBtn.addEventListener('click', () => spostaGiorno(-1));
     const nextBtn = document.getElementById('agendaNextDay');
     if (nextBtn) nextBtn.addEventListener('click', () => spostaGiorno(1));
     const oggiBtn = document.getElementById('agendaOggiBtn');
-    if (oggiBtn) oggiBtn.addEventListener('click', () => { agendaDataSelezionata = fmtDateISO(new Date()); renderSheet(); });
+    if (oggiBtn) oggiBtn.addEventListener('click', () => { agendaDataSelezionata = fmtDateISO(new Date()); renderSheet(); agendaScrollA830(); });
 
     document.querySelectorAll('.agenda-input').forEach(input => {
       const field = input.dataset.field;
@@ -5678,7 +5691,7 @@
         }
         saveAgenda();
         agendaNotify('Salvato.');
-        if (isSelect) renderSheet();
+        if (isSelect) renderSheetMantenendoScroll();
       });
       if (field === 'cliente') {
         // Il campo nasce "readonly" e si sblocca solo al focus: è il trucco che impedisce a
@@ -5768,7 +5781,7 @@
         deleteAppuntamento(btn.dataset.id);
         agendaEditingId = null;
         agendaNotify('Appuntamento eliminato.');
-        renderSheet();
+        renderSheetMantenendoScroll();
       });
     });
 
@@ -5778,7 +5791,7 @@
       btn.addEventListener('click', () => {
         const a = createAppuntamento({ data: agendaDataSelezionata, ora: btn.dataset.time, operatore: btn.dataset.operatore || undefined });
         agendaEditingId = a.id;
-        renderSheet();
+        renderSheetMantenendoScroll();
         const input = document.querySelector('.agenda-cliente-input[data-id="' + a.id + '"]');
         if (input) input.focus();
       });
@@ -5795,14 +5808,14 @@
       chip.addEventListener('click', (e) => {
         if (e.target.closest('.agenda-chip-edit')) return; // evita il doppio handler sul tasto dentro
         agendaEditingId = chip.dataset.id;
-        renderSheet();
+        renderSheetMantenendoScroll();
       });
     });
     document.querySelectorAll('.agenda-chip-edit').forEach(btn => {
-      btn.addEventListener('click', () => { agendaEditingId = btn.dataset.id; renderSheet(); });
+      btn.addEventListener('click', () => { agendaEditingId = btn.dataset.id; renderSheetMantenendoScroll(); });
     });
     document.querySelectorAll('.agenda-close-edit').forEach(btn => {
-      btn.addEventListener('click', () => { agendaEditingId = null; renderSheet(); });
+      btn.addEventListener('click', () => { agendaEditingId = null; renderSheetMantenendoScroll(); });
     });
   }
 
@@ -5853,7 +5866,7 @@
     saveAgendaTurni();
     closeAgendaTurniModal();
     agendaNotify('Turni salvati.');
-    renderSheet();
+    renderSheetMantenendoScroll();
   }
 
   // ---- "Ferie e permessi": assenze per operatore, a giornata intera o su fascia oraria ----
@@ -5867,7 +5880,7 @@
         <button type="button" class="magazzino-delete assenza-delete" data-id="${a.id}">Elimina</button>
       </div>`).join('') : '<p class="hint">Nessuna ferie/permesso inserito.</p>';
     box.querySelectorAll('.assenza-delete').forEach(btn => {
-      btn.addEventListener('click', () => { eliminaAssenza(btn.dataset.id); renderAssenzaLista(); renderSheet(); });
+      btn.addEventListener('click', () => { eliminaAssenza(btn.dataset.id); renderAssenzaLista(); renderSheetMantenendoScroll(); });
     });
   }
   function openAgendaAssenzaModal() {
@@ -5890,7 +5903,7 @@
     const note = document.getElementById('assenzaNote').value;
     creaAssenza({ operatore, tipo, dataInizio, dataFine, oraInizio, oraFine, note });
     renderAssenzaLista();
-    renderSheet();
+    renderSheetMantenendoScroll();
     agendaNotify('Aggiunto.');
   }
 
@@ -6859,6 +6872,7 @@
     viewingHome = true;
     closeMobileMenu();
     renderAll();
+    agendaScrollA830();
   });
 
   // Backup: esporta tutte le schede in un file, importa schede da un file esportato prima
@@ -7409,6 +7423,7 @@
     activeId = null;
     viewingHome = true;
     renderAll();
+    agendaScrollA830();
     window.__schedarioReady = true; // segnale per i test automatici: i dati sono caricati e la pagina è disegnata
   });
 })();
