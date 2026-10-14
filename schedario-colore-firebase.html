@@ -536,6 +536,41 @@
   .notes-banner-item.active { background: var(--berry-soft); border-color: var(--berry); }
   .notes-banner-item .name { margin-bottom: 0; }
   .notes-title { font-family: 'Fraunces', serif; font-weight: 600; font-size: 22px; }
+  /* L'iconcina di ogni voce di menu si vede solo nel menu in basso dei dispositivi touch (vedi più
+     sotto): da PC/Mac il menu resta la lista di testo di sempre, invariata. */
+  .nav-icon { display: none; }
+  .nav-icon svg { display: block; width: 100%; height: 100%; }
+
+  /* Su iPad/tablet e cellulare (qualunque dispositivo "touch", riconosciuto dal puntatore
+     impreciso, indipendentemente dalla larghezza: così un iPad in orizzontale, più largo dei
+     soliti 860px, resta comunque un dispositivo touch) il menu si sposta in basso, fisso, a icone
+     — come nello screenshot di Erica — invece dell'elenco a tendina che si apre sopra il
+     contenuto. Da PC/Mac (puntatore preciso: mouse/trackpad) il menu resta quello di sempre, non
+     cambia nulla. */
+  @media (pointer: coarse) {
+    .app { padding-bottom: calc(86px + env(safe-area-inset-bottom)); }
+    .menu-toggle { display: none !important; }
+    .menu-collapsible {
+      display: flex !important; flex-direction: row; flex-wrap: nowrap; gap: 0; margin: 0;
+      max-height: none; overflow-x: auto; -webkit-overflow-scrolling: touch;
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+      background: var(--paper-raised); border-top: 1px solid var(--line);
+      box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.06);
+      padding: 6px max(4px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(4px, env(safe-area-inset-left));
+    }
+    .menu-collapsible .notes-banner {
+      flex: 1 0 auto; min-width: 72px; padding: 0; border: none; background: none; box-shadow: none;
+    }
+    .menu-collapsible .notes-banner-item {
+      flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+      padding: 6px 4px; border-radius: 10px; text-align: center; height: 100%;
+    }
+    .menu-collapsible .notes-banner-item .name {
+      font-size: 10.5px; line-height: 1.15; white-space: nowrap;
+    }
+    .menu-collapsible .nav-icon { display: block; width: 21px; height: 21px; color: var(--ink-soft); }
+    .menu-collapsible .notes-banner-item.active .nav-icon { color: var(--berry); }
+  }
 
   .home-view { max-width: 820px; padding: 20px 4px 8px; }
   .home-date-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
@@ -1284,41 +1319,49 @@
       <div class="menu-collapsible" id="menuCollapsible">
         <aside class="panel notes-banner">
           <div class="notes-banner-item" id="blankSheetEntry">
+            <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6"/><path d="M6 18H4a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2"/><rect x="6" y="14" width="12" height="7"/></svg></span>
             <span class="name">Scheda da stampare</span>
           </div>
         </aside>
         <aside class="panel notes-banner">
           <div class="notes-banner-item" id="notesEntry">
+            <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3Z"/></svg></span>
             <span class="name">Consigli di utilizzo</span>
           </div>
         </aside>
         <aside class="panel notes-banner">
           <div class="notes-banner-item" id="ostwaldEntry">
+            <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v8.5l6 4.5"/></svg></span>
             <span class="name">Disco di Newton</span>
           </div>
         </aside>
         <aside class="panel notes-banner">
           <div class="notes-banner-item" id="ispirazioneEntry">
+            <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 5.4L19 10l-5.2 1.6L12 17l-1.8-5.4L5 10l5.2-1.6L12 3Z"/></svg></span>
             <span class="name">Ispirazione</span>
           </div>
         </aside>
         <aside class="panel notes-banner">
           <div class="notes-banner-item" id="magazzinoEntry">
+            <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5 12 3l9 4.5-9 4.5-9-4.5Z"/><path d="M3 7.5V16.5L12 21l9-4.5V7.5"/><path d="M12 12v9"/></svg></span>
             <span class="name">Magazzino</span>
           </div>
         </aside>
         <aside class="panel notes-banner">
           <div class="notes-banner-item" id="serviziEntry">
+            <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.4"/><circle cx="6" cy="18" r="2.4"/><path d="M8 7.5 19 18M8 16.5 19 6"/></svg></span>
             <span class="name">Crea servizio</span>
           </div>
         </aside>
         <aside class="panel notes-banner">
           <div class="notes-banner-item" id="catalogoHpEntry">
+            <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3h4v3.2l2 2.3V20a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V8.5l2-2.3V3Z"/><path d="M9 13h6"/></svg></span>
             <span class="name">Catalogo prodotti HP</span>
           </div>
         </aside>
         <aside class="panel notes-banner">
           <div class="notes-banner-item" id="cercaAppEntry">
+            <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8"/></svg></span>
             <span class="name">Cerca nell'app</span>
           </div>
         </aside>
@@ -1527,7 +1570,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-14.54-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-14.55-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
