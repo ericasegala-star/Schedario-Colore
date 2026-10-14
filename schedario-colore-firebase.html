@@ -624,6 +624,11 @@
      non poterci sovrapporre un altro appuntamento), tutta la cella colorata come la targhetta
      dell'appuntamento che la occupa, senza ripetere nome/testo. */
   .agenda-slot-occupato { background: var(--paper-raised); }
+  /* Ore fuori dall'orario di apertura vero (prima/dopo il turno, o giorno di chiusura totale):
+     restano visibili per tenere la griglia sempre dalle 7:00 alle 20:00, ma con un colore diverso
+     e discreto, e niente tasto "+" (non prenotabili). */
+  .agenda-slot-chiuso { background: repeating-linear-gradient(135deg, var(--paper-raised), var(--paper-raised) 6px, var(--paper) 6px, var(--paper) 12px); }
+  .agenda-slot-chiuso .agenda-slot-time { color: var(--ink-soft); opacity: 0.55; }
   .agenda-chip-lavoro { border-style: dashed; }
 
   /* "Crea servizio": stessa struttura a righe di .agenda-row. */
@@ -1522,7 +1527,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-14.52-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-14.53-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -2109,6 +2114,11 @@
       // Quanti quarti d'ora occupa in agenda (si allunga da sola scegliendo un servizio dal
       // catalogo, coi tempi di lavorazione+posa di quel servizio; 15 min di default altrimenti).
       durataMin: data.durataMin || 15,
+      // Quanti minuti (arrotondati al quarto d'ora) della sola parte attiva (tempo di
+      // lavorazione, non la posa) occupano davvero la cella in agenda: è questo, non durataMin
+      // per intero, a colorare/bloccare lo slot (vedi appuntamentoDurataLavorazione). Nel tempo di
+      // posa Erica è libera e la cella resta prenotabile normalmente.
+      durataLavorazioneMin: data.durataLavorazioneMin || data.durataMin || 15,
       // Se fa parte di una combo "esplosa" in più blocchi consecutivi (vedi più sotto), tutti i
       // blocchi condividono lo stesso comboGroupId: serve per tenerli insieme quando si cambia
       // cliente o si elimina (si elimina tutta la combo, non solo il pezzo su cui si clicca).
@@ -2123,11 +2133,23 @@
   // Durata (in minuti) occupata in agenda da un appuntamento: quelli creati prima che esistesse
   // questo campo restano su 15 min (un solo quarto d'ora, il comportamento di sempre).
   function appuntamentoDurata(a) { return a.durataMin || 15; }
+  // Minuti della sola parte attiva (lavorazione) che occupano davvero la cella in agenda: quelli
+  // creati prima che esistesse questo campo usano durataMin per intero (comportamento di sempre).
+  function appuntamentoDurataLavorazione(a) { return a.durataLavorazioneMin || a.durataMin || 15; }
   // Durata (in minuti, arrotondata al quarto d'ora successivo) di un servizio del catalogo, somma
-  // di lavorazione+posa; minimo 15 min anche se il servizio non ha tempi impostati.
+  // di lavorazione+posa; minimo 15 min anche se il servizio non ha tempi impostati. Usata per
+  // sapere quando può iniziare il pezzo successivo di una combo (il tempo "reale" del servizio).
   function durataServizioMin(s) {
     const tempi = servizioTempi(s);
     const totale = (tempi.lavorazione || 0) + (tempi.posa || 0);
+    return totale > 0 ? Math.ceil(totale / 15) * 15 : 15;
+  }
+  // Durata (in minuti, arrotondata al quarto d'ora successivo) della sola parte attiva (tempo di
+  // lavorazione): è questa che occupa/colora la cella in agenda. Nel tempo di posa (es. colore in
+  // posa) Erica è libera e quella cella resta prenotabile come al solito.
+  function durataLavorazioneServizioMin(s) {
+    const tempi = servizioTempi(s);
+    const totale = tempi.lavorazione || 0;
     return totale > 0 ? Math.ceil(totale / 15) * 15 : 15;
   }
   function updateAppuntamento(id, patch) {
@@ -4395,6 +4417,35 @@
     }
     return slots;
   }
+  // La griglia visibile in agenda copre sempre le stesse ore, 7:00-20:00, ogni giorno: così le
+  // colonne restano allineate e si vede a colpo d'occhio quanto manca all'apertura/dopo la
+  // chiusura, invece di far sparire del tutto i giorni o gli orari di chiusura. Le ore fuori
+  // dall'orario di apertura vero (vedi oraNelTurno) restano comunque non prenotabili, solo
+  // colorate in modo diverso.
+  const AGENDA_VISTA_INIZIO_MIN = 7 * 60;
+  const AGENDA_VISTA_FINE_MIN = 20 * 60;
+  function agendaSlotsVista() {
+    const slots = [];
+    for (let mnt = AGENDA_VISTA_INIZIO_MIN; mnt < AGENDA_VISTA_FINE_MIN; mnt += 15) {
+      const hh = String(Math.floor(mnt / 60)).padStart(2, '0');
+      const mm = String(mnt % 60).padStart(2, '0');
+      slots.push(hh + ':' + mm);
+    }
+    return slots;
+  }
+  // Se quell'ora, in quel giorno, rientra nel vero orario di apertura di quell'operatore (i
+  // turni) — usata per colorare diversamente in agenda le ore fuori apertura, che restano
+  // visibili (per allineare la griglia) ma non prenotabili.
+  function oraNelTurno(operatore, dateISO, time) {
+    if (!dateISO) return false;
+    const [y, m, d] = dateISO.split('-').map(Number);
+    const day = new Date(y, m - 1, d).getDay();
+    const turniOp = agendaTurniCache[operatore || 'Erica'];
+    const range = turniOp && turniOp[day];
+    if (!range) return false;
+    const tMin = hhmmToMinuti(time);
+    return tMin >= range[0] && tMin < range[1];
+  }
   function renderAgendaRowHtml(a) {
     const nomeCampo = a.clienteId ? appuntamentoNomeDisplay(a) : (a.nomeManuale || '');
     const operatoriGiorno = agendaOperatoriDelGiorno(a.data || agendaDataSelezionata);
@@ -4472,10 +4523,12 @@
         <button type="button" class="agenda-chip-edit" data-id="${a.id}" aria-label="Modifica appuntamento">✎</button>
       </div>`;
   }
-  // Uno slot può essere: vuoto (tasto "+"), con appuntamenti, "occupato" (coperto dalla durata di
-  // un appuntamento iniziato in uno slot precedente: niente tasto "+", così non si può più
-  // sovrapporre un altro appuntamento sopra uno che dura più di un quarto d'ora), oppure bloccato
-  // da una ferie/permesso di quell'operatore (niente tasto "+", solo l'etichetta).
+  // Uno slot può essere: vuoto (tasto "+"), con appuntamenti, "occupato" (coperto dal solo tempo
+  // di LAVORAZIONE di un appuntamento iniziato in uno slot precedente: niente tasto "+", così non
+  // ci si sovrappone sopra un servizio che dura più di un quarto d'ora — il tempo di POSA invece,
+  // dove Erica è libera, resta uno slot normale prenotabile), bloccato da una ferie/permesso
+  // dell'operatore (niente tasto "+", solo l'etichetta), oppure "chiuso" (fuori dall'orario di
+  // apertura vero: visibile solo per allineare la griglia 7:00-20:00, non prenotabile).
   function renderAgendaSlotHtml(time, appuntamenti, operatore, dateISO) {
     const items = appuntamenti.filter(a => a.ora === time);
     const assenza = operatore ? assenzaSuSlot(operatore, dateISO, time) : null;
@@ -4491,15 +4544,21 @@
       const tMin = hhmmToMinuti(time);
       const copertura = appuntamenti.find(a => {
         const aMin = hhmmToMinuti(a.ora);
-        return aMin < tMin && tMin < aMin + appuntamentoDurata(a);
+        return aMin < tMin && tMin < aMin + appuntamentoDurataLavorazione(a);
       });
       if (copertura) {
         // Stessa idea della targhetta: tutta la cella diventa rosa (il colore del servizio, se
-        // c'è) per far vedere a colpo d'occhio quanto dura l'appuntamento, senza ripetere il
-        // nome con "continua" ogni quarto d'ora.
+        // c'è) per far vedere a colpo d'occhio quanto dura il lavoro vero e proprio, senza
+        // ripetere il nome con "continua" ogni quarto d'ora.
         const coloreRule = copertura.colore ? `background:${escapeHtml(copertura.colore)}2A;` : '';
         return `
           <div class="agenda-slot agenda-slot-occupato" data-time="${time}" style="border-left:4px solid ${operatoreColore(appuntamentoOperatore(copertura))};${coloreRule}">
+            <div class="agenda-slot-time">${time}</div>
+          </div>`;
+      }
+      if (!oraNelTurno(operatore, dateISO, time)) {
+        return `
+          <div class="agenda-slot agenda-slot-chiuso" data-time="${time}">
             <div class="agenda-slot-time">${time}</div>
           </div>`;
       }
@@ -4518,19 +4577,22 @@
       </div>`;
   }
   // Una colonna per ogni operatore che lavora quel giorno (una sola se è solo Erica, due
-  // affiancate nei giorni in cui lavora anche Sara, come il sabato).
+  // affiancate nei giorni in cui lavora anche Sara, come il sabato). La griglia si vede sempre,
+  // dalle 7:00 alle 20:00, anche nei giorni di chiusura totale (il salone chiuso, nessuna di
+  // lavora): in quel caso si mostra comunque una colonna, tutta colorata come "chiuso", invece di
+  // far sparire del tutto l'agenda — così le colonne restano sempre allineate tra un giorno e
+  // l'altro.
   function renderAgendaGridHtml(dateISO) {
-    const operatori = agendaOperatoriDelGiorno(dateISO);
-    if (!operatori.length) return '<p class="hint agenda-closed">Il salone è chiuso questo giorno.</p>';
+    const operatoriReali = agendaOperatoriDelGiorno(dateISO);
+    const operatori = operatoriReali.length ? operatoriReali : ['Erica'];
     if (operatori.length === 1) {
       const op = operatori[0];
-      const slots = agendaSlots(dateISO, op);
-      return `<div class="agenda-grid">${slots.map(t => renderAgendaSlotHtml(t, appuntamentiDelGiorno(dateISO, op), op, dateISO)).join('')}</div>`;
+      return `<div class="agenda-grid">${agendaSlotsVista().map(t => renderAgendaSlotHtml(t, appuntamentiDelGiorno(dateISO, op), op, dateISO)).join('')}</div>`;
     }
     return `<div class="agenda-columns">${operatori.map(op => `
       <div class="agenda-column">
         <div class="agenda-column-head" style="color:${operatoreColore(op)};"><span class="agenda-column-dot" style="background:${operatoreColore(op)};"></span>${escapeHtml(op)}</div>
-        <div class="agenda-grid">${agendaSlots(dateISO, op).map(t => renderAgendaSlotHtml(t, appuntamentiDelGiorno(dateISO, op), op, dateISO)).join('')}</div>
+        <div class="agenda-grid">${agendaSlotsVista().map(t => renderAgendaSlotHtml(t, appuntamentiDelGiorno(dateISO, op), op, dateISO)).join('')}</div>
       </div>`).join('')}</div>`;
   }
 
@@ -5658,6 +5720,10 @@
           a.servizio = nomeServizio(componenti[0]);
           a.colore = componenti[0].colore;
           a.durataMin = durataServizioMin(componenti[0]);
+          a.durataLavorazioneMin = durataLavorazioneServizioMin(componenti[0]);
+          // Il pezzo successivo della combo inizia comunque a fine lavorazione+posa (è il tempo
+          // reale: non si può tagliare finché il colore non ha finito di posare), ma solo il
+          // tempo di lavorazione colora/blocca la cella: il tempo di posa resta prenotabile.
           let cursore = hhmmToMinuti(a.ora) + a.durataMin;
           for (let i = 1; i < componenti.length; i++) {
             const comp = componenti[i];
@@ -5666,7 +5732,7 @@
               data: a.data, ora: minutiToHHMM(cursore), operatore: a.operatore, tipo: 'cliente',
               clienteId: a.clienteId, nomeManuale: a.nomeManuale,
               servizioId: comp.id, servizio: nomeServizio(comp), colore: comp.colore,
-              durataMin: durata, comboGroupId: gruppo
+              durataMin: durata, durataLavorazioneMin: durataLavorazioneServizioMin(comp), comboGroupId: gruppo
             });
             cursore += durata;
           }
@@ -5674,7 +5740,7 @@
           a.servizioId = s ? s.id : null;
           if (s) a.servizio = nomeServizio(s);
           a.colore = s ? s.colore : null;
-          if (s) a.durataMin = durataServizioMin(s);
+          if (s) { a.durataMin = durataServizioMin(s); a.durataLavorazioneMin = durataLavorazioneServizioMin(s); }
         }
         saveAgenda();
         agendaNotify('Salvato.');
