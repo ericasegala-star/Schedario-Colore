@@ -1547,6 +1547,14 @@
   <button type="button" class="img-modal-nav img-modal-next" id="catalogoViewerNext" aria-label="Pagina successiva">›</button>
 </div>
 
+<div class="settings-modal" id="agendaApptModal" hidden>
+  <div class="settings-card">
+    <button type="button" class="settings-close" id="agendaApptModalClose" aria-label="Chiudi">×</button>
+    <h2>Appuntamento</h2>
+    <div id="agendaApptModalBody"></div>
+  </div>
+</div>
+
 <div class="settings-modal" id="agendaTurniModal" hidden>
   <div class="settings-card">
     <button type="button" class="settings-close" id="agendaTurniClose" aria-label="Chiudi">×</button>
@@ -1626,7 +1634,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-14.61-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-14.62-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -4682,6 +4690,22 @@
         <button type="button" class="agenda-chip-edit" data-id="${a.id}" aria-label="Modifica appuntamento">✎</button>
       </div>`;
   }
+  // L'appuntamento aperto (agendaEditingId) non allarga più la sua cella: si apre invece in un
+  // pop-up sopra la griglia (stesso modulo di renderAgendaRowHtml, solo spostato in un dialogo),
+  // così la griglia resta sempre della stessa dimensione.
+  function renderAgendaApptModal() {
+    const modal = document.getElementById('agendaApptModal');
+    const body = document.getElementById('agendaApptModalBody');
+    if (!modal || !body) return;
+    const a = agendaEditingId ? agendaCache.appuntamenti.find(x => x.id === agendaEditingId) : null;
+    if (!a) { modal.hidden = true; body.innerHTML = ''; return; }
+    body.innerHTML = renderAgendaRowHtml(a);
+    modal.hidden = false;
+  }
+  function closeAgendaApptModal() {
+    agendaEditingId = null;
+    renderSheetMantenendoScroll();
+  }
   // Uno slot può essere: vuoto (tasto "+"), con appuntamenti, "occupato" (coperto dal solo tempo
   // di LAVORAZIONE di un appuntamento iniziato in uno slot precedente: niente tasto "+", così non
   // ci si sovrappone sopra un servizio che dura più di un quarto d'ora — il tempo di POSA invece,
@@ -4741,7 +4765,7 @@
       <div class="agenda-slot agenda-slot-filled${classiExtra}" data-time="${time}" data-fine="${minutiToHHMM(minutiFine)}" style="min-height:${righe * 34}px;">
         <div class="agenda-slot-time">${time}</div>
         <div class="agenda-slot-items">
-          ${items.map(a => a.id === agendaEditingId ? renderAgendaRowHtml(a) : renderAgendaChipHtml(a)).join('')}
+          ${items.map(a => renderAgendaChipHtml(a)).join('')}
         </div>
       </div>`;
   }
@@ -4831,6 +4855,11 @@
     const panel = document.getElementById('sheetPanel');
     const floatingSave = document.getElementById('floatingSaveBtn');
     if (floatingSave) floatingSave.hidden = true; // riappare solo per una vera scheda cliente, più sotto
+    // Il pop-up dell'appuntamento è un elemento fisso fuori dalla griglia: altrimenti resterebbe
+    // visibile sopra anche lasciando la schermata iniziale. Si nasconde di default qui, e solo
+    // il ramo della schermata iniziale (più sotto) lo rimostra se c'è un appuntamento aperto.
+    const apptModalDefault = document.getElementById('agendaApptModal');
+    if (apptModalDefault) apptModalDefault.hidden = true;
 
     if (viewingNotes) {
       panel.innerHTML = `
@@ -5214,6 +5243,7 @@
       `;
       const homeNewBtn = document.getElementById('homeNewBtn');
       if (homeNewBtn) homeNewBtn.addEventListener('click', () => createNewClient());
+      renderAgendaApptModal();
       bindAgendaEvents();
       return;
     }
@@ -7229,6 +7259,12 @@
     }, { passive: true });
   })();
 
+  // ---- Pop-up dell'appuntamento in agenda: pulsante statico del modale ----
+  document.getElementById('agendaApptModalClose').addEventListener('click', closeAgendaApptModal);
+  document.getElementById('agendaApptModal').addEventListener('click', (e) => {
+    if (e.target.id === 'agendaApptModal') closeAgendaApptModal();
+  });
+
   // ---- Turni di lavoro / Ferie e permessi: pulsanti statici dei due modali ----
   document.getElementById('agendaTurniClose').addEventListener('click', closeAgendaTurniModal);
   document.getElementById('agendaTurniModal').addEventListener('click', (e) => {
@@ -7591,6 +7627,8 @@
   document.addEventListener('keydown', (e) => {
     const settingsModalEl = document.getElementById('settingsModal');
     if (settingsModalEl && !settingsModalEl.hidden && e.key === 'Escape') { closeSettingsModal(); return; }
+    const agendaApptModalEl = document.getElementById('agendaApptModal');
+    if (agendaApptModalEl && !agendaApptModalEl.hidden && e.key === 'Escape') { closeAgendaApptModal(); return; }
     const magImportModalEl = document.getElementById('magImportModal');
     if (magImportModalEl && !magImportModalEl.hidden && e.key === 'Escape') { closeMagImportModal(); return; }
     const magStatsModalEl = document.getElementById('magStatsModal');
