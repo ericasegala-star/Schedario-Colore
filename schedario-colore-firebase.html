@@ -1570,7 +1570,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-14.55-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-14.56-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -4654,11 +4654,22 @@
   // "tornare su" la pagina: chi chiama renderSheet() per un ridisegno "sul posto" (senza una vera
   // ragione per tornare in cima, come aprire una scheda diversa) avvolge la chiamata con questa
   // funzione, che ricorda la posizione dello scroll e la ripristina subito dopo.
+  // Attenzione: l'agenda non scorre solo con la pagina (document.scrollingElement), ha anche un
+  // suo riquadro interno con lo scroll proprio (.agenda-grid, max-height + overflow-y:auto, uno
+  // per colonna nei giorni con più di un'operatrice): ridisegnando l'HTML quel riquadro viene
+  // ricreato da zero e riparte da scrollTop 0, quindi va salvato e ripristinato anche lui, per
+  // indice (le colonne restano nello stesso ordine), oltre allo scroll della pagina.
   function renderSheetMantenendoScroll() {
     const scrollEl = document.scrollingElement || document.documentElement;
     const scrollY = scrollEl.scrollTop;
+    const griglie = Array.from(document.querySelectorAll('.agenda-grid'));
+    const scrollGriglie = griglie.map(g => g.scrollTop);
     renderSheet();
-    requestAnimationFrame(() => { scrollEl.scrollTop = scrollY; });
+    requestAnimationFrame(() => {
+      scrollEl.scrollTop = scrollY;
+      const nuoveGriglie = document.querySelectorAll('.agenda-grid');
+      nuoveGriglie.forEach((g, i) => { if (scrollGriglie[i] != null) g.scrollTop = scrollGriglie[i]; });
+    });
   }
   function renderSheet() {
     const panel = document.getElementById('sheetPanel');
@@ -7452,6 +7463,13 @@
   if (storageErrorCloseBtn) {
     storageErrorCloseBtn.addEventListener('click', hideStorageError);
   }
+
+  // Erica l'ha segnalato con un video (14/10): "appena seleziono qualcosa si sposta su". Causa
+  // trovata guardando il video fotogramma per fotogramma: il riquadro dell'agenda ha un suo scroll
+  // INTERNO (.agenda-grid, vedi sopra "renderSheetMantenendoScroll"), separato da quello della
+  // pagina — era quello a "tornare su" ogni volta che l'HTML veniva ridisegnato (es. eliminando un
+  // appuntamento), perché veniva ricreato da zero e ripartiva dall'alto. Risolto preservando anche
+  // lo scroll di quel riquadro, non solo quello della pagina (vedi sopra).
 
   // Prima si sceglie chi sta usando l'app (schermata "Chi sei?"), poi si caricano
   // i dati, che vivono nel database dell'app (restano anche chiudendo e riaprendo,
