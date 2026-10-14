@@ -621,10 +621,12 @@
     border-bottom: 1px solid var(--line); min-height: 34px; flex-shrink: 0;
   }
   .agenda-slot:last-child { border-bottom: none; }
-  /* Ogni quarto d'ora ha la sua riga (richiesta di Erica, 14/10), ma la riga della mezz'ora/ora
-     piena è più marcata delle altre, per distinguerla a colpo d'occhio (come nella foto di
-     esempio di un altro gestionale: righe sottili sui quarti, più scure sulle mezz'ore). */
-  .agenda-slot-bordo-mezzora { border-bottom: 2px solid var(--ink-soft); }
+  /* Tre livelli di riga (richiesta di Erica, 14/10, affinata più volte): il cambio d'ORA piena ha
+     un bordo marcato ma sottile (non grosso); la mezz'ora (:30) ha solo il bordo leggero di
+     sempre, con la sua etichetta scritta; i quarti puri (:15/:45) non hanno NESSUN bordo, solo
+     spazio vuoto — restano comunque prenotabili col tasto "+". */
+  .agenda-slot-bordo-ora { border-bottom: 1.5px solid var(--ink-soft); }
+  .agenda-slot-senza-bordo { border-bottom: none; }
   .agenda-slot-time { width: 48px; flex: none; font-size: 12.5px; color: var(--ink-soft); font-weight: 600; }
   .agenda-slot-add {
     flex: none; width: 24px; height: 24px; padding: 0; border-radius: 50%; line-height: 1;
@@ -1624,7 +1626,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-14.59-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-14.61-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -4687,20 +4689,28 @@
   // dell'operatore (niente tasto "+", solo l'etichetta), oppure "chiuso" (fuori dall'orario di
   // apertura vero: visibile solo per allineare la griglia 7:00-20:00, non prenotabile).
   //
-  // Richiesta di Erica (14/10, con foto di esempio): ogni quarto d'ora ha la sua riga (bordo
-  // proprio), ma solo le mezz'ore/ore piene (:00/:30) hanno l'etichetta scritta E un bordo più
-  // marcato, per distinguersi a colpo d'occhio dai quarti — i quarti (:15/:45) restano
-  // prenotabili con precisione, solo senza etichetta e con un bordo più leggero. E un appuntamento
-  // non si vede più come tante righe colorate separate: occupa un unico blocco alto quanto il suo
-  // tempo di lavorazione (niente più "occupato" vuoto quarto per quarto), con il nome e il
-  // servizio che riempiono tutto lo spazio.
+  // Richiesta di Erica (14/10, con foto di esempio, affinata più volte lo stesso giorno):
+  // l'etichetta scritta compare su :00 e :30 (mezz'ore); il bordo ha tre livelli — marcato (ma
+  // sottile, non grosso) al cambio d'ORA piena, leggero di sempre alla mezz'ora (:30), e NESSUN
+  // bordo sui quarti puri (:15/:45), che restano spazio vuoto ma comunque prenotabili col "+". E
+  // un appuntamento non si vede più come tante righe colorate separate: occupa un unico blocco
+  // alto quanto il suo tempo di lavorazione (niente più "occupato" vuoto quarto per quarto), con
+  // il nome e il servizio che riempiono tutto lo spazio.
   function agendaMostraEtichettaOra(minuti) { return minuti % 30 === 0; }
-  function agendaBordoVisibile(minutiFine) { return minutiFine % 30 === 0; }
+  // Bordo marcato solo al cambio d'ORA piena.
+  function agendaBordoForte(minutiFine) { return minutiFine % 60 === 0; }
+  // Nessun bordo sui quarti puri (:15/:45): solo la mezz'ora (:30) tiene il bordo leggero di sempre.
+  function agendaBordoAssente(minutiFine) { return minutiFine % 30 !== 0; }
+  function agendaClasseBordo(minutiFine) {
+    if (agendaBordoForte(minutiFine)) return ' agenda-slot-bordo-ora';
+    if (agendaBordoAssente(minutiFine)) return ' agenda-slot-senza-bordo';
+    return '';
+  }
   function renderAgendaSlotVuotoHtml(time, minutiFine, opts) {
     const assenza = opts.assenza, chiuso = opts.chiuso, operatore = opts.operatore;
     const minuti = hhmmToMinuti(time);
     const etichetta = agendaMostraEtichettaOra(minuti) ? time : '';
-    const classiExtra = agendaBordoVisibile(minutiFine) ? ' agenda-slot-bordo-mezzora' : '';
+    const classiExtra = agendaClasseBordo(minutiFine);
     if (assenza) {
       const label = assenza.tipo === 'permesso' ? 'Permesso' : 'Ferie';
       return `
@@ -4725,7 +4735,7 @@
   // "riga", come prima), col nome/servizio (o il modulo di modifica, se è quello aperto) che
   // riempiono tutto lo spazio invece di stare solo nella prima riga.
   function renderAgendaBloccoAppuntamentiHtml(time, items, minutiFine) {
-    const classiExtra = agendaBordoVisibile(minutiFine) ? ' agenda-slot-bordo-mezzora' : '';
+    const classiExtra = agendaClasseBordo(minutiFine);
     const righe = Math.max(1, Math.round((minutiFine - hhmmToMinuti(time)) / 15));
     return `
       <div class="agenda-slot agenda-slot-filled${classiExtra}" data-time="${time}" data-fine="${minutiToHHMM(minutiFine)}" style="min-height:${righe * 34}px;">
@@ -4763,7 +4773,7 @@
       });
       if (copertura) {
         const minutiFine = minuti + 15;
-        const classiExtra = agendaBordoVisibile(minutiFine) ? ' agenda-slot-bordo-mezzora' : '';
+        const classiExtra = agendaClasseBordo(minutiFine);
         const coloreRule = copertura.colore ? `background:${escapeHtml(copertura.colore)}2A;` : '';
         html += `
           <div class="agenda-slot agenda-slot-occupato${classiExtra}" data-time="${time}" data-fine="${minutiToHHMM(minutiFine)}" style="border-left:4px solid ${operatoreColore(appuntamentoOperatore(copertura))};${coloreRule}">
