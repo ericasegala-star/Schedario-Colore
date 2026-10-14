@@ -620,10 +620,10 @@
   .agenda-column-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
   .agenda-slot-assente { background: rgba(122, 59, 86, 0.08); font-style: italic; color: var(--ink-soft); }
   .agenda-slot-assente-label { font-size: 12.5px; }
-  /* Quarti d'ora "occupati" dalla durata di un appuntamento iniziato prima: niente tasto "+",
-     solo un richiamo leggero a chi/cosa li occupa, per non poterci sovrapporre un altro appuntamento. */
-  .agenda-slot-occupato { background: var(--paper-raised); opacity: 0.6; }
-  .agenda-slot-occupato-label { font-size: 12px; color: var(--ink-soft); font-style: italic; }
+  /* Quarti d'ora "occupati" dalla durata di un appuntamento iniziato prima: niente tasto "+" (per
+     non poterci sovrapporre un altro appuntamento), tutta la cella colorata come la targhetta
+     dell'appuntamento che la occupa, senza ripetere nome/testo. */
+  .agenda-slot-occupato { background: var(--paper-raised); }
   .agenda-chip-lavoro { border-style: dashed; }
 
   /* "Crea servizio": stessa struttura a righe di .agenda-row. */
@@ -1522,7 +1522,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-13.51-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-14.52-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -4494,10 +4494,13 @@
         return aMin < tMin && tMin < aMin + appuntamentoDurata(a);
       });
       if (copertura) {
+        // Stessa idea della targhetta: tutta la cella diventa rosa (il colore del servizio, se
+        // c'è) per far vedere a colpo d'occhio quanto dura l'appuntamento, senza ripetere il
+        // nome con "continua" ogni quarto d'ora.
+        const coloreRule = copertura.colore ? `background:${escapeHtml(copertura.colore)}2A;` : '';
         return `
-          <div class="agenda-slot agenda-slot-occupato" data-time="${time}" style="border-left:4px solid ${operatoreColore(appuntamentoOperatore(copertura))};">
+          <div class="agenda-slot agenda-slot-occupato" data-time="${time}" style="border-left:4px solid ${operatoreColore(appuntamentoOperatore(copertura))};${coloreRule}">
             <div class="agenda-slot-time">${time}</div>
-            <div class="agenda-slot-occupato-label">${escapeHtml(appuntamentoNomeDisplay(copertura))} — continua</div>
           </div>`;
       }
       return `
@@ -5594,6 +5597,12 @@
         const a = agendaCache.appuntamenti.find(x => x.id === input.dataset.id);
         if (!a) return;
         if (field === 'cliente') {
+          // Maiuscola automatica a inizio nome (e di ogni parola), come nel nome scheda: non
+          // dipende dal campo "text" generico qui sotto perché questo è "search" apposta (contro
+          // i contatti del dispositivo), quindi va fatta a parte.
+          const posCursore = input.selectionStart;
+          const maiuscolo = titleCaseName(input.value);
+          if (maiuscolo !== input.value) { input.value = maiuscolo; input.setSelectionRange(posCursore, posCursore); }
           a.clienteId = null;
           a.nomeManuale = input.value;
           sincronizzaClienteCombo(a);
