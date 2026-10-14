@@ -607,6 +607,9 @@
     border-bottom: 1px solid var(--line); min-height: 34px; flex-shrink: 0;
   }
   .agenda-slot:last-child { border-bottom: none; }
+  /* Il bordo tra una riga e l'altra segna solo le mezz'ore (richiesta di Erica, 14/10): i quarti
+     d'ora restano prenotabili, ma senza un bordo proprio, per alleggerire la vista. */
+  .agenda-slot-senza-bordo { border-bottom: none; }
   .agenda-slot-time { width: 48px; flex: none; font-size: 12.5px; color: var(--ink-soft); font-weight: 600; }
   .agenda-slot-add {
     flex: none; width: 24px; height: 24px; padding: 0; border-radius: 50%; line-height: 1;
@@ -616,7 +619,10 @@
   .agenda-slot:hover .agenda-slot-add, .agenda-slot-add:focus { opacity: 1; }
   .agenda-slot-filled { background: var(--berry-soft); align-items: flex-start; padding: 8px 10px; }
   .agenda-slot-filled .agenda-slot-time { padding-top: 6px; }
+  /* L'appuntamento riempie tutto il blocco (alto quanto il suo tempo di lavorazione): la targhetta
+     si allarga fino a occupare tutto lo spazio, invece di stare incollata in alto con vuoto sotto. */
   .agenda-slot-items { display: flex; flex-direction: column; gap: 6px; flex: 1 1 auto; min-width: 0; }
+  .agenda-slot-items .agenda-chip { flex: 1 1 auto; align-items: center; }
   .agenda-chip {
     display: flex; align-items: center; gap: 8px; background: var(--paper-raised); border: 1px solid var(--berry);
     border-radius: var(--radius); padding: 5px 8px; cursor: pointer;
@@ -1570,7 +1576,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-14.56-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-14.57-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -4474,7 +4480,19 @@
   // fermo dov'è, con renderSheetMantenendoScroll qui sotto.
   function agendaScrollA830() {
     requestAnimationFrame(() => {
-      const target = document.querySelector('.agenda-slot[data-time="08:30"]');
+      // Di norma esiste una riga che inizia esattamente alle 8:30; ma da quando un appuntamento
+      // occupa un unico blocco alto quanto il suo tempo di lavorazione (vedi renderAgendaSlotHtml
+      // qui sotto), le 8:30 potrebbero finire "inglobate" nel blocco di un appuntamento iniziato
+      // prima (es. alle 8:15): in quel caso si cerca il blocco che COPRE le 8:30, non quello che
+      // inizia esattamente lì.
+      let target = document.querySelector('.agenda-slot[data-time="08:30"]');
+      if (!target) {
+        const soglia = 8 * 60 + 30;
+        target = Array.from(document.querySelectorAll('.agenda-slot[data-time][data-fine]')).find(el => {
+          const inizio = hhmmToMinuti(el.dataset.time), fine = hhmmToMinuti(el.dataset.fine);
+          return inizio <= soglia && soglia < fine;
+        });
+      }
       if (target) target.scrollIntoView({ block: 'start' });
     });
   }
@@ -4583,52 +4601,95 @@
   // dove Erica è libera, resta uno slot normale prenotabile), bloccato da una ferie/permesso
   // dell'operatore (niente tasto "+", solo l'etichetta), oppure "chiuso" (fuori dall'orario di
   // apertura vero: visibile solo per allineare la griglia 7:00-20:00, non prenotabile).
-  function renderAgendaSlotHtml(time, appuntamenti, operatore, dateISO) {
-    const items = appuntamenti.filter(a => a.ora === time);
-    const assenza = operatore ? assenzaSuSlot(operatore, dateISO, time) : null;
-    if (assenza && !items.length) {
+  //
+  // Richiesta di Erica (14/10, con foto di esempio): le etichette dell'ora e i bordi tra le righe
+  // seguono le mezz'ore, non i quarti d'ora — i quarti d'ora (:15/:45) restano cliccabili per
+  // prenotare con precisione, ma non si "marcano" più con un'etichetta o un bordo proprio, per
+  // alleggerire la vista; le mezz'ore (:00/:30) restano ben marcate. E un appuntamento non si vede
+  // più come tante righe colorate separate: occupa un unico blocco alto quanto il suo tempo di
+  // lavorazione (niente più "occupato" vuoto quarto per quarto), con il nome e il servizio che
+  // riempiono tutto lo spazio.
+  function agendaMostraEtichettaOra(minuti) { return minuti % 30 === 0; }
+  function agendaBordoVisibile(minutiFine) { return minutiFine % 30 === 0; }
+  function renderAgendaSlotVuotoHtml(time, minutiFine, opts) {
+    const assenza = opts.assenza, chiuso = opts.chiuso, operatore = opts.operatore;
+    const minuti = hhmmToMinuti(time);
+    const etichetta = agendaMostraEtichettaOra(minuti) ? time : '';
+    const classiExtra = agendaBordoVisibile(minutiFine) ? '' : ' agenda-slot-senza-bordo';
+    if (assenza) {
       const label = assenza.tipo === 'permesso' ? 'Permesso' : 'Ferie';
       return `
-        <div class="agenda-slot agenda-slot-assente" data-time="${time}">
-          <div class="agenda-slot-time">${time}</div>
+        <div class="agenda-slot agenda-slot-assente${classiExtra}" data-time="${time}" data-fine="${minutiToHHMM(minutiFine)}">
+          <div class="agenda-slot-time">${etichetta}</div>
           <div class="agenda-slot-assente-label">${label}${assenza.note ? ' — ' + escapeHtml(assenza.note) : ''}</div>
         </div>`;
     }
-    if (!items.length) {
-      const tMin = hhmmToMinuti(time);
-      const copertura = appuntamenti.find(a => {
-        const aMin = hhmmToMinuti(a.ora);
-        return aMin < tMin && tMin < aMin + appuntamentoDurataLavorazione(a);
-      });
-      if (copertura) {
-        // Stessa idea della targhetta: tutta la cella diventa rosa (il colore del servizio, se
-        // c'è) per far vedere a colpo d'occhio quanto dura il lavoro vero e proprio, senza
-        // ripetere il nome con "continua" ogni quarto d'ora.
-        const coloreRule = copertura.colore ? `background:${escapeHtml(copertura.colore)}2A;` : '';
-        return `
-          <div class="agenda-slot agenda-slot-occupato" data-time="${time}" style="border-left:4px solid ${operatoreColore(appuntamentoOperatore(copertura))};${coloreRule}">
-            <div class="agenda-slot-time">${time}</div>
-          </div>`;
-      }
-      if (!oraNelTurno(operatore, dateISO, time)) {
-        return `
-          <div class="agenda-slot agenda-slot-chiuso" data-time="${time}">
-            <div class="agenda-slot-time">${time}</div>
-          </div>`;
-      }
+    if (chiuso) {
       return `
-        <div class="agenda-slot" data-time="${time}">
-          <div class="agenda-slot-time">${time}</div>
-          <button type="button" class="agenda-slot-add" data-time="${time}" data-operatore="${escapeHtml(operatore || '')}" aria-label="Nuovo appuntamento alle ${time}">+</button>
+        <div class="agenda-slot agenda-slot-chiuso${classiExtra}" data-time="${time}" data-fine="${minutiToHHMM(minutiFine)}">
+          <div class="agenda-slot-time">${etichetta}</div>
         </div>`;
     }
     return `
-      <div class="agenda-slot agenda-slot-filled" data-time="${time}">
+      <div class="agenda-slot${classiExtra}" data-time="${time}" data-fine="${minutiToHHMM(minutiFine)}">
+        <div class="agenda-slot-time">${etichetta}</div>
+        <button type="button" class="agenda-slot-add" data-time="${time}" data-operatore="${escapeHtml(operatore || '')}" aria-label="Nuovo appuntamento alle ${time}">+</button>
+      </div>`;
+  }
+  // Il blocco di un appuntamento: alto quanto il suo tempo di lavorazione (un quarto d'ora = una
+  // "riga", come prima), col nome/servizio (o il modulo di modifica, se è quello aperto) che
+  // riempiono tutto lo spazio invece di stare solo nella prima riga.
+  function renderAgendaBloccoAppuntamentiHtml(time, items, minutiFine) {
+    const classiExtra = agendaBordoVisibile(minutiFine) ? '' : ' agenda-slot-senza-bordo';
+    const righe = Math.max(1, Math.round((minutiFine - hhmmToMinuti(time)) / 15));
+    return `
+      <div class="agenda-slot agenda-slot-filled${classiExtra}" data-time="${time}" data-fine="${minutiToHHMM(minutiFine)}" style="min-height:${righe * 34}px;">
         <div class="agenda-slot-time">${time}</div>
         <div class="agenda-slot-items">
           ${items.map(a => a.id === agendaEditingId ? renderAgendaRowHtml(a) : renderAgendaChipHtml(a)).join('')}
         </div>
       </div>`;
+  }
+  // Disegna tutte le righe di una colonna (un operatore, un giorno): a differenza di prima non
+  // disegna più uno slot alla volta senza sapere cosa c'è intorno, ma avanza quarto per quarto
+  // "saltando" quelli già coperti dal blocco di un appuntamento appena disegnato — è questo salto
+  // che fa sì che l'appuntamento occupi un unico blocco invece di tante righe separate.
+  function renderAgendaColonnaSlotsHtml(dateISO, operatore, appuntamenti) {
+    let html = '';
+    let saltaFino = -1;
+    agendaSlotsVista().forEach(time => {
+      const minuti = hhmmToMinuti(time);
+      if (minuti < saltaFino) return; // già dentro il blocco di un appuntamento disegnato sopra
+      const assenza = operatore ? assenzaSuSlot(operatore, dateISO, time) : null;
+      const items = appuntamenti.filter(a => a.ora === time);
+      if (items.length && !assenza) {
+        const durata = Math.max(...items.map(a => appuntamentoDurataLavorazione(a)));
+        const minutiFine = minuti + durata;
+        html += renderAgendaBloccoAppuntamentiHtml(time, items, minutiFine);
+        saltaFino = minutiFine;
+        return;
+      }
+      // Rete di sicurezza per dati incoerenti: un quarto d'ora "coperto" dal tempo di lavorazione
+      // di un appuntamento iniziato prima ma non ancora saltato sopra (non dovrebbe più capitare,
+      // visto che ora si salta tutto il blocco in un colpo solo).
+      const copertura = !assenza && appuntamenti.find(a => {
+        const aMin = hhmmToMinuti(a.ora);
+        return aMin < minuti && minuti < aMin + appuntamentoDurataLavorazione(a);
+      });
+      if (copertura) {
+        const minutiFine = minuti + 15;
+        const classiExtra = agendaBordoVisibile(minutiFine) ? '' : ' agenda-slot-senza-bordo';
+        const coloreRule = copertura.colore ? `background:${escapeHtml(copertura.colore)}2A;` : '';
+        html += `
+          <div class="agenda-slot agenda-slot-occupato${classiExtra}" data-time="${time}" data-fine="${minutiToHHMM(minutiFine)}" style="border-left:4px solid ${operatoreColore(appuntamentoOperatore(copertura))};${coloreRule}">
+            <div class="agenda-slot-time">${agendaMostraEtichettaOra(minuti) ? time : ''}</div>
+          </div>`;
+        return;
+      }
+      const chiuso = !oraNelTurno(operatore, dateISO, time);
+      html += renderAgendaSlotVuotoHtml(time, minuti + 15, { assenza, chiuso, operatore });
+    });
+    return html;
   }
   // Una colonna per ogni operatore che lavora quel giorno (una sola se è solo Erica, due
   // affiancate nei giorni in cui lavora anche Sara, come il sabato). La griglia si vede sempre,
@@ -4641,12 +4702,12 @@
     const operatori = operatoriReali.length ? operatoriReali : ['Erica'];
     if (operatori.length === 1) {
       const op = operatori[0];
-      return `<div class="agenda-grid">${agendaSlotsVista().map(t => renderAgendaSlotHtml(t, appuntamentiDelGiorno(dateISO, op), op, dateISO)).join('')}</div>`;
+      return `<div class="agenda-grid">${renderAgendaColonnaSlotsHtml(dateISO, op, appuntamentiDelGiorno(dateISO, op))}</div>`;
     }
     return `<div class="agenda-columns">${operatori.map(op => `
       <div class="agenda-column">
         <div class="agenda-column-head" style="color:${operatoreColore(op)};"><span class="agenda-column-dot" style="background:${operatoreColore(op)};"></span>${escapeHtml(op)}</div>
-        <div class="agenda-grid">${agendaSlotsVista().map(t => renderAgendaSlotHtml(t, appuntamentiDelGiorno(dateISO, op), op, dateISO)).join('')}</div>
+        <div class="agenda-grid">${renderAgendaColonnaSlotsHtml(dateISO, op, appuntamentiDelGiorno(dateISO, op))}</div>
       </div>`).join('')}</div>`;
   }
 
