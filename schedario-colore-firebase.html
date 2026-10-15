@@ -1322,7 +1322,9 @@
     <div class="login-gate-title">Chi sei?</div>
     <div class="login-gate-names">
       <button type="button" class="login-gate-name-btn" data-name="Erica">Erica</button>
-      <button type="button" class="login-gate-name-btn" data-name="Sara">Sara</button>
+      <!-- "Sara" nascosta per ora (Erica, 15/10: "per ora non serve"): resta tutto com'era
+           (codice d'accesso, dati, appunti privati suoi) pronto a tornare visibile riaggiungendo
+           qui il tasto, se dovesse servire di nuovo. -->
     </div>
     <div class="login-gate-pin-area" id="loginGatePinArea" hidden>
       <div class="login-gate-pin-label" id="loginGatePinLabel"></div>
@@ -1649,7 +1651,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-15.73-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-15.74-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -1941,6 +1943,7 @@
       )).then(libri => {
         ispirazioneCache.libri = libri;
         if (viewingIspirazione) renderSheet();
+        if (viewingSearchApp) renderSearchAppResults();
       });
     }).catch(() => { /* i libri non si sono caricati: la sezione resta visibile senza, per ora */ });
   }
@@ -2045,6 +2048,7 @@
       magazzinoCache.storicoRiordini = (doc.exists && doc.data() && doc.data().storicoRiordini) || [];
       hideStorageError();
       if (viewingMagazzino) renderSheet();
+      if (viewingSearchApp) renderSearchAppResults();
     }).catch(() => { /* resta quello che c'era (vuoto, la prima volta): si riprova riaprendo la sezione */ });
   }
   function saveMagazzino() {
@@ -2863,14 +2867,14 @@
   let viewingServizi = false; // true quando il pannello principale mostra "Crea servizio"
   let viewingAgenda = false; // true quando il pannello principale mostra "Agenda"
   let viewingSearchApp = false; // true quando il pannello principale mostra "Cerca nell'app"
-  // Sezione "Tricologo": mostra solo le schede clienti (stesso elenco/ricerca del Tecnico) e
-  // l'Agenda (Erica, 15/10: "lascia solo schede clienti e agenda") — nient'altro del menu del
-  // Tecnico (Magazzino, Servizi, Ispirazione, ecc.). Si entra/esce solo con i due pulsanti
-  // Tecnico/Tricologo in alto, che restano sempre visibili. Per non perdere la sezione che si
-  // stava usando nel Tecnico (es. Magazzino) passando per Tricologia, lo stato delle sue
-  // viewingX viene "congelato" in tecnicoViewSnapshot quando si entra in Tricologo, e ripristinato
-  // quando si torna su Tecnico — così le due modalità restano indipendenti senza dover toccare
-  // tutti gli altri punti dell'app che aprono una sezione del Tecnico.
+  // Sezione "Tricologo": mostra SOLO Magazzino, Catalogo prodotti HP e Cerca nell'app — niente
+  // schede clienti, niente Agenda, niente altre voci del menu del Tecnico (Erica, 15/10, dopo
+  // vari tentativi: "facciamo che rimane solo: magazzino, catalogo prodotti, cerca nell'app.
+  // visibili e funzionanti"). Si entra/esce solo con i due pulsanti Tecnico/Tricologo in alto,
+  // che restano sempre visibili. Per non perdere la sezione (e l'eventuale cliente) che si
+  // stava usando nel Tecnico passando per Tricologia, quello stato viene "congelato" in
+  // tecnicoViewSnapshot quando si entra in Tricologo (che riparte sempre pulito, sul Magazzino),
+  // e ripristinato quando si torna su Tecnico.
   let viewingTricologo = false;
   let tecnicoViewSnapshot = null;
   let searchAppTerm = "";
@@ -4961,40 +4965,24 @@
     const apptModalDefault = document.getElementById('agendaApptModal');
     if (apptModalDefault) apptModalDefault.hidden = true;
 
-    // Tricologo: nasconde solo il MENU delle voci del Tecnico (scheda da stampare, consigli di
-    // utilizzo, disco di Newton, ispirazione, crea servizio, magazzino, catalogo HP, cerca
-    // nell'app...), che qui non servono. L'elenco schede clienti (ricerca + lista) resta invece
-    // visibile, insieme all'Agenda: sono le uniche due cose che Tricologia deve mostrare
-    // (Erica, 15/10: "lascia solo schede clienti e agenda").
-    const menuToggleEl = document.getElementById('menuToggle');
-    const menuCollapsibleEl = document.getElementById('menuCollapsible');
-    if (menuToggleEl) menuToggleEl.hidden = viewingTricologo;
-    if (menuCollapsibleEl) menuCollapsibleEl.hidden = viewingTricologo;
-    if (viewingTricologo && !activeId) {
-      panel.innerHTML = `
-        <div class="home-agenda">
-          <div class="home-agenda-head">
-            <div class="notes-title">Agenda</div>
-            <div class="agenda-date-nav">
-              <button type="button" class="ghost small" id="agendaPrevDay" aria-label="Giorno precedente">‹</button>
-              <input type="date" id="agendaDatePicker" value="${escapeHtml(agendaDataSelezionata)}">
-              <button type="button" class="ghost small" id="agendaNextDay" aria-label="Giorno successivo">›</button>
-              <button type="button" class="ghost small" id="agendaOggiBtn">Oggi</button>
-              <button type="button" class="ghost small" id="agendaTurniBtn">Turni di lavoro</button>
-              <button type="button" class="ghost small" id="agendaAssenzaBtn">Ferie/permesso</button>
-            </div>
-          </div>
-          <div class="agenda-date-label">${fmtDateISOLong(agendaDataSelezionata)}</div>
-          <div id="agendaGridWrap">
-            ${renderAgendaGridHtml(agendaDataSelezionata)}
-          </div>
-          <span class="save-status" id="agendaSaveStatus"></span>
-        </div>
-      `;
-      renderAgendaApptModal();
-      bindAgendaEvents();
-      return;
-    }
+    // Tricologo: deve mostrare SOLO Magazzino, Catalogo prodotti HP e Cerca nell'app — niente
+    // schede clienti, niente Agenda, niente altre voci del menu (Erica, 15/10, dopo vari
+    // tentativi: "facciamo che rimane solo: magazzino, catalogo prodotti, cerca nell'app.
+    // visibili e funzionanti"). IMPORTANTE, trovato dopo che i tentativi precedenti sembravano
+    // non avere ALCUN effetto: l'attributo "hidden" da solo non basta, perché queste voci hanno
+    // già una regola CSS con un loro "display" (es. ".notes-banner { display: flex }" e, sui
+    // dispositivi touch, ".menu-collapsible { display:flex !important }" per il menu fisso in
+    // basso) — in CSS una regola d'autore vince sempre su quella di default del browser per
+    // "hidden", quindi l'elemento restava visibile comunque. Si forza invece lo stile inline
+    // "display:none", che vince sempre (tranne sulle regole "!important", qui assenti per le
+    // singole voci): una per una sulle voci non ammesse, più sull'intero elenco clienti.
+    const sidebarAsideEl = document.querySelector('.sidebar-stack .sidebar');
+    if (sidebarAsideEl) sidebarAsideEl.style.display = viewingTricologo ? 'none' : '';
+    ['blankSheetEntry', 'notesEntry', 'ostwaldEntry', 'ispirazioneEntry', 'serviziEntry'].forEach(id => {
+      const voce = document.getElementById(id);
+      const wrapper = voce && voce.closest('.notes-banner');
+      if (wrapper) wrapper.style.display = viewingTricologo ? 'none' : '';
+    });
 
     if (viewingNotes) {
       panel.innerHTML = `
@@ -5093,7 +5081,8 @@
             <button class="ghost small" id="magazzinoPdfBtn">Scarica PDF</button>
             <button class="ghost small" id="magazzinoExcelBtn">Scarica Excel</button>
             <button class="ghost small" id="magazzinoStatsBtn">Statistiche riordini</button>
-            <button class="ghost small" id="businessPlanBtn">Business Plan</button>
+            <!-- "Business Plan" nascosto per ora (Erica, 15/10: "non mi serve"): il codice resta,
+                 così si può rimettere facilmente il tasto se dovesse servire di nuovo. -->
           </div>
         </div>
         <fieldset>
@@ -7290,7 +7279,11 @@
     loadServiziFromDb();
   });
 
-  // Cerca nell'app: stesso comportamento, apre come una scheda
+  // Cerca nell'app: stesso comportamento, apre come una scheda. Magazzino e Ispirazione si
+  // caricano solo quando si apre la loro sezione (sono "pesanti" da tenere sempre in memoria),
+  // quindi se non erano ancora mai state aperte in questa sessione la ricerca su di loro
+  // risultava vuota: ora si caricano anche qui, così "Cerca nell'app" li trova sempre, anche
+  // senza averle visitate prima (Erica, 15/10).
   document.getElementById('cercaAppEntry').addEventListener('click', () => {
     viewingSearchApp = true;
     viewingNotes = false;
@@ -7304,6 +7297,8 @@
     viewingHome = false;
     closeMobileMenu();
     renderAll();
+    loadMagazzinoFromDb();
+    loadIspirazioneLibri();
   });
 
   // Scheda da stampare: modulo vuoto, senza storico/foto/azioni, pensato solo per la stampa
@@ -7402,11 +7397,11 @@
   }
 
   // Tecnico/Tricologo: due pulsanti sempre visibili in alto, per passare da una sezione
-  // all'altra. Lo stato delle viewingX del Tecnico viene salvato in tecnicoViewSnapshot
-  // entrando in Tricologo e ripristinato tornando su "Tecnico": si ritrova così la sezione
-  // esatta lasciata prima, mentre Tricologia parte sempre pulita (solo Agenda, a meno che non
-  // si stesse già guardando proprio la scheda di una cliente, che in tal caso resta apribile
-  // anche lì — Erica, 15/10: "lascia solo schede clienti e agenda").
+  // all'altra. Lo stato del Tecnico (sezione aperta + eventuale cliente) viene salvato in
+  // tecnicoViewSnapshot entrando in Tricologo e ripristinato tornando su "Tecnico": si ritrova
+  // così esattamente dove si era (Erica, 15/10, dopo vari tentativi: "facciamo che rimane
+  // solo: magazzino, catalogo prodotti, cerca nell'app. visibili e funzionanti") — mentre
+  // Tricologia riparte sempre pulita, aperta sul Magazzino (la prima delle tre voci ammesse).
   const modeTecnicoBtn = document.getElementById('modeTecnicoBtn');
   const modeTricologoBtn = document.getElementById('modeTricologoBtn');
   function aggiornaModeSwitch() {
@@ -7427,6 +7422,7 @@
         viewingOstwald = tecnicoViewSnapshot.viewingOstwald;
         viewingCatalogoHp = tecnicoViewSnapshot.viewingCatalogoHp;
         viewingHome = tecnicoViewSnapshot.viewingHome;
+        activeId = tecnicoViewSnapshot.activeId;
         tecnicoViewSnapshot = null;
       }
       aggiornaModeSwitch();
@@ -7436,14 +7432,9 @@
   if (modeTricologoBtn) {
     modeTricologoBtn.addEventListener('click', () => {
       viewingTricologo = true;
-      // Se il Tecnico stava davvero mostrando la scheda di una cliente (nessun'altra sezione
-      // attiva), quella resta apribile anche in Tricologia; altrimenti (Magazzino, home, ecc.)
-      // si riparte puliti sull'Agenda, senza un vecchio activeId rimasto in giro.
-      const stavaMostrandoScheda = !!activeId && !(viewingNotes || viewingIspirazione || viewingMagazzino || viewingServizi || viewingAgenda || viewingSearchApp || viewingBlankSheet || viewingOstwald || viewingCatalogoHp || viewingHome);
-      tecnicoViewSnapshot = { viewingNotes, viewingIspirazione, viewingMagazzino, viewingServizi, viewingAgenda, viewingSearchApp, viewingBlankSheet, viewingOstwald, viewingCatalogoHp, viewingHome };
+      tecnicoViewSnapshot = { viewingNotes, viewingIspirazione, viewingMagazzino, viewingServizi, viewingAgenda, viewingSearchApp, viewingBlankSheet, viewingOstwald, viewingCatalogoHp, viewingHome, activeId };
       viewingNotes = false;
       viewingIspirazione = false;
-      viewingMagazzino = false;
       viewingServizi = false;
       viewingAgenda = false;
       viewingSearchApp = false;
@@ -7451,11 +7442,12 @@
       viewingOstwald = false;
       viewingCatalogoHp = false;
       viewingHome = false;
-      if (!stavaMostrandoScheda) activeId = null;
+      viewingMagazzino = true; // Tricologia riparte sempre dal Magazzino
+      activeId = null;
       aggiornaModeSwitch();
       closeMobileMenu();
       renderAll();
-      agendaScrollA830();
+      loadMagazzinoFromDb();
     });
   }
 
