@@ -466,6 +466,13 @@
   }
   .version-delete:hover, .magazzino-delete:hover { color: #A8433C; text-decoration-color: #A8433C; }
   .version-delete.armed, .magazzino-delete.armed { color: #A8433C; font-weight: 600; text-decoration-color: #A8433C; }
+  /* Cestino del Magazzino: stessa icona sempre (niente testo che cambia), il colore rosso di
+     ".armed" qui sopra basta a far capire che serve un secondo clic per confermare. */
+  .magazzino-row-delete {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; padding: 0; text-decoration: none;
+  }
+  .magazzino-row-delete svg { width: 18px; height: 18px; flex: none; }
   .version-empty { font-size: 13px; color: var(--ink-soft); }
   .version-see-all {
     display: inline-block; margin-top: 8px; font-size: 13px; color: var(--berry);
@@ -1065,7 +1072,10 @@
        valore in px uguale su TUTTE le righe insieme (la variabile sta sul documento, non sulla
        singola riga), così si allarga o si stringe tutta la colonna in un colpo solo, non una
        voce alla volta. minmax() tiene le altre colonne leggibili anche quando "Prodotto" cresce. */
-    grid-template-columns: 26px minmax(130px, var(--mag-nome-w, 2fr)) minmax(90px, 1.3fr) minmax(110px, 1.6fr) minmax(70px, 0.9fr) 90px 70px;
+    /* Quantità ridotta a 64px (lo spazio di un numero a 3 cifre CON le freccette su/giù native,
+       senza tagliarlo): lo spazio recuperato va al margine massimo della colonna "Prodotto" qui
+       sotto, non a questa riga (richiesto da Erica, 15/10). */
+    grid-template-columns: 26px minmax(130px, var(--mag-nome-w, 2fr)) minmax(90px, 1.3fr) minmax(110px, 1.6fr) minmax(70px, 0.9fr) 64px 70px;
     align-items: center; gap: 10px;
     padding: 8px 12px; background: var(--paper-raised);
     border-bottom: 1px solid var(--line);
@@ -1115,7 +1125,7 @@
   .magazzino-select.magazzino-select-unset { border-color: var(--berry); background: var(--berry-soft); }
   /* Quantità: solo l'input con le freccette native del browser (su/giù), niente più tasti +/-
      di fianco, come richiesto. */
-  .magazzino-row .magazzino-field-qty .magazzino-qty-input { width: 100%; text-align: center; }
+  .magazzino-row .magazzino-field-qty .magazzino-qty-input { width: 100%; text-align: center; padding: 9px 4px; }
   /* Prezzo: via le freccette su/giù native del browser, come richiesto. */
   .magazzino-input[data-field="prezzo"]::-webkit-outer-spin-button,
   .magazzino-input[data-field="prezzo"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
@@ -1625,7 +1635,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-15.70-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-15.71-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -4463,7 +4473,9 @@
           <input type="number" class="magazzino-input magazzino-qty-input" data-id="${p.id}" data-field="quantita" min="0" step="1" value="${p.quantita != null ? p.quantita : 0}">
         </div>
         <div class="magazzino-row-actions">
-          <button type="button" class="magazzino-delete" data-id="${p.id}">Elimina</button>
+          <button type="button" class="magazzino-delete magazzino-row-delete" data-id="${p.id}" title="Elimina prodotto" aria-label="Elimina prodotto">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V4.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1V7"/><path d="M6.5 7l1 13a2 2 0 0 0 2 2h5a2 2 0 0 0 2-2l1-13"/><path d="M10 11v6M14 11v6"/></svg>
+          </button>
         </div>
       </div>`;
   }
@@ -5757,7 +5769,10 @@
         const startX = ev.clientX;
         handle.classList.add('dragging');
         function onMove(ev2) {
-          const nuova = Math.max(110, Math.min(560, startW + (ev2.clientX - startX)));
+          // Il massimo è salito di 26px (90px→64px della colonna Quantità, appena resa più
+          // stretta): lo spazio recuperato lì va proprio nel margine massimo di allargamento
+          // di "Prodotto" (richiesto da Erica, 15/10).
+          const nuova = Math.max(110, Math.min(586, startW + (ev2.clientX - startX)));
           magazzinoNomeColWidth = nuova;
           document.documentElement.style.setProperty('--mag-nome-w', nuova + 'px');
         }
@@ -5800,14 +5815,20 @@
     });
 
     document.querySelectorAll('.magazzino-delete').forEach(btn => {
+      // Stessa logica "clicca, poi conferma entro 4 secondi" per tutti: il cestino del
+      // Magazzino (icona fissa) usa il titolo/aria-label invece del testo per non sovrascrivere
+      // l'icona, gli altri (Agenda/Servizi/Ferie-permessi, solo testo) come sempre.
+      const isIcona = btn.classList.contains('magazzino-row-delete');
       btn.addEventListener('click', () => {
         if (!btn.classList.contains('armed')) {
           btn.classList.add('armed');
-          btn.textContent = 'Confermi?';
+          if (isIcona) { btn.title = 'Clicca di nuovo per confermare'; btn.setAttribute('aria-label', 'Clicca di nuovo per confermare l\'eliminazione'); }
+          else btn.textContent = 'Confermi?';
           clearTimeout(btn._armTimer);
           btn._armTimer = setTimeout(() => {
             btn.classList.remove('armed');
-            btn.textContent = 'Elimina';
+            if (isIcona) { btn.title = 'Elimina prodotto'; btn.setAttribute('aria-label', 'Elimina prodotto'); }
+            else btn.textContent = 'Elimina';
           }, 4000);
           return;
         }
