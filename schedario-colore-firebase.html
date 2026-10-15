@@ -1115,27 +1115,7 @@
   .magazzino-input[data-field="prezzo"] { -moz-appearance: textfield; }
   .magazzino-row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
   .magazzino-empty { margin-top: 0; }
-  /* Riga compatta (vista di sempre): solo testo, nessun campo scrivibile, per non far saltare
-     fuori la tastiera con un semplice tap. Un tap sulla riga seleziona; la matitina ✎ apre la
-     modifica vera e propria (stesso schema della targhetta/riga dell'agenda). */
-  .magazzino-row-compatta { cursor: pointer; }
-  .magazzino-row-compatta:hover { background: var(--berry-soft); }
   .magazzino-row-selezionata { background: var(--berry-soft); }
-  .magazzino-vista-testo, .magazzino-vista-nome {
-    display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    font-size: 14px; color: var(--ink); padding: 9px 2px;
-  }
-  .magazzino-vista-nome { font-weight: 600; flex: 1 1 auto; min-width: 0; }
-  .magazzino-field-nome-vista { min-width: 0; }
-  .magazzino-edit-btn {
-    flex: none; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper);
-    cursor: pointer; font-size: 14px; color: var(--berry); padding: 6px 9px;
-  }
-  .magazzino-edit-btn:hover { background: var(--berry-soft); }
-  .magazzino-edit-done {
-    flex: none; border: 1px solid var(--berry); border-radius: var(--radius); background: var(--berry-soft);
-    color: var(--berry); font-family: inherit; font-weight: 600; cursor: pointer; font-size: 13px; padding: 7px 10px;
-  }
   /* Rinomina in blocco: compare solo quando c'è almeno un prodotto selezionato. */
   .magazzino-bulk-rename { display: flex; align-items: center; gap: 6px; }
   .magazzino-bulk-rename input {
@@ -1634,7 +1614,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-14.62-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-15.63-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -1742,12 +1722,8 @@
   let magazzinoFiltroFornitore = ''; // '' = tutti i fornitori, altrimenti chiave normalizzata (o "__nomarca__")
   let magazzinoSelezionati = new Set(); // id dei prodotti spuntati, per eliminarli insieme e svuotare il magazzino
   let magazzinoNomeColWidth = null; // px della colonna "Prodotto" (null = larghezza di sempre); vale per tutte le righe insieme
-  // id del prodotto aperto per la modifica (null = tutte le righe compatte, di sola lettura):
-  // un tap su una riga compatta la seleziona (non apre la tastiera), un tap sulla matitina ✎
-  // apre quella riga coi campi scrivibili, come già succede per le targhette dell'agenda.
-  let magazzinoEditingId = null;
-  // Timestamp fino a cui ignorare un "click" sulla riga compatta: trascinando la maniglia di
-  // ridimensionamento colonna, il mouseup può finire sopra un punto diverso da dove si è
+  // Timestamp fino a cui ignorare un "click" sulla colonna della casella: trascinando la maniglia
+  // di ridimensionamento colonna, il mouseup può finire sopra un punto diverso da dove si è
   // iniziato (la riga si è appena allargata/stretta sotto il dito), e il browser genera comunque
   // un click sull'antenato comune — che altrimenti selezionerebbe/deselezionerebbe per sbaglio
   // una riga durante un trascinamento.
@@ -4435,35 +4411,14 @@
       </div>`;
   }
 
-  // Riga COMPATTA (di sola lettura): è quella che si vede normalmente. Un tap sulla riga
-  // seleziona il prodotto (nessuna tastiera salta fuori); solo il tap sulla matitina ✎ apre i
-  // campi scrivibili (renderMagazzinoRowEditHtml). Stesso schema già usato in Agenda
-  // (targhetta compatta vs. riga completa, vedi agendaEditingId).
-  function renderMagazzinoRowCompattaHtml(p) {
-    const selezionato = magazzinoSelezionati.has(p.id);
-    const tipoLabel = p.tipo === 'materiaPrima' ? 'Materie prime' : (p.tipo === 'vendita' ? 'Merci vendita' : '—');
-    return `
-      <div class="magazzino-row magazzino-row-compatta${selezionato ? ' magazzino-row-selezionata' : ''}" data-id="${p.id}">
-        <div class="magazzino-row-check-col">
-          <input type="checkbox" class="magazzino-row-check" data-id="${p.id}" ${selezionato ? 'checked' : ''} title="Seleziona per eliminare">
-        </div>
-        <div class="field magazzino-field-nome magazzino-field-nome-vista">
-          <span class="magazzino-vista-nome">${escapeHtml(p.nome || '—')}</span>
-          <div class="magazzino-nome-resizer" title="Trascina per allargare o stringere la colonna Prodotto (su tutte le righe)"></div>
-        </div>
-        <div class="field magazzino-field-tipo"><span class="magazzino-vista-testo">${escapeHtml(tipoLabel)}</span></div>
-        <div class="field magazzino-field-marca"><span class="magazzino-vista-testo">${escapeHtml(p.marca || '—')}</span></div>
-        <div class="field magazzino-field-prezzo"><span class="magazzino-vista-testo">${p.prezzo != null ? p.prezzo.toFixed(2).replace('.', ',') : '—'}</span></div>
-        <div class="field magazzino-field-qty"><span class="magazzino-vista-testo">${p.quantita != null ? p.quantita : 0}</span></div>
-        <div class="magazzino-row-actions">
-          <button type="button" class="magazzino-edit-btn" data-id="${p.id}" title="Modifica questo prodotto" aria-label="Modifica questo prodotto">✎</button>
-        </div>
-      </div>`;
-  }
+  // Riga sempre interamente modificabile (come prima della versione "compatta" del 14/10, che
+  // non piaceva più a Erica: "mi piaceva di più prima"). Un tap sulla casella (o sulla colonna
+  // della casella) seleziona il prodotto per le azioni in blocco; i campi restano sempre quelli
+  // scrivibili, senza bisogno di una matitina per aprirli.
   function renderMagazzinoRowEditHtml(p) {
     const selezionato = magazzinoSelezionati.has(p.id);
     return `
-      <div class="magazzino-row magazzino-row-edit" data-id="${p.id}">
+      <div class="magazzino-row magazzino-row-edit${selezionato ? ' magazzino-row-selezionata' : ''}" data-id="${p.id}">
         <div class="magazzino-row-check-col">
           <input type="checkbox" class="magazzino-row-check" data-id="${p.id}" ${selezionato ? 'checked' : ''} title="Seleziona per eliminare">
         </div>
@@ -4488,7 +4443,6 @@
           <input type="number" class="magazzino-input magazzino-qty-input" data-id="${p.id}" data-field="quantita" min="0" step="1" value="${p.quantita != null ? p.quantita : 0}">
         </div>
         <div class="magazzino-row-actions">
-          <button type="button" class="magazzino-edit-done" data-id="${p.id}" title="Fatto">Fatto</button>
           <button type="button" class="magazzino-delete" data-id="${p.id}">Elimina</button>
         </div>
       </div>`;
@@ -4530,7 +4484,7 @@
     return groupMagazzinoProdotti(prodotti).map(g => `
       <div class="magazzino-group">
         <div class="magazzino-group-title">${escapeHtml(g.tipo.label)}</div>
-        <div class="magazzino-list">${g.prodotti.map(p => p.id === magazzinoEditingId ? renderMagazzinoRowEditHtml(p) : renderMagazzinoRowCompattaHtml(p)).join('')}</div>
+        <div class="magazzino-list">${g.prodotti.map(p => renderMagazzinoRowEditHtml(p)).join('')}</div>
       </div>
     `).join('');
   }
@@ -5750,40 +5704,9 @@
           return;
         }
         clearTimeout(btn._armTimer);
-        if (magazzinoEditingId === btn.dataset.id) magazzinoEditingId = null;
         deleteMagazzinoProdotto(btn.dataset.id);
         magazzinoNotify('Prodotto eliminato.');
         renderMagazzinoMantenendoScroll();
-      });
-    });
-
-    // Matitina ✎ sulla riga compatta: apre SOLO quella riga coi campi scrivibili (tastiera
-    // permessa solo qui). "Fatto" la richiude tornando alla vista compatta.
-    document.querySelectorAll('.magazzino-edit-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        magazzinoEditingId = btn.dataset.id;
-        renderMagazzinoMantenendoScroll();
-        requestAnimationFrame(() => {
-          const input = document.querySelector('.magazzino-input[data-field="nome"][data-id="' + btn.dataset.id + '"]');
-          if (input) input.focus();
-        });
-      });
-    });
-    document.querySelectorAll('.magazzino-edit-done').forEach(btn => {
-      btn.addEventListener('click', () => {
-        magazzinoEditingId = null;
-        renderMagazzinoMantenendoScroll();
-      });
-    });
-    // Tap su una riga compatta (fuori dalla casella e dalla matitina): seleziona il prodotto,
-    // senza aprire nessun campo scrivibile e senza far saltare fuori la tastiera — è quello
-    // che vuole Erica per poter scegliere più prodotti con un tap e poi rinominarli in blocco.
-    document.querySelectorAll('.magazzino-row-compatta').forEach(row => {
-      row.addEventListener('click', (e) => {
-        if (Date.now() < magazzinoSuppressRowClickFinoA) return;
-        if (e.target.closest('.magazzino-row-check-col') || e.target.closest('.magazzino-edit-btn') || e.target.closest('.magazzino-nome-resizer')) return;
-        const chk = row.querySelector('.magazzino-row-check');
-        if (chk) { chk.checked = !chk.checked; chk.dispatchEvent(new Event('change', { bubbles: true })); }
       });
     });
 
@@ -5792,9 +5715,7 @@
       addBtn.addEventListener('click', () => {
         // Nome vuoto: finché non si scrive nulla, l'ordinamento alfabetico lo mette in cima,
         // quindi si cerca il nuovo prodotto per id (non per posizione) per metterci il focus.
-        // Nasce già aperta in modifica (serve subito la tastiera per scriverci il nome).
         const p = createMagazzinoProdotto();
-        magazzinoEditingId = p.id;
         renderSheet();
         const input = document.querySelector('.magazzino-input[data-field="nome"][data-id="' + p.id + '"]');
         if (input) input.focus();
