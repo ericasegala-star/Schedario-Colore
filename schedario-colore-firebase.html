@@ -1625,7 +1625,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-15.68-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-15.69-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -1732,6 +1732,8 @@
   let magazzinoFiltroTipo = 'tutti'; // 'tutti' | 'materiaPrima' | 'vendita'
   let magazzinoFiltroFornitore = ''; // '' = tutti i fornitori, altrimenti chiave normalizzata (o "__nomarca__")
   let magazzinoSelezionati = new Set(); // id dei prodotti spuntati, per eliminarli insieme e svuotare il magazzino
+  let magazzinoUltimoCheckId = null; // ultimo prodotto spuntato con un clic semplice: punto di partenza per la selezione con shift
+  let magazzinoShiftCheckAttivo = false; // vero se il clic che ha fatto scattare la spunta aveva shift premuto
   let magazzinoNomeColWidth = null; // px della colonna "Prodotto" (null = larghezza di sempre); vale per tutte le righe insieme
   // Timestamp fino a cui ignorare un "click" sulla colonna della casella: trascinando la maniglia
   // di ridimensionamento colonna, il mouseup può finire sopra un punto diverso da dove si è
@@ -5579,6 +5581,30 @@
     requestAnimationFrame(() => { scrollEl.scrollTop = scrollY; });
   }
 
+  // Spuntare un prodotto nel Magazzino: di norma sceglie/togli solo quello (e diventa il nuovo
+  // punto di partenza per un eventuale shift). Con shift premuto, invece, seleziona tutto
+  // l'intervallo tra l'ultimo prodotto spuntato senza shift e questo (richiesto da Erica,
+  // 15/10, per non dover spuntare tante voci consecutive una per una): l'intervallo si
+  // SELEZIONA sempre, indipendentemente da come il browser ha appena mosso questa casella.
+  function gestisciSpuntaMagazzino(id, nuovoChecked, shiftAttivo) {
+    if (shiftAttivo && magazzinoUltimoCheckId && magazzinoUltimoCheckId !== id) {
+      const idsVisibili = Array.from(document.querySelectorAll('.magazzino-row-check')).map(c => c.dataset.id);
+      const iAncora = idsVisibili.indexOf(magazzinoUltimoCheckId);
+      const iCorrente = idsVisibili.indexOf(id);
+      if (iAncora !== -1 && iCorrente !== -1) {
+        const da = Math.min(iAncora, iCorrente);
+        const a = Math.max(iAncora, iCorrente);
+        for (let i = da; i <= a; i++) magazzinoSelezionati.add(idsVisibili[i]);
+        renderMagazzinoMantenendoScroll();
+        return; // il punto di partenza resta lo stesso: si può continuare a estendere con altri shift+clic
+      }
+    }
+    if (nuovoChecked) magazzinoSelezionati.add(id);
+    else magazzinoSelezionati.delete(id);
+    magazzinoUltimoCheckId = id;
+    renderMagazzinoMantenendoScroll();
+  }
+
   function magazzinoNotify(msg, isError) {
     const el = document.getElementById('magazzinoSaveStatus');
     if (!el) return;
@@ -5636,6 +5662,7 @@
     if (deselezionaBtn) {
       deselezionaBtn.addEventListener('click', () => {
         magazzinoSelezionati.clear();
+      magazzinoUltimoCheckId = null;
         renderMagazzinoMantenendoScroll();
       });
     }
@@ -5644,10 +5671,12 @@
     // quadratino, altrimenti serviva un secondo tocco più preciso per far scattare la spunta
     // (segnalato da Erica, 14/10: "devo fare doppio tap per selezionare").
     document.querySelectorAll('.magazzino-row-check').forEach(chk => {
+      // Il clic arriva prima del change: qui si registra solo se era con shift premuto (serve
+      // al change, subito dopo, per decidere se selezionare un intervallo).
+      chk.addEventListener('click', (e) => { magazzinoShiftCheckAttivo = e.shiftKey; });
       chk.addEventListener('change', () => {
-        if (chk.checked) magazzinoSelezionati.add(chk.dataset.id);
-        else magazzinoSelezionati.delete(chk.dataset.id);
-        renderMagazzinoMantenendoScroll();
+        gestisciSpuntaMagazzino(chk.dataset.id, chk.checked, magazzinoShiftCheckAttivo);
+        magazzinoShiftCheckAttivo = false;
       });
     });
     document.querySelectorAll('.magazzino-row-check-col').forEach(col => {
@@ -5655,7 +5684,7 @@
         if (Date.now() < magazzinoSuppressRowClickFinoA) return;
         if (e.target.closest('.magazzino-row-check')) return; // la spunta gestisce già se stessa
         const chk = col.querySelector('.magazzino-row-check');
-        if (chk) { chk.checked = !chk.checked; chk.dispatchEvent(new Event('change', { bubbles: true })); }
+        if (chk) { magazzinoShiftCheckAttivo = e.shiftKey; chk.checked = !chk.checked; chk.dispatchEvent(new Event('change', { bubbles: true })); }
       });
     });
     // Sposta in blocco i prodotti selezionati tra "Merci vendita" e "Materie prime", senza
@@ -5664,6 +5693,7 @@
       const n = magazzinoSelezionati.size;
       magazzinoCache.prodotti.forEach(p => { if (magazzinoSelezionati.has(p.id)) p.tipo = nuovoTipo; });
       magazzinoSelezionati.clear();
+      magazzinoUltimoCheckId = null;
       saveMagazzino();
       magazzinoNotify('Spostati ' + n + ' prodotti.');
       renderMagazzinoMantenendoScroll();
@@ -5684,6 +5714,7 @@
         const n = magazzinoSelezionati.size;
         magazzinoCache.prodotti.forEach(p => { if (magazzinoSelezionati.has(p.id)) p.nome = nuovoNome; });
         magazzinoSelezionati.clear();
+      magazzinoUltimoCheckId = null;
         saveMagazzino();
         magazzinoNotify('Rinominati ' + n + ' prodotti.');
         renderMagazzinoMantenendoScroll();
@@ -5707,6 +5738,7 @@
         const n = magazzinoSelezionati.size;
         magazzinoCache.prodotti = magazzinoCache.prodotti.filter(p => !magazzinoSelezionati.has(p.id));
         magazzinoSelezionati.clear();
+      magazzinoUltimoCheckId = null;
         saveMagazzino();
         magazzinoNotify('Eliminati ' + n + ' prodotti.');
         renderMagazzinoMantenendoScroll();
@@ -7079,6 +7111,7 @@
     magazzinoFiltroTipo = 'tutti';
     magazzinoFiltroFornitore = '';
     magazzinoSelezionati.clear();
+    magazzinoUltimoCheckId = null;
     closeMobileMenu();
     renderAll();
     loadMagazzinoFromDb();
