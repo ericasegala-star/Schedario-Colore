@@ -205,6 +205,10 @@
 
   .layout { display: grid; grid-template-columns: 260px 1fr; gap: 24px; align-items: start; }
   @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+  /* Richiesta di Erica (15/10): in Magazzino deve vedersi SOLO il Magazzino (niente elenco
+     clienti, niente menu) e sfruttare tutto lo spazio della pagina — l'elenco/menu (.sidebar-
+     stack) si nasconde del tutto (vedi JS) e questa colonna da 260px va tolta, non solo svuotata. */
+  .layout.layout-magazzino-full { grid-template-columns: 1fr; }
 
   .panel {
     background: var(--paper-raised); border: 1px solid var(--line);
@@ -1373,6 +1377,10 @@
       <button type="button" class="mode-switch-btn" id="modeTricologoBtn">Tricologo</button>
     </div>
     <div class="top-actions">
+      <!-- Visibile solo in Magazzino (richiesta di Erica, 15/10), quando il resto del menu/
+           elenco clienti è nascosto per dare tutto lo spazio al Magazzino: resta comunque un
+           modo per raggiungere l'Agenda senza restarne "bloccati" fuori. -->
+      <button type="button" class="ghost" id="topAgendaBtn" hidden>Agenda</button>
       <button type="button" class="ghost icon-btn" id="settingsBtn" title="Impostazioni" aria-label="Impostazioni">⚙</button>
       <button class="ghost" id="exportBtn">Esporta backup</button>
       <label class="ghost import-label" id="importLabel">
@@ -1665,7 +1673,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-15.78-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-15.79-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -5090,6 +5098,19 @@
       if (wrapper) wrapper.style.display = viewingTricologo ? 'none' : '';
     });
 
+    // Richiesta di Erica (15/10): in Magazzino, in qualunque modalità (Tecnico o Tricologo),
+    // deve vedersi SOLO il Magazzino — niente elenco clienti, niente menu — che deve sfruttare
+    // tutto lo spazio della pagina. Si nasconde l'intera colonna sidebar-stack (elenco + menu,
+    // compreso il tasto "Agenda" che sta lì dentro) e si passa a una sola colonna piena; resta
+    // comunque un tasto "Agenda" in alto (vedi HTML), per non restarne "bloccati" fuori — si
+    // torna alla schermata iniziale anche cliccando il logo, come sempre.
+    const layoutEl = document.querySelector('.layout');
+    const sidebarStackEl = document.querySelector('.sidebar-stack');
+    if (layoutEl) layoutEl.classList.toggle('layout-magazzino-full', viewingMagazzino);
+    if (sidebarStackEl) sidebarStackEl.style.display = viewingMagazzino ? 'none' : '';
+    const topAgendaBtnEl = document.getElementById('topAgendaBtn');
+    if (topAgendaBtnEl) topAgendaBtnEl.hidden = !viewingMagazzino;
+
     // Tricologo apre subito sull'Agenda (Erica, 15/10: "deve aprire subito su agenda"), non su
     // Magazzino: stessa Agenda condivisa vista nella schermata iniziale del Tecnico, senza
     // elenco clienti né saluto del giorno (qui non servono).
@@ -7542,32 +7563,33 @@
     agendaScrollA830();
   });
 
-  // Scorciatoia "Agenda" appena sotto l'elenco delle schede (richiesta di Erica, 14/10): porta
-  // dritta all'Agenda da qualunque punto dell'app, indipendentemente dal menu — su tablet/
-  // cellulare il menu diventa la barra a icone in basso, ma questo tasto sta nella sidebar vera e
-  // propria, quindi è raggiungibile allo stesso modo su ogni dispositivo/browser. L'Agenda vive
-  // dentro la schermata iniziale, quindi il risultato è lo stesso del logo: si torna alla home e
-  // ci si posiziona subito sulle 8:30 dell'Agenda.
-  const agendaShortcutBtn = document.getElementById('agendaShortcutBtn');
-  if (agendaShortcutBtn) {
-    agendaShortcutBtn.addEventListener('click', () => {
-      if (activeId) { const prev = getClient(activeId); if (prev) { commitVersion(prev); save(clients); } }
-      activeId = null;
-      viewingNotes = false;
-      viewingIspirazione = false;
-      viewingMagazzino = false;
-      viewingServizi = false;
-      viewingAgenda = false;
-      viewingSearchApp = false;
-      viewingBlankSheet = false;
-      viewingOstwald = false;
-      viewingCatalogoHp = false;
-      viewingHome = true;
-      closeMobileMenu();
-      renderAll();
-      agendaScrollA830();
-    });
+  // Scorciatoia "Agenda": porta dritta all'Agenda da qualunque punto dell'app, indipendentemente
+  // dal menu. L'Agenda vive dentro la schermata iniziale, quindi il risultato è lo stesso del
+  // logo: si torna alla home e ci si posiziona subito sulle 8:30 dell'Agenda. Condivisa da due
+  // tasti: quello sotto l'elenco delle schede (Erica, 14/10) e quello in alto (vedi topAgendaBtn)
+  // che resta l'unico modo di raggiungere l'Agenda quando si è in Magazzino (Erica, 15/10), dato
+  // che lì il resto del menu/elenco — incluso il primo tasto — è nascosto apposta.
+  function vaiAllAgenda() {
+    if (activeId) { const prev = getClient(activeId); if (prev) { commitVersion(prev); save(clients); } }
+    activeId = null;
+    viewingNotes = false;
+    viewingIspirazione = false;
+    viewingMagazzino = false;
+    viewingServizi = false;
+    viewingAgenda = false;
+    viewingSearchApp = false;
+    viewingBlankSheet = false;
+    viewingOstwald = false;
+    viewingCatalogoHp = false;
+    viewingHome = true;
+    closeMobileMenu();
+    renderAll();
+    agendaScrollA830();
   }
+  const agendaShortcutBtn = document.getElementById('agendaShortcutBtn');
+  if (agendaShortcutBtn) agendaShortcutBtn.addEventListener('click', vaiAllAgenda);
+  const topAgendaBtn = document.getElementById('topAgendaBtn');
+  if (topAgendaBtn) topAgendaBtn.addEventListener('click', vaiAllAgenda);
 
   // Tecnico/Tricologo: due pulsanti sempre visibili in alto, per passare da una sezione
   // all'altra. Lo stato del Tecnico (sezione aperta + eventuale cliente) viene salvato in
