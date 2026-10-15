@@ -90,6 +90,13 @@
   .brand-contact { color: var(--ink-soft); font-size: 13px; margin-top: 2px; }
   .brand-contact[hidden] { display: none; }
   .top-actions { display: flex; gap: 8px; align-items: center; }
+  .mode-switch { display: flex; gap: 6px; }
+  .mode-switch-btn {
+    font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+    padding: 7px 16px; border-radius: 999px; border: 1.5px solid var(--line);
+    background: var(--paper-raised); color: var(--ink-soft);
+  }
+  .mode-switch-btn.active { border-color: var(--berry); background: var(--berry-soft); color: var(--berry); }
   .brand { display: flex; align-items: center; gap: 14px; }
   .brand-logo { height: 56px; width: auto; display: block; flex: none; }
   @media (max-width: 560px) { .brand-logo { height: 44px; } }
@@ -1321,6 +1328,10 @@
         <div class="brand-contact" id="brandContact" hidden></div>
       </div>
     </div>
+    <div class="mode-switch" id="modeSwitch">
+      <button type="button" class="mode-switch-btn active" id="modeTecnicoBtn">Tecnico</button>
+      <button type="button" class="mode-switch-btn" id="modeTricologoBtn">Tricologo</button>
+    </div>
     <div class="top-actions">
       <button type="button" class="ghost icon-btn" id="settingsBtn" title="Impostazioni" aria-label="Impostazioni">⚙</button>
       <button class="ghost" id="exportBtn">Esporta backup</button>
@@ -1614,7 +1625,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-15.65-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-15.66-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -2825,6 +2836,12 @@
   let viewingServizi = false; // true quando il pannello principale mostra "Crea servizio"
   let viewingAgenda = false; // true quando il pannello principale mostra "Agenda"
   let viewingSearchApp = false; // true quando il pannello principale mostra "Cerca nell'app"
+  // Sezione "Tricologo": per ora solo un avviso "in costruzione". È indipendente dalle altre
+  // viewingX (Tecnico) — si entra/esce solo con i due pulsanti Tecnico/Tricologo in alto, che
+  // restano sempre visibili; finché è attiva nasconde l'elenco clienti/menu (appartengono al
+  // Tecnico) e sostituisce il pannello principale, senza bisogno di toccare tutti gli altri
+  // punti dell'app che aprono una sezione Tecnico.
+  let viewingTricologo = false;
   let searchAppTerm = "";
   let viewingBlankSheet = false; // true quando il pannello principale mostra "Scheda da stampare" (modulo vuoto)
   let viewingOstwald = false; // true quando il pannello principale mostra "Ruota di Ostwald"
@@ -4814,6 +4831,19 @@
     // il ramo della schermata iniziale (più sotto) lo rimostra se c'è un appuntamento aperto.
     const apptModalDefault = document.getElementById('agendaApptModal');
     if (apptModalDefault) apptModalDefault.hidden = true;
+
+    // Tricologo: nasconde la barra laterale (elenco clienti/menu, tutta roba del Tecnico) e
+    // mostra solo l'avviso "in costruzione" al posto della scheda.
+    const sidebarStackEl = document.querySelector('.sidebar-stack');
+    if (sidebarStackEl) sidebarStackEl.hidden = viewingTricologo;
+    if (viewingTricologo) {
+      panel.innerHTML = `
+        <div class="placeholder">
+          <h2>Tricologia</h2>
+          <p>In costruzione: questa sezione arriverà più avanti.</p>
+        </div>`;
+      return;
+    }
 
     if (viewingNotes) {
       panel.innerHTML = `
@@ -7145,6 +7175,31 @@
       closeMobileMenu();
       renderAll();
       agendaScrollA830();
+    });
+  }
+
+  // Tecnico/Tricologo: due pulsanti sempre visibili in alto, per passare da una sezione
+  // all'altra. Non toccano le viewingX del Tecnico: tornando su "Tecnico" si ritrova la
+  // sezione esatta lasciata prima di entrare in "Tricologo".
+  const modeTecnicoBtn = document.getElementById('modeTecnicoBtn');
+  const modeTricologoBtn = document.getElementById('modeTricologoBtn');
+  function aggiornaModeSwitch() {
+    if (modeTecnicoBtn) modeTecnicoBtn.classList.toggle('active', !viewingTricologo);
+    if (modeTricologoBtn) modeTricologoBtn.classList.toggle('active', viewingTricologo);
+  }
+  if (modeTecnicoBtn) {
+    modeTecnicoBtn.addEventListener('click', () => {
+      viewingTricologo = false;
+      aggiornaModeSwitch();
+      renderAll();
+    });
+  }
+  if (modeTricologoBtn) {
+    modeTricologoBtn.addEventListener('click', () => {
+      viewingTricologo = true;
+      aggiornaModeSwitch();
+      closeMobileMenu();
+      renderAll();
     });
   }
 
