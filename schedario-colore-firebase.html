@@ -622,7 +622,9 @@
   .home-quote-text { font-family: 'Fraunces', serif; font-size: 18px; line-height: 1.5; margin: 2px 0 0; font-style: italic; }
   .home-hint { color: var(--ink-soft); font-size: 14px; margin: 0 0 16px; max-width: 560px; }
 
-  /* Agenda sotto la schermata iniziale: calendario a quarti d'ora per la settimana scelta. */
+  /* Agenda sotto la schermata iniziale: calendario a quarti d'ora per il giorno scelto. Erica ha
+     provato la vista a 7 colonne (settimana intera) il 15/10 ma l'ha trovata confusionaria, quindi
+     è tornata alla vista di un giorno solo com'era prima. */
   .home-agenda { margin-top: 28px; border-top: 1px solid var(--line); padding-top: 18px; }
   .home-agenda-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
   .agenda-date-nav { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -632,23 +634,9 @@
     font-size: 12.5px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase;
     color: var(--berry); margin-bottom: 10px;
   }
-  /* Richiesta di Erica (15/10): invece della vista di un solo giorno, l'Agenda mostra sempre
-     tutti e 7 i giorni della settimana affiancati in orizzontale (sua scelta tra le due proposte).
-     Le 7 colonne restano allineate ora per ora: lo scroll verticale (per vedere le ore) è UNICO
-     su tutta la fascia, non uno per colonna — altrimenti ogni giorno potrebbe scorrersi per conto
-     suo e sfasarsi rispetto agli altri. Lo stesso contenitore scorre anche in orizzontale su
-     schermi piccoli, per vedere i giorni che non entrano nella larghezza. */
-  .agenda-settimana { display: flex; gap: 10px; max-height: 480px; overflow: auto; padding-bottom: 6px; }
-  .agenda-settimana-giorno { flex: 1 1 190px; min-width: 190px; }
-  .agenda-settimana-giorno-head {
-    font-size: 12.5px; font-weight: 700; letter-spacing: 0.02em; color: var(--ink-soft);
-    margin-bottom: 6px; text-align: center;
-  }
-  .agenda-settimana-oggi .agenda-settimana-giorno-head { color: var(--berry); }
-  .agenda-settimana-oggi .agenda-grid { border-color: var(--berry); }
   .agenda-grid {
     display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: var(--radius);
-    overflow: hidden;
+    max-height: 480px; overflow-y: auto; overflow-x: hidden;
   }
   .agenda-slot {
     display: flex; align-items: center; gap: 10px; padding: 5px 10px;
@@ -1104,7 +1092,7 @@
        senza tagliarlo) e l'ultima colonna (solo il cestino, 30px) ridotta a 40px: restava
        altrimenti vuota per buona parte, con il cestino staccato dalla quantità (Erica, 15/10,
        con foto). Lo spazio recuperato va al margine massimo della colonna "Prodotto" qui sotto. */
-    grid-template-columns: 26px minmax(130px, var(--mag-nome-w, 2fr)) minmax(90px, 1.3fr) minmax(110px, 1.6fr) minmax(70px, 0.9fr) 64px 40px;
+    grid-template-columns: 26px minmax(130px, var(--mag-nome-w, 2fr)) minmax(90px, 1.3fr) minmax(110px, 1.6fr) minmax(70px, 0.9fr) 64px 60px 40px;
     align-items: center; gap: 10px;
     padding: 8px 12px; background: var(--paper-raised);
     border-bottom: 1px solid var(--line);
@@ -1154,7 +1142,18 @@
   .magazzino-select.magazzino-select-unset { border-color: var(--berry); background: var(--berry-soft); }
   /* Quantità: solo l'input con le freccette native del browser (su/giù), niente più tasti +/-
      di fianco, come richiesto. */
-  .magazzino-row .magazzino-field-qty .magazzino-qty-input { width: 100%; text-align: center; padding: 9px 4px; }
+  .magazzino-row .magazzino-field-qty .magazzino-qty-input,
+  .magazzino-row .magazzino-field-qtymin .magazzino-qty-input { width: 100%; text-align: center; padding: 9px 4px; }
+  /* Quantità minima opzionale per prodotto (richiesta di Erica, 15/10): sotto quella soglia il
+     prodotto si evidenzia da solo (riga + targhetta "Da riordinare", qui con lo stesso rosso
+     già usato per "Elimina" armato) ed entra nella "Lista riordini" scaricabile. */
+  .magazzino-row-sotto-soglia { background: rgba(168, 67, 60, 0.07); }
+  .magazzino-row-sotto-soglia .magazzino-field-qtymin .magazzino-qty-input { border-color: #A8433C; color: #A8433C; font-weight: 600; }
+  .magazzino-sotto-soglia-badge {
+    flex: none; background: #A8433C; color: #fff; font-size: 10.5px; font-weight: 700;
+    letter-spacing: 0.02em; text-transform: uppercase; border-radius: var(--radius);
+    padding: 3px 6px; white-space: nowrap;
+  }
   /* Prezzo: via le freccette su/giù native del browser, come richiesto. */
   .magazzino-input[data-field="prezzo"]::-webkit-outer-spin-button,
   .magazzino-input[data-field="prezzo"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
@@ -1666,7 +1665,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-15.76-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-15.78-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -2142,7 +2141,7 @@
   // non ancora mostrato in scheda (manca il numero e la sezione stessa non esiste ancora).
   const CONTATTO_TECNICO_TRICOLOGIA = { nome: 'Cristina', telefono: '' };
   function createMagazzinoProdotto() {
-    const p = { id: uid(), nome: '', marca: '', tipo: '', prezzo: null, quantita: 0, createdAt: Date.now() };
+    const p = { id: uid(), nome: '', marca: '', tipo: '', prezzo: null, quantita: 0, quantitaMinima: null, createdAt: Date.now() };
     magazzinoCache.prodotti.push(p);
     saveMagazzino();
     return p;
@@ -3004,63 +3003,6 @@
     const s = date.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     return s.charAt(0).toUpperCase() + s.slice(1);
   }
-  // Richiesta di Erica (15/10): "potresti darmi invece che la data di un solo giorno tutti e 7?" —
-  // l'Agenda ora mostra sempre tutta la settimana (lunedì-domenica, settimana italiana) che
-  // contiene la data scelta, non più un giorno solo. Le funzioni seguenti calcolano quella
-  // settimana; il popup del calendario per scegliere la data resta com'era ("va bene").
-  function agendaInizioSettimana(iso) {
-    const [y, m, d] = iso.split('-').map(Number);
-    const date = new Date(y, (m || 1) - 1, d || 1);
-    const giorno = date.getDay(); // 0 = domenica … 6 = sabato
-    const offset = giorno === 0 ? -6 : 1 - giorno; // porta indietro al lunedì della stessa settimana
-    date.setDate(date.getDate() + offset);
-    return fmtDateISO(date);
-  }
-  function agendaGiorniSettimana(anchorISO) {
-    const inizioISO = agendaInizioSettimana(anchorISO);
-    const [y, m, d] = inizioISO.split('-').map(Number);
-    const inizio = new Date(y, (m || 1) - 1, d || 1);
-    const giorni = [];
-    for (let i = 0; i < 7; i++) {
-      const dt = new Date(inizio);
-      dt.setDate(inizio.getDate() + i);
-      giorni.push(fmtDateISO(dt));
-    }
-    return giorni;
-  }
-  // "lun 13/10", breve, per l'intestazione di ogni colonna della settimana.
-  function fmtGiornoBreve(iso) {
-    const [y, m, d] = iso.split('-').map(Number);
-    const date = new Date(y, (m || 1) - 1, d || 1);
-    const s = date.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'numeric' });
-    return s.charAt(0).toUpperCase() + s.slice(1);
-  }
-  // "13 – 19 ottobre 2026" (o con due mesi/anni se la settimana li attraversa), per l'intestazione
-  // sopra la griglia a 7 colonne.
-  function fmtSettimanaLabel(anchorISO) {
-    const giorni = agendaGiorniSettimana(anchorISO);
-    const MESI = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
-    const [y1, m1, d1] = giorni[0].split('-').map(Number);
-    const [y2, m2, d2] = giorni[6].split('-').map(Number);
-    let s;
-    if (y1 === y2 && m1 === m2) s = `${d1} – ${d2} ${MESI[m2 - 1]} ${y2}`;
-    else if (y1 === y2) s = `${d1} ${MESI[m1 - 1]} – ${d2} ${MESI[m2 - 1]} ${y2}`;
-    else s = `${d1} ${MESI[m1 - 1]} ${y1} – ${d2} ${MESI[m2 - 1]} ${y2}`;
-    return s.charAt(0).toUpperCase() + s.slice(1);
-  }
-  // Le 7 colonne affiancate (richiesta di Erica, 15/10: "affiancati in orizzontale"), una per
-  // giorno della settimana; ogni colonna riusa la stessa griglia di sempre (renderAgendaGridHtml),
-  // con le sue eventuali due colonne Erica/Sara dentro, solo più strette. Su schermi piccoli la
-  // fascia scorre in orizzontale (vedi CSS .agenda-settimana).
-  function renderAgendaSettimanaHtml(anchorISO) {
-    const giorni = agendaGiorniSettimana(anchorISO);
-    const oggiISO = fmtDateISO(new Date());
-    return `<div class="agenda-settimana">${giorni.map(iso => `
-      <div class="agenda-settimana-giorno${iso === oggiISO ? ' agenda-settimana-oggi' : ''}" data-date="${escapeHtml(iso)}">
-        <div class="agenda-settimana-giorno-head">${fmtGiornoBreve(iso)}</div>
-        ${renderAgendaGridHtml(iso)}
-      </div>`).join('')}</div>`;
-  }
 
   function bianchiLabel(v) {
     const found = BIANCHI_OPTIONS.find(o => o.v === v);
@@ -3404,6 +3346,17 @@
     return magazzinoCache.prodotti.filter(p => (!tipoKey || p.tipo === tipoKey) && (p.quantita || 0) > 0 && p.prezzo != null && p.prezzo > 0);
   }
 
+  // Richiesta di Erica (15/10): una "Quantità minima" opzionale per prodotto — quando la
+  // quantità reale scende sotto quella soglia, il prodotto si segnala da solo (riga evidenziata)
+  // ed entra nella "Lista riordini" scaricabile qui sotto. Senza soglia impostata (o a 0) il
+  // prodotto non si segnala mai: è facoltativo, prodotto per prodotto.
+  function magazzinoSottoSoglia(p) {
+    return p.quantitaMinima != null && p.quantitaMinima > 0 && (p.quantita || 0) < p.quantitaMinima;
+  }
+  function magazzinoDaRiordinare() {
+    return sortMagazzinoProdotti(magazzinoCache.prodotti.filter(magazzinoSottoSoglia));
+  }
+
   // PDF dell'inventario di Magazzino, un unico file con materie prime e merci vendita insieme,
   // con i prodotti raggruppati per marca: il nome del fornitore compare solo nella cella
   // verticale a sinistra del blocco (non ripetuto riga per riga), come un dorso di raccoglitore.
@@ -3631,6 +3584,74 @@
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     const blob = new Blob([wbout], { type: 'application/octet-stream' });
     await saveBlobAsFile(blob, 'magazzino-' + fmtDate(Date.now()).replace(/\//g, '-') + '.xlsx');
+  }
+
+  // "Lista riordini" (richiesta di Erica, 15/10): un PDF semplice con solo i prodotti sotto la
+  // loro "Quantità minima" (vedi magazzinoDaRiordinare), da portare o mandare al fornitore. Niente
+  // dorso verticale per marca come nell'inventario completo: qui basta un elenco semplice, con la
+  // marca come colonna, raggruppato comunque per marca/fornitore per comodità.
+  function buildMagazzinoRiordiniPdf(logo) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const margin = 42;
+    const pageH = doc.internal.pageSize.getHeight();
+    const pageW = doc.internal.pageSize.getWidth();
+    const col = { nome: margin, marca: margin + 220, qty: pageW - margin - 110, min: pageW - margin };
+    const rowH = 16;
+    let y = 54;
+    let titleX = margin;
+    if (logo && logo.dataUrl) {
+      const maxH = 34;
+      const scale = Math.min(1, maxH / logo.h);
+      const dw = logo.w * scale, dh = logo.h * scale;
+      try { doc.addImage(logo.dataUrl, 'PNG', margin, 16, dw, dh); titleX = margin + dw + 14; } catch (e) { /* logo illeggibile: si procede senza */ }
+    }
+    function ensureSpace(extra) { if (y + extra > pageH - 44) { doc.addPage(); y = 54; tableHeader(); } }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(17); doc.setTextColor(30, 24, 20);
+    doc.text('Lista riordini — ' + fmtDateLong(Date.now()), titleX, y); y += 9;
+    doc.setDrawColor(122, 59, 86); doc.setLineWidth(1.1);
+    doc.line(margin, y, pageW - margin, y); y += 22;
+    function tableHeader() {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(107, 95, 87);
+      doc.text('PRODOTTO', col.nome, y);
+      doc.text('MARCA/FORNITORE', col.marca, y);
+      doc.text('QTÀ', col.qty, y, { align: 'right' });
+      doc.text('QTÀ MIN.', col.min, y, { align: 'right' });
+      y += 4;
+      doc.setDrawColor(190, 180, 170); doc.setLineWidth(0.5);
+      doc.line(margin, y, pageW - margin, y); y += 12;
+      doc.setTextColor(30, 24, 20);
+    }
+    tableHeader();
+    const prodotti = magazzinoDaRiordinare();
+    if (!prodotti.length) {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5);
+      doc.text('Nessun prodotto sotto la quantità minima impostata.', margin, y);
+      return doc.output('blob');
+    }
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5);
+    prodotti.forEach(p => {
+      ensureSpace(rowH);
+      // La riga sotto soglia resta leggibile anche in bianco e nero, ma un pallino rosso accanto
+      // al nome rende subito evidente quali prodotti servono di più (stesso rosso usato a
+      // schermo per la stessa segnalazione).
+      doc.setFillColor(168, 67, 60);
+      doc.circle(col.nome - 7, y - 3, 2.6, 'F');
+      doc.setTextColor(30, 24, 20);
+      doc.text(p.nome || 'Senza nome', col.nome, y, { maxWidth: col.marca - col.nome - 14 });
+      doc.text(p.marca || '—', col.marca, y, { maxWidth: col.qty - col.marca - 14 });
+      doc.text(String(p.quantita || 0), col.qty, y, { align: 'right' });
+      doc.setTextColor(168, 67, 60); doc.setFont('helvetica', 'bold');
+      doc.text(String(p.quantitaMinima), col.min, y, { align: 'right' });
+      doc.setFont('helvetica', 'normal'); doc.setTextColor(30, 24, 20);
+      y += rowH;
+    });
+    return doc.output('blob');
+  }
+  async function downloadMagazzinoRiordiniPdf() {
+    const logo = await getMagazzinoPdfLogo();
+    const blob = buildMagazzinoRiordiniPdf(logo);
+    await saveBlobAsFile(blob, 'lista-riordini-' + fmtDate(Date.now()).replace(/\//g, '-') + '.pdf');
   }
 
   // Salva un Blob sul dispositivo (foto, PDF, backup…).
@@ -4637,13 +4658,15 @@
   // scrivibili, senza bisogno di una matitina per aprirli.
   function renderMagazzinoRowEditHtml(p) {
     const selezionato = magazzinoSelezionati.has(p.id);
+    const sottoSoglia = magazzinoSottoSoglia(p);
     return `
-      <div class="magazzino-row magazzino-row-edit${selezionato ? ' magazzino-row-selezionata' : ''}" data-id="${p.id}">
+      <div class="magazzino-row magazzino-row-edit${selezionato ? ' magazzino-row-selezionata' : ''}${sottoSoglia ? ' magazzino-row-sotto-soglia' : ''}" data-id="${p.id}">
         <div class="magazzino-row-check-col">
           <input type="checkbox" class="magazzino-row-check" data-id="${p.id}" ${selezionato ? 'checked' : ''} title="Seleziona per eliminare">
         </div>
         <div class="field magazzino-field-nome">
           <textarea class="magazzino-input magazzino-nome-area" rows="1" wrap="off" data-id="${p.id}" data-field="nome" placeholder="Es. Shampoo ricostruttore">${escapeHtml(p.nome || '')}</textarea>
+          ${sottoSoglia ? '<span class="magazzino-sotto-soglia-badge" title="Sotto la quantità minima impostata">Da riordinare</span>' : ''}
           <div class="magazzino-nome-resizer" title="Trascina per allargare o stringere la colonna Prodotto (su tutte le righe)"></div>
         </div>
         <div class="field magazzino-field-tipo">
@@ -4662,6 +4685,9 @@
         <div class="field magazzino-field-qty">
           <input type="number" class="magazzino-input magazzino-qty-input" data-id="${p.id}" data-field="quantita" min="0" step="1" value="${p.quantita != null ? p.quantita : 0}">
         </div>
+        <div class="field magazzino-field-qtymin">
+          <input type="number" class="magazzino-input magazzino-qty-input" data-id="${p.id}" data-field="quantitaMinima" min="0" step="1" placeholder="—" title="Quantità minima: sotto questa soglia il prodotto entra nella lista riordini" value="${p.quantitaMinima != null ? p.quantitaMinima : ''}">
+        </div>
         <div class="magazzino-row-actions">
           <button type="button" class="magazzino-delete magazzino-row-delete" data-id="${p.id}" title="Elimina prodotto" aria-label="Elimina prodotto">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V4.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1V7"/><path d="M6.5 7l1 13a2 2 0 0 0 2 2h5a2 2 0 0 0 2-2l1-13"/><path d="M10 11v6M14 11v6"/></svg>
@@ -4669,8 +4695,8 @@
         </div>
       </div>`;
   }
-  // Le diciture dei campi (Prodotto/Tipo/Marca/Prezzo/Quantità) compaiono una sola volta qui
-  // in cima, non ripetute su ogni riga come prima.
+  // Le diciture dei campi (Prodotto/Tipo/Marca/Prezzo/Quantità/Qtà minima) compaiono una sola
+  // volta qui in cima, non ripetute su ogni riga come prima.
   function renderMagazzinoHeaderRowHtml(tuttiSelezionati) {
     return `
       <div class="magazzino-row magazzino-header-row">
@@ -4682,6 +4708,7 @@
         <div class="field magazzino-field-marca"><label>Marca/fornitore</label></div>
         <div class="field magazzino-field-prezzo"><label>Prezzo €</label></div>
         <div class="field magazzino-field-qty"><label>Quantità</label></div>
+        <div class="field magazzino-field-qtymin"><label title="Sotto questa soglia il prodotto entra nella lista riordini">Qtà min.</label></div>
         <div class="magazzino-row-actions"></div>
       </div>`;
   }
@@ -4751,10 +4778,6 @@
   // fermo dov'è, con renderSheetMantenendoScroll qui sotto.
   function agendaScrollA830() {
     requestAnimationFrame(() => {
-      // Con la vista a 7 colonne (una a settimana) lo scroll verticale è UNICO su tutta la fascia
-      // (.agenda-settimana, non più un .agenda-grid per colonna — vedi CSS): basta quindi trovare
-      // le 8:30 in UNA qualunque colonna (sono tutte alla stessa altezza, allineate) e scorrere
-      // fin lì, come quando c'era un solo giorno.
       // Di norma esiste una riga che inizia esattamente alle 8:30; ma da quando un appuntamento
       // occupa un unico blocco alto quanto il suo tempo di lavorazione (vedi renderAgendaSlotHtml
       // qui sotto), le 8:30 potrebbero finire "inglobate" nel blocco di un appuntamento iniziato
@@ -5023,24 +5046,19 @@
   // ragione per tornare in cima, come aprire una scheda diversa) avvolge la chiamata con questa
   // funzione, che ricorda la posizione dello scroll e la ripristina subito dopo.
   // Attenzione: l'agenda non scorre solo con la pagina (document.scrollingElement), ha anche un
-  // suo riquadro interno con lo scroll proprio (.agenda-settimana, un unico scroll — verticale E
-  // orizzontale — condiviso da tutte e 7 le colonne, per restare allineate): ridisegnando l'HTML
-  // quel riquadro viene ricreato da zero e riparte da scrollTop/scrollLeft 0, quindi va salvato e
-  // ripristinato anche lui, oltre allo scroll della pagina.
+  // suo riquadro interno con lo scroll proprio (.agenda-grid): ridisegnando l'HTML quel riquadro
+  // viene ricreato da zero e riparte da scrollTop 0, quindi va salvato e ripristinato anche lui,
+  // oltre allo scroll della pagina.
   function renderSheetMantenendoScroll() {
     const scrollEl = document.scrollingElement || document.documentElement;
     const scrollY = scrollEl.scrollTop;
-    const settimanaEl = document.querySelector('.agenda-settimana');
-    const scrollSettimanaTop = settimanaEl ? settimanaEl.scrollTop : null;
-    const scrollSettimanaLeft = settimanaEl ? settimanaEl.scrollLeft : null;
+    const gridEl = document.querySelector('.agenda-grid');
+    const scrollGridTop = gridEl ? gridEl.scrollTop : null;
     renderSheet();
     requestAnimationFrame(() => {
       scrollEl.scrollTop = scrollY;
-      const nuovaSettimana = document.querySelector('.agenda-settimana');
-      if (nuovaSettimana && scrollSettimanaTop != null) {
-        nuovaSettimana.scrollTop = scrollSettimanaTop;
-        nuovaSettimana.scrollLeft = scrollSettimanaLeft;
-      }
+      const nuovoGrid = document.querySelector('.agenda-grid');
+      if (nuovoGrid && scrollGridTop != null) nuovoGrid.scrollTop = scrollGridTop;
     });
   }
   function renderSheet() {
@@ -5081,17 +5099,17 @@
           <div class="home-agenda-head">
             <div class="notes-title">Agenda</div>
             <div class="agenda-date-nav">
-              <button type="button" class="ghost small" id="agendaPrevDay" aria-label="Settimana precedente">‹</button>
+              <button type="button" class="ghost small" id="agendaPrevDay" aria-label="Giorno precedente">‹</button>
               <input type="date" id="agendaDatePicker" value="${escapeHtml(agendaDataSelezionata)}">
-              <button type="button" class="ghost small" id="agendaNextDay" aria-label="Settimana successiva">›</button>
+              <button type="button" class="ghost small" id="agendaNextDay" aria-label="Giorno successivo">›</button>
               <button type="button" class="ghost small" id="agendaOggiBtn">Oggi</button>
               <button type="button" class="ghost small" id="agendaTurniBtn">Turni di lavoro</button>
               <button type="button" class="ghost small" id="agendaAssenzaBtn">Ferie/permesso</button>
             </div>
           </div>
-          <div class="agenda-date-label">${fmtSettimanaLabel(agendaDataSelezionata)}</div>
+          <div class="agenda-date-label">${fmtDateISOLong(agendaDataSelezionata)}</div>
           <div id="agendaGridWrap">
-            ${renderAgendaSettimanaHtml(agendaDataSelezionata)}
+            ${renderAgendaGridHtml(agendaDataSelezionata)}
           </div>
           <span class="save-status" id="agendaSaveStatus"></span>
         </div>
@@ -5198,6 +5216,7 @@
             <button class="ghost small" id="magazzinoPdfBtn">Scarica PDF</button>
             <button class="ghost small" id="magazzinoExcelBtn">Scarica Excel</button>
             <button class="ghost small" id="magazzinoStatsBtn">Statistiche riordini</button>
+            <button class="ghost small" id="magazzinoRiordiniBtn">Scarica lista riordini</button>
             <!-- "Business Plan" nascosto per ora (Erica, 15/10: "non mi serve"): il codice resta,
                  così si può rimettere facilmente il tasto se dovesse servire di nuovo. -->
           </div>
@@ -5473,17 +5492,17 @@
             <div class="home-agenda-head">
               <div class="notes-title">Agenda</div>
               <div class="agenda-date-nav">
-                <button type="button" class="ghost small" id="agendaPrevDay" aria-label="Settimana precedente">‹</button>
+                <button type="button" class="ghost small" id="agendaPrevDay" aria-label="Giorno precedente">‹</button>
                 <input type="date" id="agendaDatePicker" value="${escapeHtml(agendaDataSelezionata)}">
-                <button type="button" class="ghost small" id="agendaNextDay" aria-label="Settimana successiva">›</button>
+                <button type="button" class="ghost small" id="agendaNextDay" aria-label="Giorno successivo">›</button>
                 <button type="button" class="ghost small" id="agendaOggiBtn">Oggi</button>
                 <button type="button" class="ghost small" id="agendaTurniBtn">Turni di lavoro</button>
                 <button type="button" class="ghost small" id="agendaAssenzaBtn">Ferie/permesso</button>
               </div>
             </div>
-            <div class="agenda-date-label">${fmtSettimanaLabel(agendaDataSelezionata)}</div>
+            <div class="agenda-date-label">${fmtDateISOLong(agendaDataSelezionata)}</div>
             <div id="agendaGridWrap">
-              ${renderAgendaSettimanaHtml(agendaDataSelezionata)}
+              ${renderAgendaGridHtml(agendaDataSelezionata)}
             </div>
             <span class="save-status" id="agendaSaveStatus"></span>
           </div>
@@ -6012,8 +6031,7 @@
 
     document.querySelectorAll('.magazzino-input').forEach(input => {
       const isTipo = input.dataset.field === 'tipo';
-      // Il "Tipo" cambia gruppo (Materie prime/Merci vendita): qui serve ridisegnare tutto,
-      // non solo aggiornare il bollino di scorta come per gli altri campi.
+      // Il "Tipo" cambia gruppo (Materie prime/Merci vendita): qui serve ridisegnare tutto.
       input.addEventListener(isTipo ? 'change' : 'input', () => {
         const id = input.dataset.id;
         const field = input.dataset.field;
@@ -6022,13 +6040,34 @@
         if (field === 'nome' || field === 'marca' || field === 'tipo') {
           p[field] = input.value;
         } else {
-          // prezzo/quantità: numero, o null se il campo è vuoto (facoltativo per il prezzo)
+          // prezzo/quantità/quantità minima: numero, o null se il campo è vuoto (facoltativo
+          // per prezzo e quantità minima)
           const n = input.value === '' ? null : Number(input.value);
           p[field] = (n === null || isNaN(n)) ? (field === 'quantita' ? 0 : null) : n;
         }
         saveMagazzino();
         magazzinoNotify('Salvato.');
         if (isTipo) renderMagazzinoMantenendoScroll();
+        // Quantità/quantità minima: niente ridisegno completo (si perderebbe il focus mentre si
+        // scrive), solo la riga e la targhetta "Da riordinare" si aggiornano sul posto.
+        if (field === 'quantita' || field === 'quantitaMinima') {
+          const rowEl = input.closest('.magazzino-row');
+          if (rowEl) {
+            const sotto = magazzinoSottoSoglia(p);
+            rowEl.classList.toggle('magazzino-row-sotto-soglia', sotto);
+            const nomeField = rowEl.querySelector('.magazzino-field-nome');
+            let badge = nomeField ? nomeField.querySelector('.magazzino-sotto-soglia-badge') : null;
+            if (sotto && !badge && nomeField) {
+              badge = document.createElement('span');
+              badge.className = 'magazzino-sotto-soglia-badge';
+              badge.title = 'Sotto la quantità minima impostata';
+              badge.textContent = 'Da riordinare';
+              nomeField.insertBefore(badge, nomeField.querySelector('.magazzino-nome-resizer'));
+            } else if (!sotto && badge) {
+              badge.remove();
+            }
+          }
+        }
       });
     });
 
@@ -6094,6 +6133,19 @@
 
     const statsBtn = document.getElementById('magazzinoStatsBtn');
     if (statsBtn) statsBtn.addEventListener('click', openMagazzinoStatsModal);
+
+    const riordiniBtn = document.getElementById('magazzinoRiordiniBtn');
+    if (riordiniBtn) {
+      riordiniBtn.addEventListener('click', () => {
+        if (!magazzinoDaRiordinare().length) {
+          notifyTop('Nessun prodotto sotto la quantità minima impostata.');
+          return;
+        }
+        downloadMagazzinoRiordiniPdf()
+          .then(() => notifyTop('Lista riordini scaricata.'))
+          .catch((err) => { if (!(err && err.code === 'declined')) notifyTop('Non sono riuscita a generare il PDF.', true); });
+      });
+    }
   }
 
   // ---- Statistiche riordini: grafico a torta dei prodotti più riordinati nell'anno solare ----
@@ -6228,19 +6280,17 @@
         agendaScrollA830();
       });
     }
-    // La vista mostra sempre tutta la settimana (richiesta di Erica, 15/10): i tasti ‹ › spostano
-    // quindi di 7 giorni (una settimana intera), non più di un giorno solo.
-    function spostaSettimana(delta) {
+    function spostaGiorno(delta) {
       const [y, m, d] = agendaDataSelezionata.split('-').map(Number);
-      const dt = new Date(y, (m || 1) - 1, (d || 1) + delta * 7);
+      const dt = new Date(y, (m || 1) - 1, (d || 1) + delta);
       agendaDataSelezionata = fmtDateISO(dt);
       renderSheet();
       agendaScrollA830();
     }
     const prevBtn = document.getElementById('agendaPrevDay');
-    if (prevBtn) prevBtn.addEventListener('click', () => spostaSettimana(-1));
+    if (prevBtn) prevBtn.addEventListener('click', () => spostaGiorno(-1));
     const nextBtn = document.getElementById('agendaNextDay');
-    if (nextBtn) nextBtn.addEventListener('click', () => spostaSettimana(1));
+    if (nextBtn) nextBtn.addEventListener('click', () => spostaGiorno(1));
     const oggiBtn = document.getElementById('agendaOggiBtn');
     if (oggiBtn) oggiBtn.addEventListener('click', () => { agendaDataSelezionata = fmtDateISO(new Date()); renderSheet(); agendaScrollA830(); });
 
@@ -8121,7 +8171,7 @@
 
   // Erica l'ha segnalato con un video (14/10): "appena seleziono qualcosa si sposta su". Causa
   // trovata guardando il video fotogramma per fotogramma: il riquadro dell'agenda ha un suo scroll
-  // INTERNO (.agenda-settimana, vedi sopra "renderSheetMantenendoScroll"), separato da quello
+  // INTERNO (.agenda-grid, vedi sopra "renderSheetMantenendoScroll"), separato da quello
   // della pagina — era quello a "tornare su" ogni volta che l'HTML veniva ridisegnato (es.
   // eliminando un appuntamento), perché veniva ricreato da zero e ripartiva dall'alto. Risolto
   // preservando anche lo scroll di quel riquadro, non solo quello della pagina (vedi sopra).
