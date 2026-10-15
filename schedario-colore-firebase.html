@@ -1625,7 +1625,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-15.66-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-15.68-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -1739,6 +1739,7 @@
   // un click sull'antenato comune — che altrimenti selezionerebbe/deselezionerebbe per sbaglio
   // una riga durante un trascinamento.
   let magazzinoSuppressRowClickFinoA = 0;
+  let magazzinoSearchEraFocus = false; // true solo se si stava scrivendo nel campo "Cerca prodotto" prima del ridisegno
   // Catalogo servizi ("Crea servizio"): nome, tempo di lavorazione, tempo di posa (minuti) e un
   // colore per riconoscerlo a vista nell'agenda. Una "combo" somma i tempi di più servizi
   // semplici (comboDi: i loro id) invece di averne propri.
@@ -4832,16 +4833,40 @@
     const apptModalDefault = document.getElementById('agendaApptModal');
     if (apptModalDefault) apptModalDefault.hidden = true;
 
-    // Tricologo: nasconde la barra laterale (elenco clienti/menu, tutta roba del Tecnico) e
-    // mostra solo l'avviso "in costruzione" al posto della scheda.
+    // Tricologo: nasconde la barra laterale (elenco clienti/menu del Tecnico — scheda da
+    // stampare, consigli di utilizzo, disco di Newton, ispirazione, crea servizio, elenco
+    // schede clienti: non servono qui). L'Agenda invece è condivisa e serve anche in
+    // Tricologia, quindi è l'unica cosa vera che si vede già; il resto arriverà più avanti
+    // (Erica, 15/10).
     const sidebarStackEl = document.querySelector('.sidebar-stack');
     if (sidebarStackEl) sidebarStackEl.hidden = viewingTricologo;
     if (viewingTricologo) {
       panel.innerHTML = `
-        <div class="placeholder">
+        <div class="placeholder tricologo-placeholder">
           <h2>Tricologia</h2>
-          <p>In costruzione: questa sezione arriverà più avanti.</p>
-        </div>`;
+          <p>Il resto della sezione è in costruzione: arriverà più avanti.</p>
+        </div>
+        <div class="home-agenda">
+          <div class="home-agenda-head">
+            <div class="notes-title">Agenda</div>
+            <div class="agenda-date-nav">
+              <button type="button" class="ghost small" id="agendaPrevDay" aria-label="Giorno precedente">‹</button>
+              <input type="date" id="agendaDatePicker" value="${escapeHtml(agendaDataSelezionata)}">
+              <button type="button" class="ghost small" id="agendaNextDay" aria-label="Giorno successivo">›</button>
+              <button type="button" class="ghost small" id="agendaOggiBtn">Oggi</button>
+              <button type="button" class="ghost small" id="agendaTurniBtn">Turni di lavoro</button>
+              <button type="button" class="ghost small" id="agendaAssenzaBtn">Ferie/permesso</button>
+            </div>
+          </div>
+          <div class="agenda-date-label">${fmtDateISOLong(agendaDataSelezionata)}</div>
+          <div id="agendaGridWrap">
+            ${renderAgendaGridHtml(agendaDataSelezionata)}
+          </div>
+          <span class="save-status" id="agendaSaveStatus"></span>
+        </div>
+      `;
+      renderAgendaApptModal();
+      bindAgendaEvents();
       return;
     }
 
@@ -4906,6 +4931,12 @@
       // Modificabile sia da Erica che da Sara: nessuna restrizione, a differenza di Ispirazione.
       // Si salva da solo: niente tasto "Salva".
       if (floatingSave) floatingSave.hidden = true;
+      // Il focus torna alla ricerca dopo il ridisegno SOLO se si stava scrivendo lì (altrimenti
+      // si perderebbe il punto in cui si stava scrivendo); va ricordato ORA, prima che il
+      // ridisegno sottostante distrugga il campo e sposti da solo il focus altrove. Senza questo
+      // controllo il focus tornava sulla ricerca ad ogni ridisegno (es. spuntando una casella),
+      // e su telefono/tablet questo faceva comparire la tastiera senza motivo (Erica, 15/10).
+      magazzinoSearchEraFocus = !!(document.activeElement && document.activeElement.id === 'magazzinoSearch');
       const mag = loadMagazzino();
       const term = magazzinoSearchTerm.trim().toLowerCase();
       // L'elenco fornitori per il filtro è calcolato su TUTTO il magazzino (non sul filtrato),
@@ -5564,13 +5595,15 @@
         magazzinoSearchTerm = searchInput.value;
         renderSheet();
       });
-      // Il focus sulla ricerca viene rimesso ad ogni ridisegno (es. dopo aver spuntato una
-      // casella), ma se la ricerca è fuori dallo schermo (lista lunga, scorsa a metà) il
-      // browser la riporterebbe in vista da solo: è questo che faceva "tornare su" la pagina
-      // ad ogni check. Con preventScroll il cursore torna comunque nel campo, ma senza
-      // muovere la pagina.
-      searchInput.focus({ preventScroll: true });
-      searchInput.selectionStart = searchInput.selectionEnd = searchInput.value.length;
+      // Il focus torna alla ricerca solo se si stava scrivendo lì (per non perdere il punto in
+      // cui si stava scrivendo): altrimenti, dopo QUALSIASI ridisegno (spuntare una casella,
+      // aggiungere un prodotto…), il focus tornava comunque sulla ricerca, e su telefono/
+      // tablet questo faceva comparire la tastiera senza motivo (Erica, 15/10). preventScroll
+      // evita anche che, se la ricerca è fuori schermo, il focus faccia "tornare su" la pagina.
+      if (magazzinoSearchEraFocus) {
+        searchInput.focus({ preventScroll: true });
+        searchInput.selectionStart = searchInput.selectionEnd = searchInput.value.length;
+      }
     }
 
     const filtroTipoSel = document.getElementById('magazzinoFiltroTipoSel');
@@ -7200,6 +7233,7 @@
       aggiornaModeSwitch();
       closeMobileMenu();
       renderAll();
+      agendaScrollA830();
     });
   }
 
