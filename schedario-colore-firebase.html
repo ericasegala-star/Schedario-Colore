@@ -1651,7 +1651,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-15.74-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-15.75-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -4965,15 +4965,15 @@
     const apptModalDefault = document.getElementById('agendaApptModal');
     if (apptModalDefault) apptModalDefault.hidden = true;
 
-    // Tricologo: deve mostrare SOLO Magazzino, Catalogo prodotti HP e Cerca nell'app — niente
-    // schede clienti, niente Agenda, niente altre voci del menu (Erica, 15/10, dopo vari
-    // tentativi: "facciamo che rimane solo: magazzino, catalogo prodotti, cerca nell'app.
-    // visibili e funzionanti"). IMPORTANTE, trovato dopo che i tentativi precedenti sembravano
-    // non avere ALCUN effetto: l'attributo "hidden" da solo non basta, perché queste voci hanno
-    // già una regola CSS con un loro "display" (es. ".notes-banner { display: flex }" e, sui
-    // dispositivi touch, ".menu-collapsible { display:flex !important }" per il menu fisso in
-    // basso) — in CSS una regola d'autore vince sempre su quella di default del browser per
-    // "hidden", quindi l'elemento restava visibile comunque. Si forza invece lo stile inline
+    // Tricologo: nel menu deve restare visibile e funzionante SOLO Magazzino, Catalogo prodotti
+    // HP e Cerca nell'app — niente schede clienti, niente altre voci del menu (Erica, 15/10,
+    // dopo vari tentativi: "facciamo che rimane solo: magazzino, catalogo prodotti, cerca
+    // nell'app. visibili e funzionanti"). IMPORTANTE, trovato dopo che i tentativi precedenti
+    // sembravano non avere ALCUN effetto: l'attributo "hidden" da solo non basta, perché queste
+    // voci hanno già una regola CSS con un loro "display" (es. ".notes-banner { display: flex }"
+    // e, sui dispositivi touch, ".menu-collapsible { display:flex !important }" per il menu
+    // fisso in basso) — in CSS una regola d'autore vince sempre su quella di default del browser
+    // per "hidden", quindi l'elemento restava visibile comunque. Si forza invece lo stile inline
     // "display:none", che vince sempre (tranne sulle regole "!important", qui assenti per le
     // singole voci): una per una sulle voci non ammesse, più sull'intero elenco clienti.
     const sidebarAsideEl = document.querySelector('.sidebar-stack .sidebar');
@@ -4983,6 +4983,35 @@
       const wrapper = voce && voce.closest('.notes-banner');
       if (wrapper) wrapper.style.display = viewingTricologo ? 'none' : '';
     });
+
+    // Tricologo apre subito sull'Agenda (Erica, 15/10: "deve aprire subito su agenda"), non su
+    // Magazzino: stessa Agenda condivisa vista nella schermata iniziale del Tecnico, senza
+    // elenco clienti né saluto del giorno (qui non servono).
+    if (viewingAgenda) {
+      panel.innerHTML = `
+        <div class="home-agenda">
+          <div class="home-agenda-head">
+            <div class="notes-title">Agenda</div>
+            <div class="agenda-date-nav">
+              <button type="button" class="ghost small" id="agendaPrevDay" aria-label="Giorno precedente">‹</button>
+              <input type="date" id="agendaDatePicker" value="${escapeHtml(agendaDataSelezionata)}">
+              <button type="button" class="ghost small" id="agendaNextDay" aria-label="Giorno successivo">›</button>
+              <button type="button" class="ghost small" id="agendaOggiBtn">Oggi</button>
+              <button type="button" class="ghost small" id="agendaTurniBtn">Turni di lavoro</button>
+              <button type="button" class="ghost small" id="agendaAssenzaBtn">Ferie/permesso</button>
+            </div>
+          </div>
+          <div class="agenda-date-label">${fmtDateISOLong(agendaDataSelezionata)}</div>
+          <div id="agendaGridWrap">
+            ${renderAgendaGridHtml(agendaDataSelezionata)}
+          </div>
+          <span class="save-status" id="agendaSaveStatus"></span>
+        </div>
+      `;
+      renderAgendaApptModal();
+      bindAgendaEvents();
+      return;
+    }
 
     if (viewingNotes) {
       panel.innerHTML = `
@@ -7248,6 +7277,7 @@
     viewingServizi = false;
     viewingNotes = false;
     viewingIspirazione = false;
+    viewingAgenda = false;
     viewingSearchApp = false;
     viewingBlankSheet = false;
     viewingOstwald = false;
@@ -7401,7 +7431,8 @@
   // tecnicoViewSnapshot entrando in Tricologo e ripristinato tornando su "Tecnico": si ritrova
   // così esattamente dove si era (Erica, 15/10, dopo vari tentativi: "facciamo che rimane
   // solo: magazzino, catalogo prodotti, cerca nell'app. visibili e funzionanti") — mentre
-  // Tricologia riparte sempre pulita, aperta sul Magazzino (la prima delle tre voci ammesse).
+  // Tricologia riparte sempre pulita, aperta sull'Agenda (Erica, 15/10: "deve aprire subito su
+  // agenda").
   const modeTecnicoBtn = document.getElementById('modeTecnicoBtn');
   const modeTricologoBtn = document.getElementById('modeTricologoBtn');
   function aggiornaModeSwitch() {
@@ -7435,19 +7466,20 @@
       tecnicoViewSnapshot = { viewingNotes, viewingIspirazione, viewingMagazzino, viewingServizi, viewingAgenda, viewingSearchApp, viewingBlankSheet, viewingOstwald, viewingCatalogoHp, viewingHome, activeId };
       viewingNotes = false;
       viewingIspirazione = false;
+      viewingMagazzino = false;
       viewingServizi = false;
-      viewingAgenda = false;
       viewingSearchApp = false;
       viewingBlankSheet = false;
       viewingOstwald = false;
       viewingCatalogoHp = false;
       viewingHome = false;
-      viewingMagazzino = true; // Tricologia riparte sempre dal Magazzino
+      viewingAgenda = true; // Tricologia riparte sempre sull'Agenda
       activeId = null;
       aggiornaModeSwitch();
       closeMobileMenu();
       renderAll();
-      loadMagazzinoFromDb();
+      agendaScrollA830();
+      loadMagazzinoFromDb(); // precarica il Magazzino: una delle tre voci raggiungibili da qui
     });
   }
 
