@@ -1171,6 +1171,9 @@
     border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); color: var(--ink);
     font-family: inherit; font-size: 13.5px; padding: 7px 9px; width: 220px;
   }
+  /* Stessa barra di "Rinomina selezionati", ma per impostare la quantità minima su più prodotti
+     insieme (Erica, 15/10): il campo numerico può essere più corto di quello del nome. */
+  .magazzino-bulk-qtymin input { width: 100px; }
   .mag-head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
   /* Filtri Tipo/Fornitore, sopra la ricerca: stessa logica dei gruppi del PDF, ma selezionabile. */
   .magazzino-filtri { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 4px; }
@@ -1673,7 +1676,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-15.79-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-15.80-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -5278,6 +5281,10 @@
               <span class="magazzino-bulk-rename">
                 <input type="text" id="magazzinoBulkRenameInput" placeholder="Nuovo nome per i ${nSel} selezionati…">
                 <button type="button" class="ghost small" id="magazzinoBulkRenameBtn">Rinomina selezionati</button>
+              </span>
+              <span class="magazzino-bulk-rename magazzino-bulk-qtymin">
+                <input type="number" id="magazzinoBulkQtyMinInput" min="0" step="1" placeholder="Quantità minima…">
+                <button type="button" class="ghost small" id="magazzinoBulkQtyMinBtn">Imposta quantità minima (${nSel})</button>
               </span>` : ''}
             </div>
             ${prodotti.length ? renderMagazzinoHeaderRowHtml(tuttiSelezionati) : ''}
@@ -5988,6 +5995,28 @@
         saveMagazzino();
         magazzinoNotify('Rinominati ' + n + ' prodotti.');
         renderMagazzinoMantenendoScroll();
+      });
+    }
+
+    // Imposta la quantità minima in blocco su tutti i prodotti selezionati in un colpo (Erica,
+    // 15/10: "se volessi impostare una soglia minima per tipo dieci prodotti in un solo colpo").
+    const bulkQtyMinBtn = document.getElementById('magazzinoBulkQtyMinBtn');
+    const bulkQtyMinInput = document.getElementById('magazzinoBulkQtyMinInput');
+    if (bulkQtyMinBtn && bulkQtyMinInput) {
+      bulkQtyMinBtn.addEventListener('click', () => {
+        const raw = bulkQtyMinInput.value.trim();
+        if (!raw) { magazzinoNotify('Scrivi la quantità minima prima di applicarla.', true); return; }
+        const nuovaSoglia = Number(raw);
+        if (!Number.isFinite(nuovaSoglia) || nuovaSoglia < 0) { magazzinoNotify('Quantità minima non valida.', true); return; }
+        const n = magazzinoSelezionati.size;
+        magazzinoCache.prodotti.forEach(p => { if (magazzinoSelezionati.has(p.id)) p.quantitaMinima = nuovaSoglia; });
+        magazzinoSelezionati.clear();
+      magazzinoUltimoCheckId = null;
+        saveMagazzino();
+        // Il ridisegno sostituisce l'intero pannello (compresa la targhetta di stato): l'avviso va
+        // scritto DOPO, altrimenti verrebbe subito cancellato dal nuovo HTML appena creato.
+        renderMagazzinoMantenendoScroll();
+        magazzinoNotify('Quantità minima impostata su ' + n + ' prodotti.');
       });
     }
 
