@@ -1614,7 +1614,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-15.64-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-15.65-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -4938,6 +4938,7 @@
             <div class="magazzino-bulk-row">
               <button type="button" class="ghost small" id="magazzinoAddBtn">+ Aggiungi prodotto</button>
               ${nSel ? `
+              <button type="button" class="ghost small" id="magazzinoDeselezionaBtn">Deseleziona tutto</button>
               <button type="button" class="ghost small" id="magazzinoBulkVenditaBtn">Sposta in Merci vendita (${nSel})</button>
               <button type="button" class="ghost small" id="magazzinoBulkMateriaBtn">Sposta in Materie prime (${nSel})</button>
               <button type="button" class="magazzino-delete-bulk" id="magazzinoDeleteSelBtn">Elimina selezionati (${nSel})</button>
@@ -5565,6 +5566,13 @@
         const idsVisibili = Array.from(document.querySelectorAll('.magazzino-row-check')).map(c => c.dataset.id);
         if (selectAllChk.checked) idsVisibili.forEach(id => magazzinoSelezionati.add(id));
         else idsVisibili.forEach(id => magazzinoSelezionati.delete(id));
+        renderMagazzinoMantenendoScroll();
+      });
+    }
+    const deselezionaBtn = document.getElementById('magazzinoDeselezionaBtn');
+    if (deselezionaBtn) {
+      deselezionaBtn.addEventListener('click', () => {
+        magazzinoSelezionati.clear();
         renderMagazzinoMantenendoScroll();
       });
     }
