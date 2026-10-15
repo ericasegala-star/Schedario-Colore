@@ -1625,7 +1625,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-15.69-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-15.70-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -6482,6 +6482,29 @@
     return magazzinoCache.prodotti.find(p => normMagNome(p.nome) === target) || null;
   }
 
+  // Se le fatture scelte insieme (o la stessa fattura) contengono più righe con lo stesso
+  // nome prodotto, vanno fuse in una sola PRIMA di mostrare la revisione: altrimenti
+  // l'abbinamento ai prodotti già a magazzino viene calcolato riga per riga, e due righe
+  // "nuove" con lo stesso nome restavano due voci separate invece di una con la quantità
+  // sommata (segnalato da Erica, 15/10: due fatture con lo stesso prodotto davano due voci).
+  function fondiRigheImportDuplicate(righe) {
+    const indicePerNome = new Map();
+    const fuse = [];
+    righe.forEach(r => {
+      const chiave = normMagNome(r.descrizione);
+      if (chiave && indicePerNome.has(chiave)) {
+        const esistente = fuse[indicePerNome.get(chiave)];
+        esistente.quantita = (esistente.quantita || 0) + (r.quantita || 0);
+        if (r.prezzoUnitario != null) esistente.prezzoUnitario = r.prezzoUnitario; // vince il prezzo più recente
+        if (!esistente.fornitore && r.fornitore) esistente.fornitore = r.fornitore;
+      } else {
+        indicePerNome.set(chiave, fuse.length);
+        fuse.push(Object.assign({}, r));
+      }
+    });
+    return fuse;
+  }
+
   function openMagImportModal() {
     const modal = document.getElementById('magImportModal');
     if (!modal) return;
@@ -6565,12 +6588,13 @@
     const risultati = await Promise.all(files.map(parseMagImportFile));
     const falliti = risultati.filter(r => !r.ok);
     const riusciti = risultati.filter(r => r.ok);
-    magImportRighe = [];
+    let righeRaccolte = [];
     riusciti.forEach(r => {
       r.righe.forEach(riga => {
-        magImportRighe.push(Object.assign({}, riga, { fornitore: r.fornitore, numero: r.numero, data: r.data }));
+        righeRaccolte.push(Object.assign({}, riga, { fornitore: r.fornitore, numero: r.numero, data: r.data }));
       });
     });
+    magImportRighe = fondiRigheImportDuplicate(righeRaccolte);
     if (falliti.length) {
       showMagImportError(falliti.map(f => f.nomeFile + ': non letto').join(' · '));
     }
