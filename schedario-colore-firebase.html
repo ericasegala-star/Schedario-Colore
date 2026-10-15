@@ -821,6 +821,13 @@
   .catalogo-hp-card-sub { font-weight: 400; font-size: 11.5px; color: var(--ink-soft); }
   .catalogo-hp-card-all .catalogo-hp-card-label { color: var(--berry); font-weight: 600; }
 
+  /* "Cerca nell'app" ora raggruppa i risultati per sezione (schede clienti, magazzino, servizi,
+     ispirazione, consigli di utilizzo…), con un titoletto per gruppo (Erica, 15/10). */
+  .search-results-group + .search-results-group { margin-top: 18px; }
+  .search-results-group-title {
+    font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em;
+    color: var(--ink-soft); margin-bottom: 8px;
+  }
   .search-results-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
   .search-result-item {
     border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px;
@@ -1642,7 +1649,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-15.72-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-15.73-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -2856,12 +2863,16 @@
   let viewingServizi = false; // true quando il pannello principale mostra "Crea servizio"
   let viewingAgenda = false; // true quando il pannello principale mostra "Agenda"
   let viewingSearchApp = false; // true quando il pannello principale mostra "Cerca nell'app"
-  // Sezione "Tricologo": per ora solo un avviso "in costruzione". È indipendente dalle altre
-  // viewingX (Tecnico) — si entra/esce solo con i due pulsanti Tecnico/Tricologo in alto, che
-  // restano sempre visibili; finché è attiva nasconde l'elenco clienti/menu (appartengono al
-  // Tecnico) e sostituisce il pannello principale, senza bisogno di toccare tutti gli altri
-  // punti dell'app che aprono una sezione Tecnico.
+  // Sezione "Tricologo": mostra solo le schede clienti (stesso elenco/ricerca del Tecnico) e
+  // l'Agenda (Erica, 15/10: "lascia solo schede clienti e agenda") — nient'altro del menu del
+  // Tecnico (Magazzino, Servizi, Ispirazione, ecc.). Si entra/esce solo con i due pulsanti
+  // Tecnico/Tricologo in alto, che restano sempre visibili. Per non perdere la sezione che si
+  // stava usando nel Tecnico (es. Magazzino) passando per Tricologia, lo stato delle sue
+  // viewingX viene "congelato" in tecnicoViewSnapshot quando si entra in Tricologo, e ripristinato
+  // quando si torna su Tecnico — così le due modalità restano indipendenti senza dover toccare
+  // tutti gli altri punti dell'app che aprono una sezione del Tecnico.
   let viewingTricologo = false;
+  let tecnicoViewSnapshot = null;
   let searchAppTerm = "";
   let viewingBlankSheet = false; // true quando il pannello principale mostra "Scheda da stampare" (modulo vuoto)
   let viewingOstwald = false; // true quando il pannello principale mostra "Ruota di Ostwald"
@@ -4298,34 +4309,130 @@
     return fields;
   }
 
+  // Registro delle fonti per "Cerca nell'app": prima cercava solo nelle schede clienti; ogni
+  // sezione aggiunge qui una fonte con una funzione che, dato il termine già in minuscolo,
+  // restituisce i risultati che la riguardano (titolo, eventuali righe trovate, e cosa fare se
+  // ci si clicca sopra). "Cerca nell'app" li raccoglie tutti insieme, raggruppati per sezione:
+  // una sezione nuova in futuro si aggiunge con una sola chiamata a registerSearchAppSource(),
+  // senza dover toccare il motore di ricerca stesso (Erica, 15/10: "cerca nell'app deve cercare
+  // in qualsiasi sezione, anche quelle future").
+  const searchAppSources = [];
+  function registerSearchAppSource(source) { searchAppSources.push(source); }
+  function chiudiAltreSezioniEApri(flagDaAttivare) {
+    viewingNotes = flagDaAttivare === 'notes';
+    viewingIspirazione = flagDaAttivare === 'ispirazione';
+    viewingMagazzino = flagDaAttivare === 'magazzino';
+    viewingServizi = flagDaAttivare === 'servizi';
+    viewingAgenda = false;
+    viewingSearchApp = false;
+    viewingBlankSheet = false;
+    viewingOstwald = false;
+    viewingCatalogoHp = false;
+    viewingHome = false;
+    closeMobileMenu();
+    renderAll();
+  }
+
+  registerSearchAppSource({
+    categoria: 'Schede clienti',
+    cerca(term) {
+      const risultati = [];
+      clients.forEach(raw => {
+        const c = hydrate(JSON.parse(JSON.stringify(raw)));
+        const nameMatches = (c.nome || '').toLowerCase().includes(term);
+        const fieldMatches = collectSearchableFields(c).filter(([, value]) => value.toLowerCase().includes(term));
+        if (nameMatches || fieldMatches.length) {
+          risultati.push({ titolo: c.nome || 'Senza nome', matches: fieldMatches, apri: () => switchActive(c.id) });
+        }
+      });
+      risultati.sort((a, b) => a.titolo.localeCompare(b.titolo));
+      return risultati;
+    },
+  });
+
+  registerSearchAppSource({
+    categoria: 'Magazzino',
+    cerca(term) {
+      return loadMagazzino().prodotti
+        .filter(p => (p.nome || '').toLowerCase().includes(term) || (p.marca || '').toLowerCase().includes(term))
+        .map(p => ({
+          titolo: p.nome || 'Senza nome',
+          matches: p.marca ? [['Marca/fornitore', p.marca]] : [],
+          apri: () => { magazzinoSearchTerm = p.nome || ''; chiudiAltreSezioniEApri('magazzino'); },
+        }));
+    },
+  });
+
+  registerSearchAppSource({
+    categoria: 'Crea servizio',
+    cerca(term) {
+      return serviziCache.servizi
+        .filter(s => nomeServizio(s).toLowerCase().includes(term))
+        .map(s => ({ titolo: nomeServizio(s), matches: [], apri: () => chiudiAltreSezioniEApri('servizi') }));
+    },
+  });
+
+  registerSearchAppSource({
+    categoria: 'Ispirazione',
+    cerca(term) {
+      return loadIspirazione().libri
+        .filter(l => (l.titolo || '').toLowerCase().includes(term) || (l.procedimento || '').toLowerCase().includes(term))
+        .map(l => ({
+          titolo: l.titolo || 'Libro senza titolo',
+          matches: (l.procedimento || '').toLowerCase().includes(term) ? [['Procedimento', l.procedimento]] : [],
+          apri: () => chiudiAltreSezioniEApri('ispirazione'),
+        }));
+    },
+  });
+
+  registerSearchAppSource({
+    categoria: 'Consigli di utilizzo',
+    cerca(term) {
+      const risultati = [];
+      ['time', 'green', 'gloss'].forEach(section => {
+        loadAppunti(section).forEach(a => {
+          if ((a.voce || '').toLowerCase().includes(term)) {
+            risultati.push({ titolo: (a.voce || '').split('\n')[0].slice(0, 60) || 'Appunto', matches: [], apri: () => chiudiAltreSezioniEApri('notes') });
+          }
+        });
+      });
+      return risultati;
+    },
+  });
+
   function renderSearchAppResults() {
     const container = document.getElementById('searchAppResults');
     if (!container) return;
     const term = searchAppTerm.trim().toLowerCase();
     if (!term) {
-      container.innerHTML = '<p class="hint">Scrivi qualcosa per cercare in tutte le schede: nome, formule, nuance, note…</p>';
+      container.innerHTML = '<p class="hint">Scrivi qualcosa per cercare in tutta l\'app: schede clienti, magazzino, servizi, ispirazione, consigli di utilizzo…</p>';
       return;
     }
-    const results = [];
-    clients.forEach(raw => {
-      const c = hydrate(JSON.parse(JSON.stringify(raw)));
-      const nameMatches = (c.nome || '').toLowerCase().includes(term);
-      const fieldMatches = collectSearchableFields(c).filter(([, value]) => value.toLowerCase().includes(term));
-      if (nameMatches || fieldMatches.length) results.push({ id: c.id, nome: c.nome, matches: fieldMatches });
-    });
-    results.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
-    if (!results.length) {
-      container.innerHTML = '<p class="version-empty">Nessuna scheda trovata per "' + escapeHtml(searchAppTerm) + '".</p>';
+    const gruppi = searchAppSources
+      .map(source => ({ categoria: source.categoria, risultati: source.cerca(term) }))
+      .filter(g => g.risultati.length);
+    if (!gruppi.length) {
+      container.innerHTML = '<p class="version-empty">Nessun risultato per "' + escapeHtml(searchAppTerm) + '".</p>';
       return;
     }
-    container.innerHTML = `<ul class="search-results-list">${results.map(r => `
-      <li class="search-result-item" data-id="${r.id}">
-        <div class="search-result-name">${escapeHtml(r.nome || 'Senza nome')}</div>
-        ${r.matches.length ? `<div class="search-result-matches">${r.matches.slice(0, 3).map(([label, value]) =>
-          `<div class="search-result-match"><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</div>`).join('')}</div>` : ''}
-      </li>`).join('')}</ul>`;
+    let idx = 0;
+    const apriMap = {};
+    container.innerHTML = gruppi.map(g => `
+      <div class="search-results-group">
+        <div class="search-results-group-title">${escapeHtml(g.categoria)}</div>
+        <ul class="search-results-list">${g.risultati.map(r => {
+          const key = 'r' + (idx++);
+          apriMap[key] = r.apri;
+          return `
+          <li class="search-result-item" data-key="${key}">
+            <div class="search-result-name">${escapeHtml(r.titolo)}</div>
+            ${r.matches.length ? `<div class="search-result-matches">${r.matches.slice(0, 3).map(([label, value]) =>
+              `<div class="search-result-match"><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</div>`).join('')}</div>` : ''}
+          </li>`;
+        }).join('')}</ul>
+      </div>`).join('');
     container.querySelectorAll('.search-result-item').forEach(li => {
-      li.addEventListener('click', () => switchActive(li.dataset.id));
+      li.addEventListener('click', () => { const fn = apriMap[li.dataset.key]; if (fn) fn(); });
     });
   }
 
@@ -4854,19 +4961,17 @@
     const apptModalDefault = document.getElementById('agendaApptModal');
     if (apptModalDefault) apptModalDefault.hidden = true;
 
-    // Tricologo: nasconde la barra laterale (elenco clienti/menu del Tecnico — scheda da
-    // stampare, consigli di utilizzo, disco di Newton, ispirazione, crea servizio, elenco
-    // schede clienti: non servono qui). L'Agenda invece è condivisa e serve anche in
-    // Tricologia, quindi è l'unica cosa vera che si vede già; il resto arriverà più avanti
-    // (Erica, 15/10).
-    const sidebarStackEl = document.querySelector('.sidebar-stack');
-    if (sidebarStackEl) sidebarStackEl.hidden = viewingTricologo;
-    if (viewingTricologo) {
+    // Tricologo: nasconde solo il MENU delle voci del Tecnico (scheda da stampare, consigli di
+    // utilizzo, disco di Newton, ispirazione, crea servizio, magazzino, catalogo HP, cerca
+    // nell'app...), che qui non servono. L'elenco schede clienti (ricerca + lista) resta invece
+    // visibile, insieme all'Agenda: sono le uniche due cose che Tricologia deve mostrare
+    // (Erica, 15/10: "lascia solo schede clienti e agenda").
+    const menuToggleEl = document.getElementById('menuToggle');
+    const menuCollapsibleEl = document.getElementById('menuCollapsible');
+    if (menuToggleEl) menuToggleEl.hidden = viewingTricologo;
+    if (menuCollapsibleEl) menuCollapsibleEl.hidden = viewingTricologo;
+    if (viewingTricologo && !activeId) {
       panel.innerHTML = `
-        <div class="placeholder tricologo-placeholder">
-          <h2>Tricologia</h2>
-          <p>Il resto della sezione è in costruzione: arriverà più avanti.</p>
-        </div>
         <div class="home-agenda">
           <div class="home-agenda-head">
             <div class="notes-title">Agenda</div>
@@ -5078,7 +5183,7 @@
         </div>
         <fieldset>
           <div class="field">
-            <input type="text" id="searchAppInput" placeholder="Cerca per nome, formula, nuance, note…" value="${escapeHtml(searchAppTerm)}">
+            <input type="text" id="searchAppInput" placeholder="Cerca in schede, magazzino, servizi, ispirazione, consigli…" value="${escapeHtml(searchAppTerm)}">
           </div>
           <div id="searchAppResults"></div>
         </fieldset>
@@ -7297,8 +7402,11 @@
   }
 
   // Tecnico/Tricologo: due pulsanti sempre visibili in alto, per passare da una sezione
-  // all'altra. Non toccano le viewingX del Tecnico: tornando su "Tecnico" si ritrova la
-  // sezione esatta lasciata prima di entrare in "Tricologo".
+  // all'altra. Lo stato delle viewingX del Tecnico viene salvato in tecnicoViewSnapshot
+  // entrando in Tricologo e ripristinato tornando su "Tecnico": si ritrova così la sezione
+  // esatta lasciata prima, mentre Tricologia parte sempre pulita (solo Agenda, a meno che non
+  // si stesse già guardando proprio la scheda di una cliente, che in tal caso resta apribile
+  // anche lì — Erica, 15/10: "lascia solo schede clienti e agenda").
   const modeTecnicoBtn = document.getElementById('modeTecnicoBtn');
   const modeTricologoBtn = document.getElementById('modeTricologoBtn');
   function aggiornaModeSwitch() {
@@ -7308,6 +7416,19 @@
   if (modeTecnicoBtn) {
     modeTecnicoBtn.addEventListener('click', () => {
       viewingTricologo = false;
+      if (tecnicoViewSnapshot) {
+        viewingNotes = tecnicoViewSnapshot.viewingNotes;
+        viewingIspirazione = tecnicoViewSnapshot.viewingIspirazione;
+        viewingMagazzino = tecnicoViewSnapshot.viewingMagazzino;
+        viewingServizi = tecnicoViewSnapshot.viewingServizi;
+        viewingAgenda = tecnicoViewSnapshot.viewingAgenda;
+        viewingSearchApp = tecnicoViewSnapshot.viewingSearchApp;
+        viewingBlankSheet = tecnicoViewSnapshot.viewingBlankSheet;
+        viewingOstwald = tecnicoViewSnapshot.viewingOstwald;
+        viewingCatalogoHp = tecnicoViewSnapshot.viewingCatalogoHp;
+        viewingHome = tecnicoViewSnapshot.viewingHome;
+        tecnicoViewSnapshot = null;
+      }
       aggiornaModeSwitch();
       renderAll();
     });
@@ -7315,6 +7436,22 @@
   if (modeTricologoBtn) {
     modeTricologoBtn.addEventListener('click', () => {
       viewingTricologo = true;
+      // Se il Tecnico stava davvero mostrando la scheda di una cliente (nessun'altra sezione
+      // attiva), quella resta apribile anche in Tricologia; altrimenti (Magazzino, home, ecc.)
+      // si riparte puliti sull'Agenda, senza un vecchio activeId rimasto in giro.
+      const stavaMostrandoScheda = !!activeId && !(viewingNotes || viewingIspirazione || viewingMagazzino || viewingServizi || viewingAgenda || viewingSearchApp || viewingBlankSheet || viewingOstwald || viewingCatalogoHp || viewingHome);
+      tecnicoViewSnapshot = { viewingNotes, viewingIspirazione, viewingMagazzino, viewingServizi, viewingAgenda, viewingSearchApp, viewingBlankSheet, viewingOstwald, viewingCatalogoHp, viewingHome };
+      viewingNotes = false;
+      viewingIspirazione = false;
+      viewingMagazzino = false;
+      viewingServizi = false;
+      viewingAgenda = false;
+      viewingSearchApp = false;
+      viewingBlankSheet = false;
+      viewingOstwald = false;
+      viewingCatalogoHp = false;
+      viewingHome = false;
+      if (!stavaMostrandoScheda) activeId = null;
       aggiornaModeSwitch();
       closeMobileMenu();
       renderAll();
