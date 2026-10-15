@@ -466,13 +466,19 @@
   }
   .version-delete:hover, .magazzino-delete:hover { color: #A8433C; text-decoration-color: #A8433C; }
   .version-delete.armed, .magazzino-delete.armed { color: #A8433C; font-weight: 600; text-decoration-color: #A8433C; }
-  /* Cestino del Magazzino: stessa icona sempre (niente testo che cambia), il colore rosso di
-     ".armed" qui sopra basta a far capire che serve un secondo clic per confermare. */
+  /* Cestino del Magazzino: stessa icona sempre (niente testo che cambia). Il solo cambio di
+     colore dell'icona era troppo discreto per notare che il primo clic aveva "armato" il tasto
+     (Erica, 15/10: "il tasto cestino non funziona" - in realtà funzionava, ma il primo clic non
+     si vedeva): ora da armato il tasto ha uno sfondo rosso pieno, ben visibile, come un vero
+     tasto di conferma. */
   .magazzino-row-delete {
     display: inline-flex; align-items: center; justify-content: center;
     width: 30px; height: 30px; padding: 0; text-decoration: none;
+    border-radius: 8px; transition: background-color .15s ease, color .15s ease;
   }
   .magazzino-row-delete svg { width: 18px; height: 18px; flex: none; }
+  .magazzino-row-delete.armed { background: #A8433C; color: #fff; }
+  .magazzino-row-delete.armed:hover { background: #8f362f; color: #fff; }
   .version-empty { font-size: 13px; color: var(--ink-soft); }
   .version-see-all {
     display: inline-block; margin-top: 8px; font-size: 13px; color: var(--berry);
@@ -1073,9 +1079,10 @@
        singola riga), così si allarga o si stringe tutta la colonna in un colpo solo, non una
        voce alla volta. minmax() tiene le altre colonne leggibili anche quando "Prodotto" cresce. */
     /* Quantità ridotta a 64px (lo spazio di un numero a 3 cifre CON le freccette su/giù native,
-       senza tagliarlo): lo spazio recuperato va al margine massimo della colonna "Prodotto" qui
-       sotto, non a questa riga (richiesto da Erica, 15/10). */
-    grid-template-columns: 26px minmax(130px, var(--mag-nome-w, 2fr)) minmax(90px, 1.3fr) minmax(110px, 1.6fr) minmax(70px, 0.9fr) 64px 70px;
+       senza tagliarlo) e l'ultima colonna (solo il cestino, 30px) ridotta a 40px: restava
+       altrimenti vuota per buona parte, con il cestino staccato dalla quantità (Erica, 15/10,
+       con foto). Lo spazio recuperato va al margine massimo della colonna "Prodotto" qui sotto. */
+    grid-template-columns: 26px minmax(130px, var(--mag-nome-w, 2fr)) minmax(90px, 1.3fr) minmax(110px, 1.6fr) minmax(70px, 0.9fr) 64px 40px;
     align-items: center; gap: 10px;
     padding: 8px 12px; background: var(--paper-raised);
     border-bottom: 1px solid var(--line);
@@ -1635,7 +1642,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-15.71-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-15.72-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -5769,10 +5776,10 @@
         const startX = ev.clientX;
         handle.classList.add('dragging');
         function onMove(ev2) {
-          // Il massimo è salito di 26px (90px→64px della colonna Quantità, appena resa più
-          // stretta): lo spazio recuperato lì va proprio nel margine massimo di allargamento
-          // di "Prodotto" (richiesto da Erica, 15/10).
-          const nuova = Math.max(110, Math.min(586, startW + (ev2.clientX - startX)));
+          // Il massimo è salito di 56px in tutto (90px→64px della colonna Quantità, 70px→40px
+          // della colonna del cestino): lo spazio recuperato lì va proprio nel margine massimo
+          // di allargamento di "Prodotto" (richiesto da Erica, 15/10).
+          const nuova = Math.max(110, Math.min(616, startW + (ev2.clientX - startX)));
           magazzinoNomeColWidth = nuova;
           document.documentElement.style.setProperty('--mag-nome-w', nuova + 'px');
         }
