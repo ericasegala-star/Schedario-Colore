@@ -1614,7 +1614,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-15.63-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-15.64-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -5533,7 +5533,12 @@
         magazzinoSearchTerm = searchInput.value;
         renderSheet();
       });
-      searchInput.focus();
+      // Il focus sulla ricerca viene rimesso ad ogni ridisegno (es. dopo aver spuntato una
+      // casella), ma se la ricerca è fuori dallo schermo (lista lunga, scorsa a metà) il
+      // browser la riporterebbe in vista da solo: è questo che faceva "tornare su" la pagina
+      // ad ogni check. Con preventScroll il cursore torna comunque nel campo, ma senza
+      // muovere la pagina.
+      searchInput.focus({ preventScroll: true });
       searchInput.selectionStart = searchInput.selectionEnd = searchInput.value.length;
     }
 
