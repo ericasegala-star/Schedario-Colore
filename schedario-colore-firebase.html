@@ -622,7 +622,7 @@
   .home-quote-text { font-family: 'Fraunces', serif; font-size: 18px; line-height: 1.5; margin: 2px 0 0; font-style: italic; }
   .home-hint { color: var(--ink-soft); font-size: 14px; margin: 0 0 16px; max-width: 560px; }
 
-  /* Agenda sotto la schermata iniziale: calendario a quarti d'ora per il giorno scelto. */
+  /* Agenda sotto la schermata iniziale: calendario a quarti d'ora per la settimana scelta. */
   .home-agenda { margin-top: 28px; border-top: 1px solid var(--line); padding-top: 18px; }
   .home-agenda-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
   .agenda-date-nav { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -632,9 +632,23 @@
     font-size: 12.5px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase;
     color: var(--berry); margin-bottom: 10px;
   }
+  /* Richiesta di Erica (15/10): invece della vista di un solo giorno, l'Agenda mostra sempre
+     tutti e 7 i giorni della settimana affiancati in orizzontale (sua scelta tra le due proposte).
+     Le 7 colonne restano allineate ora per ora: lo scroll verticale (per vedere le ore) è UNICO
+     su tutta la fascia, non uno per colonna — altrimenti ogni giorno potrebbe scorrersi per conto
+     suo e sfasarsi rispetto agli altri. Lo stesso contenitore scorre anche in orizzontale su
+     schermi piccoli, per vedere i giorni che non entrano nella larghezza. */
+  .agenda-settimana { display: flex; gap: 10px; max-height: 480px; overflow: auto; padding-bottom: 6px; }
+  .agenda-settimana-giorno { flex: 1 1 190px; min-width: 190px; }
+  .agenda-settimana-giorno-head {
+    font-size: 12.5px; font-weight: 700; letter-spacing: 0.02em; color: var(--ink-soft);
+    margin-bottom: 6px; text-align: center;
+  }
+  .agenda-settimana-oggi .agenda-settimana-giorno-head { color: var(--berry); }
+  .agenda-settimana-oggi .agenda-grid { border-color: var(--berry); }
   .agenda-grid {
     display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: var(--radius);
-    overflow: hidden; max-height: 480px; overflow-y: auto;
+    overflow: hidden;
   }
   .agenda-slot {
     display: flex; align-items: center; gap: 10px; padding: 5px 10px;
@@ -703,8 +717,9 @@
      dell'appuntamento che la occupa, senza ripetere nome/testo. */
   .agenda-slot-occupato { background: var(--paper-raised); }
   /* Ore fuori dall'orario di apertura vero (prima/dopo il turno, o giorno di chiusura totale):
-     restano visibili per tenere la griglia sempre dalle 7:00 alle 20:00, ma con un colore diverso
-     e discreto, e niente tasto "+" (non prenotabili). */
+     restano visibili per tenere la griglia sempre dalle 7:00 alle 20:00, con lo stesso colore
+     diverso e discreto di sempre — ma da richiesta di Erica (15/10) hanno anche loro il tasto "+"
+     (stessa grafica "chiuso", ma prenotabili lo stesso se lo si desidera). */
   .agenda-slot-chiuso { background: repeating-linear-gradient(135deg, var(--paper-raised), var(--paper-raised) 6px, var(--paper) 6px, var(--paper) 12px); }
   .agenda-slot-chiuso .agenda-slot-time { color: var(--ink-soft); opacity: 0.55; }
   .agenda-chip-lavoro { border-style: dashed; }
@@ -1651,7 +1666,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-15.75-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-15.76-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -2988,6 +3003,63 @@
     const date = new Date(y, (m || 1) - 1, d || 1);
     const s = date.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  // Richiesta di Erica (15/10): "potresti darmi invece che la data di un solo giorno tutti e 7?" —
+  // l'Agenda ora mostra sempre tutta la settimana (lunedì-domenica, settimana italiana) che
+  // contiene la data scelta, non più un giorno solo. Le funzioni seguenti calcolano quella
+  // settimana; il popup del calendario per scegliere la data resta com'era ("va bene").
+  function agendaInizioSettimana(iso) {
+    const [y, m, d] = iso.split('-').map(Number);
+    const date = new Date(y, (m || 1) - 1, d || 1);
+    const giorno = date.getDay(); // 0 = domenica … 6 = sabato
+    const offset = giorno === 0 ? -6 : 1 - giorno; // porta indietro al lunedì della stessa settimana
+    date.setDate(date.getDate() + offset);
+    return fmtDateISO(date);
+  }
+  function agendaGiorniSettimana(anchorISO) {
+    const inizioISO = agendaInizioSettimana(anchorISO);
+    const [y, m, d] = inizioISO.split('-').map(Number);
+    const inizio = new Date(y, (m || 1) - 1, d || 1);
+    const giorni = [];
+    for (let i = 0; i < 7; i++) {
+      const dt = new Date(inizio);
+      dt.setDate(inizio.getDate() + i);
+      giorni.push(fmtDateISO(dt));
+    }
+    return giorni;
+  }
+  // "lun 13/10", breve, per l'intestazione di ogni colonna della settimana.
+  function fmtGiornoBreve(iso) {
+    const [y, m, d] = iso.split('-').map(Number);
+    const date = new Date(y, (m || 1) - 1, d || 1);
+    const s = date.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'numeric' });
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  // "13 – 19 ottobre 2026" (o con due mesi/anni se la settimana li attraversa), per l'intestazione
+  // sopra la griglia a 7 colonne.
+  function fmtSettimanaLabel(anchorISO) {
+    const giorni = agendaGiorniSettimana(anchorISO);
+    const MESI = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+    const [y1, m1, d1] = giorni[0].split('-').map(Number);
+    const [y2, m2, d2] = giorni[6].split('-').map(Number);
+    let s;
+    if (y1 === y2 && m1 === m2) s = `${d1} – ${d2} ${MESI[m2 - 1]} ${y2}`;
+    else if (y1 === y2) s = `${d1} ${MESI[m1 - 1]} – ${d2} ${MESI[m2 - 1]} ${y2}`;
+    else s = `${d1} ${MESI[m1 - 1]} ${y1} – ${d2} ${MESI[m2 - 1]} ${y2}`;
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  // Le 7 colonne affiancate (richiesta di Erica, 15/10: "affiancati in orizzontale"), una per
+  // giorno della settimana; ogni colonna riusa la stessa griglia di sempre (renderAgendaGridHtml),
+  // con le sue eventuali due colonne Erica/Sara dentro, solo più strette. Su schermi piccoli la
+  // fascia scorre in orizzontale (vedi CSS .agenda-settimana).
+  function renderAgendaSettimanaHtml(anchorISO) {
+    const giorni = agendaGiorniSettimana(anchorISO);
+    const oggiISO = fmtDateISO(new Date());
+    return `<div class="agenda-settimana">${giorni.map(iso => `
+      <div class="agenda-settimana-giorno${iso === oggiISO ? ' agenda-settimana-oggi' : ''}" data-date="${escapeHtml(iso)}">
+        <div class="agenda-settimana-giorno-head">${fmtGiornoBreve(iso)}</div>
+        ${renderAgendaGridHtml(iso)}
+      </div>`).join('')}</div>`;
   }
 
   function bianchiLabel(v) {
@@ -4668,8 +4740,8 @@
   // La griglia visibile in agenda copre sempre le stesse ore, 7:00-20:00, ogni giorno: così le
   // colonne restano allineate e si vede a colpo d'occhio quanto manca all'apertura/dopo la
   // chiusura, invece di far sparire del tutto i giorni o gli orari di chiusura. Le ore fuori
-  // dall'orario di apertura vero (vedi oraNelTurno) restano comunque non prenotabili, solo
-  // colorate in modo diverso.
+  // dall'orario di apertura vero (vedi oraNelTurno) restano colorate in modo diverso ("chiuso"),
+  // ma da richiesta di Erica (15/10) si può prendere un appuntamento anche lì, se lo si desidera.
   const AGENDA_VISTA_INIZIO_MIN = 7 * 60;
   const AGENDA_VISTA_FINE_MIN = 20 * 60;
   // Su qualunque dispositivo, la vista dell'agenda si posiziona da sola sulle 8:30 (il vero inizio
@@ -4679,6 +4751,10 @@
   // fermo dov'è, con renderSheetMantenendoScroll qui sotto.
   function agendaScrollA830() {
     requestAnimationFrame(() => {
+      // Con la vista a 7 colonne (una a settimana) lo scroll verticale è UNICO su tutta la fascia
+      // (.agenda-settimana, non più un .agenda-grid per colonna — vedi CSS): basta quindi trovare
+      // le 8:30 in UNA qualunque colonna (sono tutte alla stessa altezza, allineate) e scorrere
+      // fin lì, come quando c'era un solo giorno.
       // Di norma esiste una riga che inizia esattamente alle 8:30; ma da quando un appuntamento
       // occupa un unico blocco alto quanto il suo tempo di lavorazione (vedi renderAgendaSlotHtml
       // qui sotto), le 8:30 potrebbero finire "inglobate" nel blocco di un appuntamento iniziato
@@ -4815,7 +4891,10 @@
   // ci si sovrappone sopra un servizio che dura più di un quarto d'ora — il tempo di POSA invece,
   // dove Erica è libera, resta uno slot normale prenotabile), bloccato da una ferie/permesso
   // dell'operatore (niente tasto "+", solo l'etichetta), oppure "chiuso" (fuori dall'orario di
-  // apertura vero: visibile solo per allineare la griglia 7:00-20:00, non prenotabile).
+  // apertura vero: visibile solo per allineare la griglia 7:00-20:00, con la stessa grafica
+  // discreta di sempre, ma con il tasto "+" anche lì, da richiesta di Erica (15/10): "vorrei poter
+  // prendere appuntamento anche nei fuori orario se volessi quindi lascia la grafica com'è ma
+  // dammi la possibilità di aggiungere lo stesso un appuntamento").
   //
   // Richiesta di Erica (14/10, con foto di esempio, affinata più volte lo stesso giorno):
   // l'etichetta scritta compare su :00 e :30 (mezz'ore); il bordo ha tre livelli — marcato (ma
@@ -4835,7 +4914,7 @@
     return '';
   }
   function renderAgendaSlotVuotoHtml(time, minutiFine, opts) {
-    const assenza = opts.assenza, chiuso = opts.chiuso, operatore = opts.operatore;
+    const assenza = opts.assenza, chiuso = opts.chiuso, operatore = opts.operatore, dateISO = opts.dateISO;
     const minuti = hhmmToMinuti(time);
     const etichetta = agendaMostraEtichettaOra(minuti) ? time : '';
     const classiExtra = agendaClasseBordo(minutiFine);
@@ -4848,15 +4927,20 @@
         </div>`;
     }
     if (chiuso) {
+      // Richiesta di Erica (15/10): "vorrei poter prendere appuntamento anche nei fuori orario se
+      // volessi quindi lascia la grafica com'è ma dammi la possibilità di aggiungere lo stesso un
+      // appuntamento" — stessa grafica "chiuso" (righe grigie) di sempre, ma con lo stesso tasto
+      // "+" degli slot normali, per poter prenotare comunque fuori dall'orario di apertura vero.
       return `
         <div class="agenda-slot agenda-slot-chiuso${classiExtra}" data-time="${time}" data-fine="${minutiToHHMM(minutiFine)}">
           <div class="agenda-slot-time">${etichetta}</div>
+          <button type="button" class="agenda-slot-add" data-time="${time}" data-date="${escapeHtml(dateISO || '')}" data-operatore="${escapeHtml(operatore || '')}" aria-label="Nuovo appuntamento alle ${time}">+</button>
         </div>`;
     }
     return `
       <div class="agenda-slot${classiExtra}" data-time="${time}" data-fine="${minutiToHHMM(minutiFine)}">
         <div class="agenda-slot-time">${etichetta}</div>
-        <button type="button" class="agenda-slot-add" data-time="${time}" data-operatore="${escapeHtml(operatore || '')}" aria-label="Nuovo appuntamento alle ${time}">+</button>
+        <button type="button" class="agenda-slot-add" data-time="${time}" data-date="${escapeHtml(dateISO || '')}" data-operatore="${escapeHtml(operatore || '')}" aria-label="Nuovo appuntamento alle ${time}">+</button>
       </div>`;
   }
   // Il blocco di un appuntamento: alto quanto il suo tempo di lavorazione (un quarto d'ora = una
@@ -4910,7 +4994,7 @@
         return;
       }
       const chiuso = !oraNelTurno(operatore, dateISO, time);
-      html += renderAgendaSlotVuotoHtml(time, minuti + 15, { assenza, chiuso, operatore });
+      html += renderAgendaSlotVuotoHtml(time, minuti + 15, { assenza, chiuso, operatore, dateISO });
     });
     return html;
   }
@@ -4939,20 +5023,24 @@
   // ragione per tornare in cima, come aprire una scheda diversa) avvolge la chiamata con questa
   // funzione, che ricorda la posizione dello scroll e la ripristina subito dopo.
   // Attenzione: l'agenda non scorre solo con la pagina (document.scrollingElement), ha anche un
-  // suo riquadro interno con lo scroll proprio (.agenda-grid, max-height + overflow-y:auto, uno
-  // per colonna nei giorni con più di un'operatrice): ridisegnando l'HTML quel riquadro viene
-  // ricreato da zero e riparte da scrollTop 0, quindi va salvato e ripristinato anche lui, per
-  // indice (le colonne restano nello stesso ordine), oltre allo scroll della pagina.
+  // suo riquadro interno con lo scroll proprio (.agenda-settimana, un unico scroll — verticale E
+  // orizzontale — condiviso da tutte e 7 le colonne, per restare allineate): ridisegnando l'HTML
+  // quel riquadro viene ricreato da zero e riparte da scrollTop/scrollLeft 0, quindi va salvato e
+  // ripristinato anche lui, oltre allo scroll della pagina.
   function renderSheetMantenendoScroll() {
     const scrollEl = document.scrollingElement || document.documentElement;
     const scrollY = scrollEl.scrollTop;
-    const griglie = Array.from(document.querySelectorAll('.agenda-grid'));
-    const scrollGriglie = griglie.map(g => g.scrollTop);
+    const settimanaEl = document.querySelector('.agenda-settimana');
+    const scrollSettimanaTop = settimanaEl ? settimanaEl.scrollTop : null;
+    const scrollSettimanaLeft = settimanaEl ? settimanaEl.scrollLeft : null;
     renderSheet();
     requestAnimationFrame(() => {
       scrollEl.scrollTop = scrollY;
-      const nuoveGriglie = document.querySelectorAll('.agenda-grid');
-      nuoveGriglie.forEach((g, i) => { if (scrollGriglie[i] != null) g.scrollTop = scrollGriglie[i]; });
+      const nuovaSettimana = document.querySelector('.agenda-settimana');
+      if (nuovaSettimana && scrollSettimanaTop != null) {
+        nuovaSettimana.scrollTop = scrollSettimanaTop;
+        nuovaSettimana.scrollLeft = scrollSettimanaLeft;
+      }
     });
   }
   function renderSheet() {
@@ -4993,17 +5081,17 @@
           <div class="home-agenda-head">
             <div class="notes-title">Agenda</div>
             <div class="agenda-date-nav">
-              <button type="button" class="ghost small" id="agendaPrevDay" aria-label="Giorno precedente">‹</button>
+              <button type="button" class="ghost small" id="agendaPrevDay" aria-label="Settimana precedente">‹</button>
               <input type="date" id="agendaDatePicker" value="${escapeHtml(agendaDataSelezionata)}">
-              <button type="button" class="ghost small" id="agendaNextDay" aria-label="Giorno successivo">›</button>
+              <button type="button" class="ghost small" id="agendaNextDay" aria-label="Settimana successiva">›</button>
               <button type="button" class="ghost small" id="agendaOggiBtn">Oggi</button>
               <button type="button" class="ghost small" id="agendaTurniBtn">Turni di lavoro</button>
               <button type="button" class="ghost small" id="agendaAssenzaBtn">Ferie/permesso</button>
             </div>
           </div>
-          <div class="agenda-date-label">${fmtDateISOLong(agendaDataSelezionata)}</div>
+          <div class="agenda-date-label">${fmtSettimanaLabel(agendaDataSelezionata)}</div>
           <div id="agendaGridWrap">
-            ${renderAgendaGridHtml(agendaDataSelezionata)}
+            ${renderAgendaSettimanaHtml(agendaDataSelezionata)}
           </div>
           <span class="save-status" id="agendaSaveStatus"></span>
         </div>
@@ -5373,7 +5461,7 @@
           <div class="home-date-row">
             <div class="home-date">${escapeHtml(todayCap)}</div>
           </div>
-          <h2 class="home-greeting">Ciao, Erica &amp; Sara!</h2>
+          <h2 class="home-greeting">Ciao!</h2>
           <div class="home-quote-card">
             <div class="home-quote-mark">“</div>
             <p class="home-quote-text">${escapeHtml(quoteOfTheDay())}</p>
@@ -5385,17 +5473,17 @@
             <div class="home-agenda-head">
               <div class="notes-title">Agenda</div>
               <div class="agenda-date-nav">
-                <button type="button" class="ghost small" id="agendaPrevDay" aria-label="Giorno precedente">‹</button>
+                <button type="button" class="ghost small" id="agendaPrevDay" aria-label="Settimana precedente">‹</button>
                 <input type="date" id="agendaDatePicker" value="${escapeHtml(agendaDataSelezionata)}">
-                <button type="button" class="ghost small" id="agendaNextDay" aria-label="Giorno successivo">›</button>
+                <button type="button" class="ghost small" id="agendaNextDay" aria-label="Settimana successiva">›</button>
                 <button type="button" class="ghost small" id="agendaOggiBtn">Oggi</button>
                 <button type="button" class="ghost small" id="agendaTurniBtn">Turni di lavoro</button>
                 <button type="button" class="ghost small" id="agendaAssenzaBtn">Ferie/permesso</button>
               </div>
             </div>
-            <div class="agenda-date-label">${fmtDateISOLong(agendaDataSelezionata)}</div>
+            <div class="agenda-date-label">${fmtSettimanaLabel(agendaDataSelezionata)}</div>
             <div id="agendaGridWrap">
-              ${renderAgendaGridHtml(agendaDataSelezionata)}
+              ${renderAgendaSettimanaHtml(agendaDataSelezionata)}
             </div>
             <span class="save-status" id="agendaSaveStatus"></span>
           </div>
@@ -6140,17 +6228,19 @@
         agendaScrollA830();
       });
     }
-    function spostaGiorno(delta) {
+    // La vista mostra sempre tutta la settimana (richiesta di Erica, 15/10): i tasti ‹ › spostano
+    // quindi di 7 giorni (una settimana intera), non più di un giorno solo.
+    function spostaSettimana(delta) {
       const [y, m, d] = agendaDataSelezionata.split('-').map(Number);
-      const dt = new Date(y, (m || 1) - 1, (d || 1) + delta);
+      const dt = new Date(y, (m || 1) - 1, (d || 1) + delta * 7);
       agendaDataSelezionata = fmtDateISO(dt);
       renderSheet();
       agendaScrollA830();
     }
     const prevBtn = document.getElementById('agendaPrevDay');
-    if (prevBtn) prevBtn.addEventListener('click', () => spostaGiorno(-1));
+    if (prevBtn) prevBtn.addEventListener('click', () => spostaSettimana(-1));
     const nextBtn = document.getElementById('agendaNextDay');
-    if (nextBtn) nextBtn.addEventListener('click', () => spostaGiorno(1));
+    if (nextBtn) nextBtn.addEventListener('click', () => spostaSettimana(1));
     const oggiBtn = document.getElementById('agendaOggiBtn');
     if (oggiBtn) oggiBtn.addEventListener('click', () => { agendaDataSelezionata = fmtDateISO(new Date()); renderSheet(); agendaScrollA830(); });
 
@@ -6278,10 +6368,13 @@
     });
 
     // Tasto "+" su uno slot vuoto: crea l'appuntamento a quell'ora e lo apre subito, pronto
-    // per scegliere il nome/cliente.
+    // per scegliere il nome/cliente. Da quando l'Agenda mostra tutta la settimana (7 colonne,
+    // una per giorno) il tasto porta con sé anche la data della SUA colonna (data-date): non si
+    // può più usare solo agendaDataSelezionata, che ora è solo l'ancora della settimana mostrata,
+    // non il giorno su cui si è davvero cliccato.
     document.querySelectorAll('.agenda-slot-add').forEach(btn => {
       btn.addEventListener('click', () => {
-        const a = createAppuntamento({ data: agendaDataSelezionata, ora: btn.dataset.time, operatore: btn.dataset.operatore || undefined });
+        const a = createAppuntamento({ data: btn.dataset.date || agendaDataSelezionata, ora: btn.dataset.time, operatore: btn.dataset.operatore || undefined });
         agendaEditingId = a.id;
         renderSheetMantenendoScroll();
         const input = document.querySelector('.agenda-cliente-input[data-id="' + a.id + '"]');
@@ -8028,10 +8121,10 @@
 
   // Erica l'ha segnalato con un video (14/10): "appena seleziono qualcosa si sposta su". Causa
   // trovata guardando il video fotogramma per fotogramma: il riquadro dell'agenda ha un suo scroll
-  // INTERNO (.agenda-grid, vedi sopra "renderSheetMantenendoScroll"), separato da quello della
-  // pagina — era quello a "tornare su" ogni volta che l'HTML veniva ridisegnato (es. eliminando un
-  // appuntamento), perché veniva ricreato da zero e ripartiva dall'alto. Risolto preservando anche
-  // lo scroll di quel riquadro, non solo quello della pagina (vedi sopra).
+  // INTERNO (.agenda-settimana, vedi sopra "renderSheetMantenendoScroll"), separato da quello
+  // della pagina — era quello a "tornare su" ogni volta che l'HTML veniva ridisegnato (es.
+  // eliminando un appuntamento), perché veniva ricreato da zero e ripartiva dall'alto. Risolto
+  // preservando anche lo scroll di quel riquadro, non solo quello della pagina (vedi sopra).
 
   // Prima si sceglie chi sta usando l'app (schermata "Chi sei?"), poi si caricano
   // i dati, che vivono nel database dell'app (restano anche chiudendo e riaprendo,
