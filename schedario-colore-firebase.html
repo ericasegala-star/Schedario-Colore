@@ -1106,7 +1106,7 @@
   .magazzino-row .field { margin-bottom: 0; }
   /* L'intera colonna è cliccabile (non solo il quadratino 17x17, troppo piccolo per un dito:
      serviva un secondo tocco più preciso per far scattare la spunta su tablet/cellulare). */
-  .magazzino-row-check-col { display: flex; align-items: center; justify-content: center; min-width: 40px; padding: 10px 4px; cursor: pointer; }
+  .magazzino-row-check-col { display: flex; align-items: center; justify-content: center; min-width: 40px; padding: 10px 4px; cursor: pointer; touch-action: none; }
   .magazzino-row-check, #magazzinoSelectAll { width: 17px; height: 17px; cursor: pointer; }
   /* Nome prodotto: una textarea a una riga (non va a capo, scorre in orizzontale se proprio
      serve) dentro una colonna che si allarga/stringe con la maniglia qui a fianco. */
@@ -1676,7 +1676,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-15.80-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-16.81-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -1793,6 +1793,16 @@
   // una riga durante un trascinamento.
   let magazzinoSuppressRowClickFinoA = 0;
   let magazzinoSearchEraFocus = false; // true solo se si stava scrivendo nel campo "Cerca prodotto" prima del ridisegno
+  // Trascinamento col dito sulla colonna delle caselle per selezionare più prodotti di seguito,
+  // come in Gmail da cellulare/tablet (Erica, 16/10): su touch non c'è lo shift+clic, quindi si
+  // tiene premuto sul primo prodotto e si scorre il dito sugli altri, che si "dipingono" con lo
+  // stesso stato (selezionati o deselezionati) di quello da cui si è partiti.
+  let magazzinoDragAttivo = false;
+  let magazzinoDragStartId = null;
+  let magazzinoDragStatoTarget = null;
+  let magazzinoDragUltimoId = null;
+  let magazzinoDragMosso = false;
+  let magazzinoDragStartXY = null;
   // Catalogo servizi ("Crea servizio"): nome, tempo di lavorazione, tempo di posa (minuti) e un
   // colore per riconoscerlo a vista nell'agenda. Una "combo" somma i tempi di più servizi
   // semplici (comboDi: i loro id) invece di averne propri.
@@ -5882,6 +5892,57 @@
     renderMagazzinoMantenendoScroll();
   }
 
+  // "Dipinge" un prodotto con lo stato del trascinamento in corso (seleziona o deseleziona,
+  // sempre lo stesso per tutto il trascinamento), aggiornando subito la casella e la riga a vista
+  // SENZA ridisegnare tutto il pannello (durante il trascinamento sarebbe troppo lento e si
+  // perderebbe il tocco in corso): il ridisegno vero arriva una sola volta al rilascio del dito.
+  function magazzinoDragApplicaA(id) {
+    if (!id || id === magazzinoDragUltimoId) return;
+    magazzinoDragUltimoId = id;
+    if (magazzinoDragStatoTarget) magazzinoSelezionati.add(id);
+    else magazzinoSelezionati.delete(id);
+    const chk = document.querySelector('.magazzino-row-check[data-id="' + id + '"]');
+    if (chk) chk.checked = magazzinoDragStatoTarget;
+    const riga = document.querySelector('.magazzino-row[data-id="' + id + '"]');
+    if (riga) riga.classList.toggle('magazzino-row-selezionata', magazzinoDragStatoTarget);
+  }
+
+  // Gestori a livello di pagina per il trascinamento (legati una sola volta, non ad ogni
+  // ridisegno del Magazzino: gli elementi delle righe cambiano, ma "document" no). Finché il dito
+  // non si è mosso abbastanza, non si considera un trascinamento: un tocco semplice continua a
+  // funzionare come sempre (il clic sulla casella/colonna, già gestito altrove).
+  document.addEventListener('touchmove', (e) => {
+    if (!magazzinoDragAttivo) return;
+    const t = e.touches[0];
+    if (!t) return;
+    if (!magazzinoDragMosso) {
+      const dx = t.clientX - magazzinoDragStartXY.x, dy = t.clientY - magazzinoDragStartXY.y;
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      magazzinoDragMosso = true;
+      magazzinoDragApplicaA(magazzinoDragStartId); // il prodotto di partenza si "dipinge" solo ora
+    }
+    e.preventDefault(); // da qui in poi è selezione, non più scorrimento della pagina
+    const el = document.elementFromPoint(t.clientX, t.clientY);
+    const col = el && el.closest('.magazzino-row-check-col');
+    const chk = col && col.querySelector('.magazzino-row-check');
+    if (chk) magazzinoDragApplicaA(chk.dataset.id);
+  }, { passive: false });
+  function magazzinoFineDrag() {
+    if (!magazzinoDragAttivo) return;
+    magazzinoDragAttivo = false;
+    if (magazzinoDragMosso) {
+      magazzinoUltimoCheckId = magazzinoDragUltimoId;
+      magazzinoSuppressRowClickFinoA = Date.now() + 300; // evita che il "click" dopo il rilascio tocchi di nuovo l'ultima riga
+      renderMagazzinoMantenendoScroll();
+    }
+    magazzinoDragMosso = false;
+    magazzinoDragStartId = null;
+    magazzinoDragUltimoId = null;
+    magazzinoDragStartXY = null;
+  }
+  document.addEventListener('touchend', magazzinoFineDrag);
+  document.addEventListener('touchcancel', magazzinoFineDrag);
+
   function magazzinoNotify(msg, isError) {
     const el = document.getElementById('magazzinoSaveStatus');
     if (!el) return;
@@ -5963,6 +6024,21 @@
         const chk = col.querySelector('.magazzino-row-check');
         if (chk) { magazzinoShiftCheckAttivo = e.shiftKey; chk.checked = !chk.checked; chk.dispatchEvent(new Event('change', { bubbles: true })); }
       });
+      // Inizio di un eventuale trascinamento col dito (vedi i gestori "touchmove"/"touchend" a
+      // livello di pagina, legati una sola volta): qui si registra solo DA DOVE si è partiti,
+      // senza impedire un tocco semplice di funzionare come sempre (il clic qui sopra).
+      col.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) return;
+        const chk = col.querySelector('.magazzino-row-check');
+        if (!chk) return;
+        magazzinoDragAttivo = true;
+        magazzinoDragMosso = false;
+        magazzinoDragStartId = chk.dataset.id;
+        magazzinoDragStatoTarget = !chk.checked;
+        magazzinoDragUltimoId = null;
+        const t = e.touches[0];
+        magazzinoDragStartXY = { x: t.clientX, y: t.clientY };
+      }, { passive: true });
     });
     // Sposta in blocco i prodotti selezionati tra "Merci vendita" e "Materie prime", senza
     // doverli cambiare uno per uno.
