@@ -1676,7 +1676,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-16.81-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-16.82-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -8303,14 +8303,16 @@
   // eliminando un appuntamento), perché veniva ricreato da zero e ripartiva dall'alto. Risolto
   // preservando anche lo scroll di quel riquadro, non solo quello della pagina (vedi sopra).
 
-  // Prima si sceglie chi sta usando l'app (schermata "Chi sei?"), poi si caricano
-  // i dati, che vivono nel database dell'app (restano anche chiudendo e riaprendo,
-  // su qualunque dispositivo, e sono condivisi tra Erica e Sara).
+  // L'app si apre diretta, senza più la schermata "Chi sei?" (Erica, 16/10: "togli il mio
+  // account all'inizio"): si entra già come Erica, senza scegliere il nome né inserire un
+  // codice. L'infrastruttura dei codici (LOGIN_PINS/currentOperator, sopra) resta intatta, per
+  // poterla ripristinare facilmente se un giorno servisse di nuovo (es. per Sara).
   const loginGateEl = document.getElementById('loginGate');
-  showLoginGate().then(() => {
-    if (loginGateEl) loginGateEl.hidden = true;
-    return bootstrapStorage();
-  }).then(() => {
+  if (loginGateEl) loginGateEl.hidden = true;
+  if (!currentOperator()) {
+    try { localStorage.setItem(LOGIN_REMEMBER_KEY, 'Erica'); } catch (e) { /* ignorato: al massimo verrà rifatto al prossimo avvio */ }
+  }
+  bootstrapStorage().then(() => {
     // All'apertura dell'app si parte dalla schermata iniziale (frase del giorno), non dall'ultima
     // scheda toccata: altrimenti capita sempre di ritrovarsi davanti alla stessa cliente a caso.
     activeId = null;
