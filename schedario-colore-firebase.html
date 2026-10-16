@@ -681,6 +681,20 @@
   .agenda-field-servizio { flex: 1.2 1 140px; }
   .agenda-field-note { flex: 1.6 1 180px; }
   .agenda-field-note textarea { min-height: 38px; resize: vertical; }
+  /* Ricorrenza ("ogni settimana"/"ogni due settimane") e storico appuntamenti precedenti
+     (Erica, 16/10), nel modulo di modifica appuntamento. */
+  .agenda-field-ricorrenza { flex: 1.4 1 200px; }
+  .agenda-ricorrenza-extra { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; }
+  .agenda-ricorrenza-extra[hidden] { display: none; }
+  .agenda-ricorrenza-fino { font-family: inherit; }
+  .agenda-ricorrenza-info { font-size: 12.5px; color: var(--ink-soft); margin: 0; max-width: 260px; }
+  .agenda-field-storico { flex: 1.6 1 200px; }
+  .agenda-storico-lista { list-style: none; margin: 0; padding: 0; max-height: 110px; overflow-y: auto; font-size: 13px; }
+  .agenda-storico-lista li { display: flex; gap: 8px; padding: 2px 0; border-bottom: 1px solid var(--line); }
+  .agenda-storico-lista li:last-child { border-bottom: none; }
+  .agenda-storico-data { flex: none; color: var(--ink-soft); font-size: 12px; }
+  .agenda-storico-servizio { flex: 1; }
+  .agenda-storico-vuoto { font-size: 13px; color: var(--ink-soft); margin: 0; }
   .agenda-cliente-suggestions {
     position: absolute; top: 100%; left: 0; right: 0; z-index: 5;
     background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius);
@@ -1676,7 +1690,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-16.82-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-16.83-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -2294,11 +2308,60 @@
       // cliente o si elimina (si elimina tutta la combo, non solo il pezzo su cui si clicca).
       comboGroupId: data.comboGroupId || null,
       note: data.note || '',
+      // Appuntamento ricorrente (Erica, 16/10: "ogni settimana"/"ogni due settimane"): tutti gli
+      // appuntamenti della stessa serie condividono "serieId", creato una volta sola insieme agli
+      // altri (vedi creaSerieRicorrente). Serve a chiedere, eliminandone uno, se togliere solo
+      // quello o anche i successivi della serie.
+      serieId: data.serieId || null,
+      serieRicorrenza: data.serieRicorrenza || null, // 'settimana' | 'dueSettimane' | null
+      serieFino: data.serieFino || null, // ISO: fino a quando si ripete
       createdAt: Date.now()
     };
     agendaCache.appuntamenti.push(a);
     saveAgenda();
     return a;
+  }
+  // Crea una serie di appuntamenti ricorrenti a partire da uno già esistente, ripetendolo ogni
+  // settimana o ogni due settimane fino alla data scelta (compresa). Tutti condividono lo stesso
+  // "serieId" (compreso quello di partenza, che viene aggiornato sul posto).
+  function creaSerieRicorrente(a, ricorrenza, fino) {
+    const passoGiorni = ricorrenza === 'dueSettimane' ? 14 : 7;
+    const serieId = uid();
+    a.serieId = serieId;
+    a.serieRicorrenza = ricorrenza;
+    a.serieFino = fino;
+    const [y, m, d] = a.data.split('-').map(Number);
+    let cursore = new Date(y, (m || 1) - 1, d || 1);
+    for (;;) {
+      cursore = new Date(cursore.getFullYear(), cursore.getMonth(), cursore.getDate() + passoGiorni);
+      const iso = fmtDateISO(cursore);
+      if (iso > fino) break;
+      createAppuntamento({
+        data: iso, ora: a.ora, operatore: a.operatore, tipo: a.tipo, titolo: a.titolo,
+        clienteId: a.clienteId, nomeManuale: a.nomeManuale, servizio: a.servizio, servizioId: a.servizioId,
+        colore: a.colore, durataMin: a.durataMin, durataLavorazioneMin: a.durataLavorazioneMin, note: a.note,
+        serieId: serieId, serieRicorrenza: ricorrenza, serieFino: fino
+      });
+    }
+    saveAgenda();
+  }
+  // Elimina questo appuntamento e tutti quelli successivi della stessa serie (stessa data o
+  // dopo): quelli già passati restano, come gli altri appuntamenti normali.
+  function eliminaSerieDaQui(a) {
+    const serieId = a.serieId;
+    const dataDa = a.data;
+    agendaCache.appuntamenti = agendaCache.appuntamenti.filter(x => !(x.serieId === serieId && x.data >= dataDa));
+    saveAgenda();
+  }
+  // Storico delle volte precedenti di questa cliente (Erica, 16/10): date e servizio dei suoi
+  // appuntamenti passati, più recenti prima. Solo per appuntamenti collegati a una scheda vera
+  // (clienteId), non per i nomi liberi o gli impegni di lavoro.
+  function storicoAppuntamentiCliente(a, limite) {
+    if (!a.clienteId) return [];
+    return agendaCache.appuntamenti
+      .filter(x => x.clienteId === a.clienteId && x.id !== a.id && x.tipo !== 'lavoro' && x.data < a.data)
+      .sort((x, y) => (y.data + (y.ora || '')).localeCompare(x.data + (x.ora || '')))
+      .slice(0, limite || 8);
   }
   // Durata (in minuti) occupata in agenda da un appuntamento: quelli creati prima che esistesse
   // questo campo restano su 15 min (un solo quarto d'ora, il comportamento di sempre).
@@ -3023,6 +3086,12 @@
     const date = new Date(y, (m || 1) - 1, d || 1);
     const s = date.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  // "YYYY-MM-DD" -> "16/10/2026": per lo storico appuntamenti e la serie ricorrente in Agenda.
+  function fmtDateISOBreve(iso) {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-').map(Number);
+    return fmtDate(new Date(y, (m || 1) - 1, d || 1).getTime());
   }
 
   function bianchiLabel(v) {
@@ -4884,7 +4953,32 @@
             ${serviziCache.servizi.map(s => `<option value="${s.id}" ${a.servizioId === s.id ? 'selected' : ''}>${escapeHtml(nomeServizio(s))}</option>`).join('')}
           </select>` : ''}
           <input type="text" class="agenda-input" data-id="${a.id}" data-field="servizio" placeholder="Es. piega, colore, taglio…" value="${escapeHtml(appuntamentoServizioNome(a))}">
-        </div>`}
+        </div>
+        ${a.clienteId ? `
+        <div class="field agenda-field-storico">
+          <label>Storico appuntamenti precedenti</label>
+          ${(() => {
+            const storico = storicoAppuntamentiCliente(a, 8);
+            if (!storico.length) return '<p class="agenda-storico-vuoto">Nessun appuntamento precedente.</p>';
+            return '<ul class="agenda-storico-lista">' + storico.map(s =>
+              '<li><span class="agenda-storico-data">' + escapeHtml(fmtDateISOBreve(s.data)) + '</span><span class="agenda-storico-servizio">' + escapeHtml(appuntamentoServizioNome(s) || 'Appuntamento') + '</span></li>'
+            ).join('') + '</ul>';
+          })()}
+        </div>` : ''}`}
+        <div class="field agenda-field-ricorrenza">
+          <label>Ricorrenza</label>
+          ${a.serieId ? `
+          <p class="agenda-ricorrenza-info">Fa parte di una serie (${a.serieRicorrenza === 'dueSettimane' ? 'ogni due settimane' : 'ogni settimana'}, fino al ${escapeHtml(fmtDateISOBreve(a.serieFino))}). Eliminandolo si può scegliere se togliere solo questo o anche i successivi.</p>` : `
+          <select class="agenda-ricorrenza-sel" data-id="${a.id}">
+            <option value="">Nessuna</option>
+            <option value="settimana">Ogni settimana</option>
+            <option value="dueSettimane">Ogni due settimane</option>
+          </select>
+          <span class="agenda-ricorrenza-extra" data-id="${a.id}" hidden>
+            <input type="date" class="agenda-ricorrenza-fino" data-id="${a.id}" min="${escapeHtml(a.data)}">
+            <button type="button" class="ghost small agenda-ricorrenza-crea" data-id="${a.id}">Crea serie</button>
+          </span>`}
+        </div>
         <div class="field agenda-field-note">
           <label>Note</label>
           <textarea class="agenda-input" data-id="${a.id}" data-field="note" placeholder="Note per l'appuntamento…">${escapeHtml(a.note || '')}</textarea>
@@ -6525,13 +6619,37 @@
 
     document.querySelectorAll('.agenda-delete').forEach(btn => {
       btn.addEventListener('click', () => {
+        const a = agendaCache.appuntamenti.find(x => x.id === btn.dataset.id);
         if (!btn.classList.contains('armed')) {
           btn.classList.add('armed');
-          btn.textContent = 'Confermi?';
+          if (a && a.serieId) {
+            // Fa parte di una serie ricorrente (Erica, 16/10: "chiedo ogni volta"): due tasti
+            // invece di uno solo, per scegliere se togliere solo questo o anche i successivi.
+            btn.textContent = 'Solo questo';
+            let altroBtn = btn.parentElement.querySelector('.agenda-delete-serie-successivi');
+            if (!altroBtn) {
+              altroBtn = document.createElement('button');
+              altroBtn.type = 'button';
+              altroBtn.className = 'magazzino-delete agenda-delete-serie-successivi';
+              altroBtn.textContent = 'Anche i successivi';
+              btn.insertAdjacentElement('afterend', altroBtn);
+              altroBtn.addEventListener('click', () => {
+                clearTimeout(btn._armTimer);
+                eliminaSerieDaQui(a);
+                agendaEditingId = null;
+                agendaNotify('Appuntamenti eliminati.');
+                renderSheetMantenendoScroll();
+              });
+            }
+          } else {
+            btn.textContent = 'Confermi?';
+          }
           clearTimeout(btn._armTimer);
           btn._armTimer = setTimeout(() => {
             btn.classList.remove('armed');
             btn.textContent = 'Elimina';
+            const altroBtn = btn.parentElement.querySelector('.agenda-delete-serie-successivi');
+            if (altroBtn) altroBtn.remove();
           }, 4000);
           return;
         }
@@ -6539,6 +6657,33 @@
         deleteAppuntamento(btn.dataset.id);
         agendaEditingId = null;
         agendaNotify('Appuntamento eliminato.');
+        renderSheetMantenendoScroll();
+      });
+    });
+
+    // Ricorrenza (Erica, 16/10: "ogni settimana"/"ogni due settimane"): scegliendo una ripetizione
+    // compaiono la data "fino al" e il tasto per crearla davvero; finché non si preme "Crea
+    // serie" non cambia nulla (si può anche tornare su "Nessuna" senza conseguenze).
+    document.querySelectorAll('.agenda-ricorrenza-sel').forEach(sel => {
+      sel.addEventListener('change', () => {
+        const extra = document.querySelector('.agenda-ricorrenza-extra[data-id="' + sel.dataset.id + '"]');
+        if (extra) extra.hidden = !sel.value;
+      });
+    });
+    document.querySelectorAll('.agenda-ricorrenza-crea').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        const sel = document.querySelector('.agenda-ricorrenza-sel[data-id="' + id + '"]');
+        const finoInput = document.querySelector('.agenda-ricorrenza-fino[data-id="' + id + '"]');
+        const ricorrenza = sel ? sel.value : '';
+        const fino = finoInput ? finoInput.value : '';
+        if (!ricorrenza) return;
+        if (!fino) { agendaNotify('Scegli fino a quando si ripete.', true); return; }
+        const a = agendaCache.appuntamenti.find(x => x.id === id);
+        if (!a) return;
+        if (fino < a.data) { agendaNotify('La data finale deve essere dopo quella dell\'appuntamento.', true); return; }
+        creaSerieRicorrente(a, ricorrenza, fino);
+        agendaNotify('Serie creata.');
         renderSheetMantenendoScroll();
       });
     });
