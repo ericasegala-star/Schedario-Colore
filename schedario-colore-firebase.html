@@ -158,48 +158,27 @@
     .floating-save-label { font-size: 9px; }
   }
 
-  /* Schermata "Chi sei?" mostrata all'apertura, finché non si sceglie nome + codice. */
-  .login-gate {
+  /* Schermata di apertura (Erica, 19/10: tolta la scelta "Chi sei?" — si entra diretti — e
+     anche il lampo del suo nome che restava visibile mentre l'app caricava): al suo posto, un
+     saluto animato col nome del salone, che gira su se stesso e sfuma verso l'alto, dove poi
+     compare il logo vero. */
+  .app-splash {
     position: fixed; inset: 0; z-index: 100;
     background: var(--bg, #faf6f3);
     display: flex; align-items: center; justify-content: center;
-    padding: 20px;
+    padding: 20px; pointer-events: none;
   }
-  .login-gate[hidden] { display: none; }
-  .login-gate-box {
-    background: #fff; border-radius: var(--radius); border: 1px solid var(--line, #e3d9d3);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-    padding: 28px 24px; width: 100%; max-width: 320px;
-    display: flex; flex-direction: column; align-items: center; gap: 16px;
-    text-align: center;
+  .app-splash[hidden] { display: none; }
+  .app-splash-text {
+    font-size: 26px; font-weight: 700; color: var(--berry); text-align: center;
+    animation: appSplashAnim 1.4s ease-in-out forwards;
   }
-  .login-gate-title { font-size: 19px; font-weight: 700; color: var(--ink); }
-  .login-gate-names { display: flex; gap: 12px; width: 100%; }
-  .login-gate-name-btn {
-    flex: 1; padding: 14px 10px; font-size: 16px; font-weight: 600;
-    border-radius: var(--radius); border: 1px solid var(--line, #e3d9d3);
-    background: #fff; color: var(--ink); cursor: pointer;
+  @keyframes appSplashAnim {
+    0% { transform: scale(0.6) rotate(0deg); opacity: 0; }
+    30% { transform: scale(1) rotate(0deg); opacity: 1; }
+    65% { transform: scale(1) rotate(360deg); opacity: 1; }
+    100% { transform: translateY(-42vh) scale(0.35) rotate(360deg); opacity: 0; }
   }
-  .login-gate-name-btn:hover, .login-gate-name-btn.selected {
-    background: var(--berry); border-color: var(--berry); color: #fff;
-  }
-  .login-gate-pin-area {
-    display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%;
-  }
-  .login-gate-pin-label { font-size: 14px; color: var(--ink); }
-  .login-gate-pin-input {
-    width: 100%; text-align: center; font-size: 22px; letter-spacing: 6px;
-    padding: 10px; border-radius: var(--radius); border: 1px solid var(--line, #e3d9d3);
-    font-family: inherit;
-  }
-  .login-gate-pin-confirm {
-    width: 100%; padding: 12px; font-size: 15px; font-weight: 600;
-    border-radius: var(--radius); border-color: var(--berry);
-    background: var(--berry); color: #fff; cursor: pointer;
-  }
-  .login-gate-pin-confirm:hover { filter: brightness(1.08); }
-  .login-gate-pin-error { font-size: 13px; color: #A8433C; }
-  .login-gate-pin-error[hidden] { display: none; }
 
   .import-label {
     font-family: inherit; font-size: 14px; cursor: pointer;
@@ -1377,22 +1356,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
-<div class="login-gate" id="loginGate">
-  <div class="login-gate-box">
-    <div class="login-gate-title">Chi sei?</div>
-    <div class="login-gate-names">
-      <button type="button" class="login-gate-name-btn" data-name="Erica">Erica</button>
-      <!-- "Sara" nascosta per ora (Erica, 15/10: "per ora non serve"): resta tutto com'era
-           (codice d'accesso, dati, appunti privati suoi) pronto a tornare visibile riaggiungendo
-           qui il tasto, se dovesse servire di nuovo. -->
-    </div>
-    <div class="login-gate-pin-area" id="loginGatePinArea" hidden>
-      <div class="login-gate-pin-label" id="loginGatePinLabel"></div>
-      <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" class="login-gate-pin-input" id="loginGatePinInput" placeholder="Codice">
-      <button type="button" class="login-gate-pin-confirm" id="loginGatePinConfirm">Entra</button>
-      <div class="login-gate-pin-error" id="loginGatePinError" hidden>Codice non corretto, riprova.</div>
-    </div>
-  </div>
+<div class="app-splash" id="appSplash">
+  <div class="app-splash-text">Acconciature la Fenice</div>
 </div>
 <div class="app">
   <div class="storage-error-banner" id="storageErrorBanner" hidden>
@@ -1725,7 +1690,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-19.90-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-19.92-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -1915,53 +1880,9 @@
     return true;
   }
 
-  function showLoginGate() {
-    return new Promise((resolve) => {
-      const remembered = currentOperator();
-      if (remembered && LOGIN_PINS[remembered]) {
-        resolve(remembered);
-        return;
-      }
-      const gate = document.getElementById('loginGate');
-      const nameBtns = document.querySelectorAll('.login-gate-name-btn');
-      const pinArea = document.getElementById('loginGatePinArea');
-      const pinLabel = document.getElementById('loginGatePinLabel');
-      const pinInput = document.getElementById('loginGatePinInput');
-      const pinConfirm = document.getElementById('loginGatePinConfirm');
-      const pinError = document.getElementById('loginGatePinError');
-      let chosenName = null;
-
-      function tryUnlock() {
-        pinError.hidden = true;
-        const entered = (pinInput.value || '').trim();
-        if (chosenName && LOGIN_PINS[chosenName] && entered === LOGIN_PINS[chosenName]) {
-          try { localStorage.setItem(LOGIN_REMEMBER_KEY, chosenName); } catch (e) { /* ignorato: al massimo richiederà di nuovo il codice */ }
-          gate.hidden = true;
-          resolve(chosenName);
-        } else {
-          pinError.hidden = false;
-          pinInput.value = '';
-          pinInput.focus();
-        }
-      }
-
-      nameBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-          chosenName = btn.dataset.name;
-          nameBtns.forEach(b => b.classList.toggle('selected', b === btn));
-          pinLabel.textContent = 'Codice di ' + chosenName;
-          pinArea.hidden = false;
-          pinError.hidden = true;
-          pinInput.value = '';
-          pinInput.focus();
-        });
-      });
-      pinConfirm.addEventListener('click', tryUnlock);
-      pinInput.addEventListener('keydown', e => {
-        if (e.key === 'Enter') { e.preventDefault(); tryUnlock(); }
-      });
-    });
-  }
+  // (La vecchia schermata "Chi sei?" con nome+codice è stata tolta del tutto il 19/10, sostituita
+  // dalla schermata di apertura animata qui sotto. LOGIN_PINS/currentOperator restano, usati
+  // solo come valore di default "Erica" in alcuni punti dei dati, non più per un vero accesso.)
 
   // --- Configurazione Firebase -------------------------------------------------
   // SOSTITUISCI questi valori con quelli copiati dalla console Firebase
@@ -8890,19 +8811,26 @@
   // account all'inizio"): si entra già come Erica, senza scegliere il nome né inserire un
   // codice. L'infrastruttura dei codici (LOGIN_PINS/currentOperator, sopra) resta intatta, per
   // poterla ripristinare facilmente se un giorno servisse di nuovo (es. per Sara).
+  // Al posto della vecchia schermata (che per un attimo lasciava intravedere il nome "Erica"
+  // mentre l'app caricava, Erica 19/10: "c'è sempre il mio nome all'avvio"), una schermata
+  // d'apertura animata col nome del salone, che resta a schermo un tempo fisso (gira su se
+  // stessa e sfuma verso l'alto) finché i dati non sono pronti, così non si vede mai nulla
+  // "a scatti" sotto.
   applyTraduzioni(); // lingua del "guscio" fisso dell'app: va applicata il prima possibile, prima ancora del caricamento dati
-  const loginGateEl = document.getElementById('loginGate');
-  if (loginGateEl) loginGateEl.hidden = true;
   if (!currentOperator()) {
     try { localStorage.setItem(LOGIN_REMEMBER_KEY, 'Erica'); } catch (e) { /* ignorato: al massimo verrà rifatto al prossimo avvio */ }
   }
-  bootstrapStorage().then(() => {
+  const appSplashEl = document.getElementById('appSplash');
+  const SPLASH_MIN_MS = 1400; // combacia con la durata dell'animazione CSS (appSplashAnim)
+  const splashTimer = new Promise((resolve) => setTimeout(resolve, SPLASH_MIN_MS));
+  Promise.all([bootstrapStorage(), splashTimer]).then(() => {
     // All'apertura dell'app si parte dalla schermata iniziale (frase del giorno), non dall'ultima
     // scheda toccata: altrimenti capita sempre di ritrovarsi davanti alla stessa cliente a caso.
     activeId = null;
     viewingHome = true;
     renderAll();
     agendaScrollA830();
+    if (appSplashEl) appSplashEl.hidden = true;
     window.__schedarioReady = true; // segnale per i test automatici: i dati sono caricati e la pagina è disegnata
   });
 })();
