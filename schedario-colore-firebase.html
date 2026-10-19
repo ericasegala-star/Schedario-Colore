@@ -171,13 +171,17 @@
   .app-splash[hidden] { display: none; }
   .app-splash-text {
     font-size: 26px; font-weight: 700; color: var(--berry); text-align: center;
-    animation: appSplashAnim 1.4s ease-in-out forwards;
+    animation: appSplashAnim 1.8s forwards;
   }
+  /* Tre fasi ben distinte (Erica, 19/10: "non gira" — con una sola rotazione veloce e
+     ease-in-out non si notava): un ingresso rapido, poi una girata vera e propria a velocità
+     costante (due giri interi, non uno solo, per farla notare bene), infine la sfumatura verso
+     l'alto. */
   @keyframes appSplashAnim {
-    0% { transform: scale(0.6) rotate(0deg); opacity: 0; }
-    30% { transform: scale(1) rotate(0deg); opacity: 1; }
-    65% { transform: scale(1) rotate(360deg); opacity: 1; }
-    100% { transform: translateY(-42vh) scale(0.35) rotate(360deg); opacity: 0; }
+    0% { transform: scale(0.5) rotate(0deg); opacity: 0; animation-timing-function: ease-out; }
+    15% { transform: scale(1) rotate(0deg); opacity: 1; animation-timing-function: linear; }
+    75% { transform: scale(1) rotate(720deg); opacity: 1; animation-timing-function: ease-in; }
+    100% { transform: translateY(-42vh) scale(0.3) rotate(720deg); opacity: 0; }
   }
 
   .import-label {
@@ -1690,7 +1694,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-19.92-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-19.93-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -8821,7 +8825,7 @@
     try { localStorage.setItem(LOGIN_REMEMBER_KEY, 'Erica'); } catch (e) { /* ignorato: al massimo verrà rifatto al prossimo avvio */ }
   }
   const appSplashEl = document.getElementById('appSplash');
-  const SPLASH_MIN_MS = 1400; // combacia con la durata dell'animazione CSS (appSplashAnim)
+  const SPLASH_MIN_MS = 1800; // combacia con la durata dell'animazione CSS (appSplashAnim)
   const splashTimer = new Promise((resolve) => setTimeout(resolve, SPLASH_MIN_MS));
   Promise.all([bootstrapStorage(), splashTimer]).then(() => {
     // All'apertura dell'app si parte dalla schermata iniziale (frase del giorno), non dall'ultima
