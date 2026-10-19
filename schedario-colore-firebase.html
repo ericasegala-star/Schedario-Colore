@@ -1725,7 +1725,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-19.88-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-19.89-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -1909,10 +1909,10 @@
     try { return localStorage.getItem(LOGIN_REMEMBER_KEY) || null; } catch (e) { return null; }
   }
 
-  // La sezione "Ispirazione" la modifica solo Erica: Sara (o chiunque altro) la vede,
-  // ma non può aggiungere/eliminare libri o foto, scrivere nomi/commenti o modificare il procedimento.
+  // Erica e Sara condividono un unico account "Acconciature la Fenice", senza distinzioni
+  // (richiesta di Erica, 19/10): Ispirazione si può modificare da chiunque usi l'app.
   function canEditIspirazione() {
-    return currentOperator() === 'Erica';
+    return true;
   }
 
   function showLoginGate() {
@@ -2261,29 +2261,37 @@
       return { id: a && a.id, voce: (a && a.voce) || '' };
     });
   }
+  // Account unico "Acconciature la Fenice", senza distinzione Erica/Sara (Erica, 19/10): gli
+  // appunti sono un unico posto condiviso, non più separati per persona.
   function appuntiDocPath(section) {
-    return 'appunti/' + section + '-' + (currentOperator() || 'condivisi');
+    return 'appunti/' + section;
   }
-  // Prima che esistesse Sara, gli appunti di Erica erano scritti in un unico posto
-  // condiviso (appunti/time, appunti/green, appunti/gloss). La prima volta che Erica
-  // apre l'app con questa versione, se i suoi appunti personali risultano ancora
-  // vuoti, li recupera da lì una volta sola, così non perde quello che aveva scritto.
-  // Sara invece è nuova e parte sempre da appunti vuoti, tutti suoi.
+  // In precedenza gli appunti erano separati per persona (appunti/{sezione}-Erica,
+  // appunti/{sezione}-Sara). Li si riporta in un unico posto condiviso, una volta, senza
+  // perdere nulla: si prendono quelli di "Erica" (dove di fatto finivano comunque, visto che
+  // ogni dispositivo si registrava come "Erica") più eventuali appunti scritti sotto "Sara".
   function migrateLegacyAppuntiIfNeeded(docs) {
-    if (currentOperator() !== 'Erica') return Promise.resolve(docs);
     const sections = ['time', 'green', 'gloss'];
-    const allEmpty = docs.every(d => !d.exists || !(d.data() && d.data().list && d.data().list.length));
-    if (!allEmpty) return Promise.resolve(docs);
-    return Promise.all(sections.map(s => db.doc('appunti/' + s).get())).then(oldDocs => {
-      const hasOld = oldDocs.some(d => d.exists && d.data() && d.data().list && d.data().list.length);
-      if (!hasOld) return docs;
-      return Promise.all(oldDocs.map((old, i) => {
-        if (old.exists && old.data() && old.data().list && old.data().list.length) {
-          return db.doc('appunti/' + sections[i] + '-Erica').set({ list: old.data().list });
-        }
-        return Promise.resolve();
-      })).then(() => oldDocs);
-    }).catch(() => docs);
+    // Si controllano i vecchi appunti separati solo se quelli condivisi risultano ancora vuoti:
+    // una volta migrati (o appena si scrive qualcosa nel posto condiviso), non si deve più
+    // tornare a leggerli, altrimenti un vecchio appunto "zombie" rimasto sotto "-Erica"
+    // continuerebbe a sovrascrivere quello che si scrive dopo nel posto condiviso.
+    const giaCondivisi = docs.some(d => d.exists && d.data() && d.data().list && d.data().list.length);
+    if (giaCondivisi) return Promise.resolve(docs);
+    return Promise.all(sections.flatMap(s => [db.doc('appunti/' + s + '-Erica').get(), db.doc('appunti/' + s + '-Sara').get()]))
+      .then(pairs => {
+        const writes = [];
+        const merged = sections.map((s, i) => {
+          const ericaDoc = pairs[i * 2], saraDoc = pairs[i * 2 + 1];
+          const ericaList = (ericaDoc.exists && ericaDoc.data() && ericaDoc.data().list) || [];
+          const saraList = (saraDoc.exists && saraDoc.data() && saraDoc.data().list) || [];
+          if (!ericaList.length && !saraList.length) return docs[i]; // niente da unire: resta quello già letto dal posto condiviso
+          const list = ericaList.concat(saraList.filter(sv => !ericaList.some(ev => ev.id === sv.id)));
+          writes.push(db.doc('appunti/' + s).set({ list }));
+          return { exists: true, data: () => ({ list }) };
+        });
+        return Promise.all(writes).then(() => merged);
+      }).catch(() => docs);
   }
   function loadAppunti(section) { return appuntiCache[section] || []; }
   function saveAppunti(section, list) {
