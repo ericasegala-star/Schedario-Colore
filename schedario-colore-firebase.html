@@ -1694,7 +1694,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-19.94-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-19.95-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -1754,7 +1754,24 @@
       'mag.aggiungiProdotto': '+ Add product', 'mag.deseleziona': 'Deselect all',
       'mag.spostaVendita': 'Move to Retail goods', 'mag.spostaMateria': 'Move to Raw materials',
       'mag.eliminaSelezionati': 'Delete selected', 'mag.rinominaPh': 'New name for the selected items…',
-      'mag.rinomina': 'Rename selected'
+      'mag.rinomina': 'Rename selected',
+      'agenda.ora': 'Time', 'agenda.chi': 'Who', 'agenda.tipo': 'Type',
+      'agenda.appuntamentoCliente': 'Client appointment', 'agenda.impegnoLavoro': 'Work commitment',
+      'agenda.cosa': 'What', 'agenda.cosaPh': 'Supplier delivery, meeting…',
+      'agenda.cliente': 'Client', 'agenda.clientePh': 'Search or type who is coming…',
+      'agenda.apriScheda': 'Open record', 'agenda.servizio': 'Service',
+      'agenda.scegliCatalogo': '— choose from catalog —', 'agenda.servizioPh': 'E.g. blow-dry, color, cut…',
+      'agenda.storico': 'History of previous appointments', 'agenda.storicoVuoto': 'No previous appointments.',
+      'agenda.appuntamento': 'Appointment', 'agenda.ricorrenza': 'Recurrence',
+      'agenda.faPartediSerie': 'Part of a series', 'agenda.ogniDueSettimane': 'every two weeks',
+      'agenda.ogniSettimana': 'every week', 'agenda.finoAl': 'until',
+      'agenda.eliminandoScelta': 'When deleting it, you can choose to remove just this one or the following ones too.',
+      'agenda.nessuna': 'None', 'agenda.ogniSettimanaCap': 'Every week', 'agenda.ogniDueSettimaneCap': 'Every two weeks',
+      'agenda.creaSerie': 'Create series', 'agenda.note': 'Notes', 'agenda.notePh': 'Notes for the appointment…',
+      'agenda.whatsapp': 'Send WhatsApp reminder', 'agenda.elimina': 'Delete',
+      'agenda.oggi': 'Today', 'agenda.turniLavoro': 'Work shifts', 'agenda.feriePermesso': 'Leave/time off',
+      'agenda.soloQuesto': 'Just this one', 'agenda.ancheISuccessivi': 'The following ones too',
+      'agenda.confermi': 'Confirm?'
     },
     es: {
       'nav.tecnico': 'Estilista', 'nav.tricologo': 'Tricólogo', 'nav.agenda': 'Agenda',
@@ -1786,7 +1803,24 @@
       'mag.aggiungiProdotto': '+ Añadir producto', 'mag.deseleziona': 'Deseleccionar todo',
       'mag.spostaVendita': 'Mover a Productos de venta', 'mag.spostaMateria': 'Mover a Materias primas',
       'mag.eliminaSelezionati': 'Eliminar seleccionados', 'mag.rinominaPh': 'Nuevo nombre para los seleccionados…',
-      'mag.rinomina': 'Renombrar seleccionados'
+      'mag.rinomina': 'Renombrar seleccionados',
+      'agenda.ora': 'Hora', 'agenda.chi': 'Quién', 'agenda.tipo': 'Tipo',
+      'agenda.appuntamentoCliente': 'Cita con clienta', 'agenda.impegnoLavoro': 'Compromiso de trabajo',
+      'agenda.cosa': 'Qué', 'agenda.cosaPh': 'Entrega de proveedor, reunión…',
+      'agenda.cliente': 'Clienta', 'agenda.clientePh': 'Busca o escribe quién viene…',
+      'agenda.apriScheda': 'Abrir ficha', 'agenda.servizio': 'Servicio',
+      'agenda.scegliCatalogo': '— elegir del catálogo —', 'agenda.servizioPh': 'P. ej. secado, color, corte…',
+      'agenda.storico': 'Historial de citas anteriores', 'agenda.storicoVuoto': 'Ninguna cita anterior.',
+      'agenda.appuntamento': 'Cita', 'agenda.ricorrenza': 'Recurrencia',
+      'agenda.faPartediSerie': 'Forma parte de una serie', 'agenda.ogniDueSettimane': 'cada dos semanas',
+      'agenda.ogniSettimana': 'cada semana', 'agenda.finoAl': 'hasta el',
+      'agenda.eliminandoScelta': 'Al eliminarla puedes elegir si quitar solo esta o también las siguientes.',
+      'agenda.nessuna': 'Ninguna', 'agenda.ogniSettimanaCap': 'Cada semana', 'agenda.ogniDueSettimaneCap': 'Cada dos semanas',
+      'agenda.creaSerie': 'Crear serie', 'agenda.note': 'Notas', 'agenda.notePh': 'Notas para la cita…',
+      'agenda.whatsapp': 'Enviar recordatorio por WhatsApp', 'agenda.elimina': 'Eliminar',
+      'agenda.oggi': 'Hoy', 'agenda.turniLavoro': 'Turnos de trabajo', 'agenda.feriePermesso': 'Vacaciones/permiso',
+      'agenda.soloQuesto': 'Solo esta', 'agenda.ancheISuccessivi': 'También las siguientes',
+      'agenda.confermi': '¿Confirmas?'
     },
     ro: {
       'nav.tecnico': 'Stilist', 'nav.tricologo': 'Tricolog', 'nav.agenda': 'Agendă',
@@ -1818,7 +1852,24 @@
       'mag.aggiungiProdotto': '+ Adaugă produs', 'mag.deseleziona': 'Deselectează tot',
       'mag.spostaVendita': 'Mută la Produse de vânzare', 'mag.spostaMateria': 'Mută la Materii prime',
       'mag.eliminaSelezionati': 'Șterge selectate', 'mag.rinominaPh': 'Nume nou pentru cele selectate…',
-      'mag.rinomina': 'Redenumește selectate'
+      'mag.rinomina': 'Redenumește selectate',
+      'agenda.ora': 'Ora', 'agenda.chi': 'Cine', 'agenda.tipo': 'Tip',
+      'agenda.appuntamentoCliente': 'Programare clientă', 'agenda.impegnoLavoro': 'Angajament de lucru',
+      'agenda.cosa': 'Ce', 'agenda.cosaPh': 'Livrare furnizor, întâlnire…',
+      'agenda.cliente': 'Clientă', 'agenda.clientePh': 'Caută sau scrie cine vine…',
+      'agenda.apriScheda': 'Deschide fișa', 'agenda.servizio': 'Serviciu',
+      'agenda.scegliCatalogo': '— alege din catalog —', 'agenda.servizioPh': 'Ex. coafat, culoare, tuns…',
+      'agenda.storico': 'Istoricul programărilor anterioare', 'agenda.storicoVuoto': 'Niciuna programare anterioară.',
+      'agenda.appuntamento': 'Programare', 'agenda.ricorrenza': 'Recurență',
+      'agenda.faPartediSerie': 'Face parte dintr-o serie', 'agenda.ogniDueSettimane': 'la fiecare două săptămâni',
+      'agenda.ogniSettimana': 'în fiecare săptămână', 'agenda.finoAl': 'până la',
+      'agenda.eliminandoScelta': 'Când o ștergi, poți alege să elimini doar aceasta sau și pe cele următoare.',
+      'agenda.nessuna': 'Niciuna', 'agenda.ogniSettimanaCap': 'În fiecare săptămână', 'agenda.ogniDueSettimaneCap': 'La fiecare două săptămâni',
+      'agenda.creaSerie': 'Creează serie', 'agenda.note': 'Note', 'agenda.notePh': 'Note pentru programare…',
+      'agenda.whatsapp': 'Trimite memento pe WhatsApp', 'agenda.elimina': 'Șterge',
+      'agenda.oggi': 'Astăzi', 'agenda.turniLavoro': 'Program de lucru', 'agenda.feriePermesso': 'Concediu/liber',
+      'agenda.soloQuesto': 'Doar aceasta', 'agenda.ancheISuccessivi': 'Și pe cele următoare',
+      'agenda.confermi': 'Confirmi?'
     },
     sq: {
       'nav.tecnico': 'Stiliste', 'nav.tricologo': 'Trikologe', 'nav.agenda': 'Agjenda',
@@ -1850,7 +1901,24 @@
       'mag.aggiungiProdotto': '+ Shto produkt', 'mag.deseleziona': 'Hiq zgjedhjen e gjithçkaje',
       'mag.spostaVendita': 'Zhvendos te Mallra për shitje', 'mag.spostaMateria': 'Zhvendos te Lëndë të para',
       'mag.eliminaSelezionati': 'Fshi të zgjedhurat', 'mag.rinominaPh': "Emri i ri për të zgjedhurat…",
-      'mag.rinomina': 'Riemërto të zgjedhurat'
+      'mag.rinomina': 'Riemërto të zgjedhurat',
+      'agenda.ora': 'Ora', 'agenda.chi': 'Kush', 'agenda.tipo': 'Lloji',
+      'agenda.appuntamentoCliente': 'Takim me klienten', 'agenda.impegnoLavoro': 'Angazhim pune',
+      'agenda.cosa': 'Çfarë', 'agenda.cosaPh': 'Dërgesë nga furnitori, takim…',
+      'agenda.cliente': 'Klientja', 'agenda.clientePh': 'Kërko ose shkruaj kush po vjen…',
+      'agenda.apriScheda': 'Hap fletën', 'agenda.servizio': 'Shërbimi',
+      'agenda.scegliCatalogo': '— zgjidh nga katalogu —', 'agenda.servizioPh': 'P.sh. modelim, ngjyrë, prerje…',
+      'agenda.storico': 'Historiku i takimeve të mëparshme', 'agenda.storicoVuoto': 'Asnjë takim i mëparshëm.',
+      'agenda.appuntamento': 'Takim', 'agenda.ricorrenza': 'Përsëritja',
+      'agenda.faPartediSerie': 'Është pjesë e një serie', 'agenda.ogniDueSettimane': 'çdo dy javë',
+      'agenda.ogniSettimana': 'çdo javë', 'agenda.finoAl': 'deri më',
+      'agenda.eliminandoScelta': "Duke e fshirë, mund të zgjedhësh nëse heq vetëm këtë ose edhe të mëpasshmet.",
+      'agenda.nessuna': 'Asnjë', 'agenda.ogniSettimanaCap': 'Çdo javë', 'agenda.ogniDueSettimaneCap': 'Çdo dy javë',
+      'agenda.creaSerie': 'Krijo serinë', 'agenda.note': 'Shënime', 'agenda.notePh': 'Shënime për takimin…',
+      'agenda.whatsapp': 'Dërgo kujtues në WhatsApp', 'agenda.elimina': 'Fshi',
+      'agenda.oggi': 'Sot', 'agenda.turniLavoro': 'Orari i punës', 'agenda.feriePermesso': 'Pushime/leje',
+      'agenda.soloQuesto': 'Vetëm këtë', 'agenda.ancheISuccessivi': 'Edhe të mëpasshmet',
+      'agenda.confermi': 'Konfirmon?'
     },
     pl: {
       'nav.tecnico': 'Stylista', 'nav.tricologo': 'Trycholog', 'nav.agenda': 'Kalendarz',
@@ -1882,7 +1950,24 @@
       'mag.aggiungiProdotto': '+ Dodaj produkt', 'mag.deseleziona': 'Odznacz wszystko',
       'mag.spostaVendita': 'Przenieś do Towarów na sprzedaż', 'mag.spostaMateria': 'Przenieś do Surowców',
       'mag.eliminaSelezionati': 'Usuń wybrane', 'mag.rinominaPh': 'Nowa nazwa dla wybranych…',
-      'mag.rinomina': 'Zmień nazwę wybranych'
+      'mag.rinomina': 'Zmień nazwę wybranych',
+      'agenda.ora': 'Godzina', 'agenda.chi': 'Kto', 'agenda.tipo': 'Typ',
+      'agenda.appuntamentoCliente': 'Wizyta klientki', 'agenda.impegnoLavoro': 'Zobowiązanie służbowe',
+      'agenda.cosa': 'Co', 'agenda.cosaPh': 'Dostawa od dostawcy, spotkanie…',
+      'agenda.cliente': 'Klientka', 'agenda.clientePh': 'Szukaj lub wpisz, kto przychodzi…',
+      'agenda.apriScheda': 'Otwórz kartę', 'agenda.servizio': 'Usługa',
+      'agenda.scegliCatalogo': '— wybierz z katalogu —', 'agenda.servizioPh': 'Np. modelowanie, kolor, strzyżenie…',
+      'agenda.storico': 'Historia poprzednich wizyt', 'agenda.storicoVuoto': 'Brak poprzednich wizyt.',
+      'agenda.appuntamento': 'Wizyta', 'agenda.ricorrenza': 'Powtarzanie',
+      'agenda.faPartediSerie': 'Jest częścią serii', 'agenda.ogniDueSettimane': 'co dwa tygodnie',
+      'agenda.ogniSettimana': 'co tydzień', 'agenda.finoAl': 'do',
+      'agenda.eliminandoScelta': 'Usuwając ją, możesz wybrać, czy usunąć tylko tę czy też kolejne.',
+      'agenda.nessuna': 'Brak', 'agenda.ogniSettimanaCap': 'Co tydzień', 'agenda.ogniDueSettimaneCap': 'Co dwa tygodnie',
+      'agenda.creaSerie': 'Utwórz serię', 'agenda.note': 'Notatki', 'agenda.notePh': 'Notatki do wizyty…',
+      'agenda.whatsapp': 'Wyślij przypomnienie WhatsApp', 'agenda.elimina': 'Usuń',
+      'agenda.oggi': 'Dziś', 'agenda.turniLavoro': 'Godziny pracy', 'agenda.feriePermesso': 'Urlop/zwolnienie',
+      'agenda.soloQuesto': 'Tylko tę', 'agenda.ancheISuccessivi': 'Także kolejne',
+      'agenda.confermi': 'Potwierdzasz?'
     }
   };
   function linguaCorrente() {
@@ -5263,80 +5348,80 @@
     return `
       <div class="agenda-row" data-id="${a.id}">
         <div class="field agenda-field-ora">
-          <label>Ora</label>
+          <label>${t('agenda.ora', 'Ora')}</label>
           <select class="agenda-input" data-id="${a.id}" data-field="ora">
-            ${agendaSlots(a.data || agendaDataSelezionata, appuntamentoOperatore(a)).map(t => `<option value="${t}" ${a.ora === t ? 'selected' : ''}>${t}</option>`).join('')}
+            ${agendaSlots(a.data || agendaDataSelezionata, appuntamentoOperatore(a)).map(tt => `<option value="${tt}" ${a.ora === tt ? 'selected' : ''}>${tt}</option>`).join('')}
           </select>
         </div>
         ${operatoriGiorno.length > 1 ? `
         <div class="field agenda-field-operatore">
-          <label>Chi</label>
+          <label>${t('agenda.chi', 'Chi')}</label>
           <select class="agenda-input" data-id="${a.id}" data-field="operatore">
             ${operatoriGiorno.map(op => `<option value="${op}" ${appuntamentoOperatore(a) === op ? 'selected' : ''}>${op}</option>`).join('')}
           </select>
         </div>` : ''}
         <div class="field agenda-field-tipo">
-          <label>Tipo</label>
+          <label>${t('agenda.tipo', 'Tipo')}</label>
           <select class="agenda-input" data-id="${a.id}" data-field="tipo">
-            <option value="cliente" ${!isLavoro ? 'selected' : ''}>Appuntamento cliente</option>
-            <option value="lavoro" ${isLavoro ? 'selected' : ''}>Impegno di lavoro</option>
+            <option value="cliente" ${!isLavoro ? 'selected' : ''}>${t('agenda.appuntamentoCliente', 'Appuntamento cliente')}</option>
+            <option value="lavoro" ${isLavoro ? 'selected' : ''}>${t('agenda.impegnoLavoro', 'Impegno di lavoro')}</option>
           </select>
         </div>
         ${isLavoro ? `
         <div class="field agenda-field-titolo">
-          <label>Cosa</label>
-          <input type="text" class="agenda-input" data-id="${a.id}" data-field="titolo" placeholder="Consegna fornitore, riunione…" value="${escapeHtml(a.titolo || '')}">
+          <label>${t('agenda.cosa', 'Cosa')}</label>
+          <input type="text" class="agenda-input" data-id="${a.id}" data-field="titolo" placeholder="${t('agenda.cosaPh', 'Consegna fornitore, riunione…')}" value="${escapeHtml(a.titolo || '')}">
         </div>` : `
         <div class="field agenda-field-cliente">
-          <label>Cliente</label>
+          <label>${t('agenda.cliente', 'Cliente')}</label>
           <input type="search" class="agenda-input agenda-cliente-input" data-id="${a.id}" data-field="cliente"
             name="agenda-cliente-${a.id}" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" readonly
-            placeholder="Cerca o scrivi chi viene…" value="${escapeHtml(nomeCampo)}">
+            placeholder="${t('agenda.clientePh', 'Cerca o scrivi chi viene…')}" value="${escapeHtml(nomeCampo)}">
           <div class="agenda-cliente-suggestions" data-id="${a.id}"></div>
-          ${a.clienteId ? `<button type="button" class="ghost small agenda-open-client" data-id="${a.clienteId}">Apri scheda</button>` : ''}
+          ${a.clienteId ? `<button type="button" class="ghost small agenda-open-client" data-id="${a.clienteId}">${t('agenda.apriScheda', 'Apri scheda')}</button>` : ''}
         </div>
         <div class="field agenda-field-servizio">
-          <label>Servizio</label>
+          <label>${t('agenda.servizio', 'Servizio')}</label>
           ${serviziCache.servizi.length ? `
           <select class="agenda-input agenda-servizio-catalogo" data-id="${a.id}">
-            <option value="">— scegli dal catalogo —</option>
+            <option value="">${t('agenda.scegliCatalogo', '— scegli dal catalogo —')}</option>
             ${serviziCache.servizi.map(s => `<option value="${s.id}" ${a.servizioId === s.id ? 'selected' : ''}>${escapeHtml(nomeServizio(s))}</option>`).join('')}
           </select>` : ''}
-          <input type="text" class="agenda-input" data-id="${a.id}" data-field="servizio" placeholder="Es. piega, colore, taglio…" value="${escapeHtml(appuntamentoServizioNome(a))}">
+          <input type="text" class="agenda-input" data-id="${a.id}" data-field="servizio" placeholder="${t('agenda.servizioPh', 'Es. piega, colore, taglio…')}" value="${escapeHtml(appuntamentoServizioNome(a))}">
         </div>
         ${a.clienteId ? `
         <div class="field agenda-field-storico">
-          <label>Storico appuntamenti precedenti</label>
+          <label>${t('agenda.storico', 'Storico appuntamenti precedenti')}</label>
           ${(() => {
             const storico = storicoAppuntamentiCliente(a, 8);
-            if (!storico.length) return '<p class="agenda-storico-vuoto">Nessun appuntamento precedente.</p>';
+            if (!storico.length) return '<p class="agenda-storico-vuoto">' + t('agenda.storicoVuoto', 'Nessun appuntamento precedente.') + '</p>';
             return '<ul class="agenda-storico-lista">' + storico.map(s =>
-              '<li><span class="agenda-storico-data">' + escapeHtml(fmtDateISOBreve(s.data)) + '</span><span class="agenda-storico-servizio">' + escapeHtml(appuntamentoServizioNome(s) || 'Appuntamento') + '</span></li>'
+              '<li><span class="agenda-storico-data">' + escapeHtml(fmtDateISOBreve(s.data)) + '</span><span class="agenda-storico-servizio">' + escapeHtml(appuntamentoServizioNome(s) || t('agenda.appuntamento', 'Appuntamento')) + '</span></li>'
             ).join('') + '</ul>';
           })()}
         </div>` : ''}`}
         <div class="field agenda-field-ricorrenza">
-          <label>Ricorrenza</label>
+          <label>${t('agenda.ricorrenza', 'Ricorrenza')}</label>
           ${a.serieId ? `
-          <p class="agenda-ricorrenza-info">Fa parte di una serie (${a.serieRicorrenza === 'dueSettimane' ? 'ogni due settimane' : 'ogni settimana'}, fino al ${escapeHtml(fmtDateISOBreve(a.serieFino))}). Eliminandolo si può scegliere se togliere solo questo o anche i successivi.</p>` : `
+          <p class="agenda-ricorrenza-info">${t('agenda.faPartediSerie', 'Fa parte di una serie')} (${a.serieRicorrenza === 'dueSettimane' ? t('agenda.ogniDueSettimane', 'ogni due settimane') : t('agenda.ogniSettimana', 'ogni settimana')}, ${t('agenda.finoAl', 'fino al')} ${escapeHtml(fmtDateISOBreve(a.serieFino))}). ${t('agenda.eliminandoScelta', 'Eliminandolo si può scegliere se togliere solo questo o anche i successivi.')}</p>` : `
           <select class="agenda-ricorrenza-sel" data-id="${a.id}">
-            <option value="">Nessuna</option>
-            <option value="settimana">Ogni settimana</option>
-            <option value="dueSettimane">Ogni due settimane</option>
+            <option value="">${t('agenda.nessuna', 'Nessuna')}</option>
+            <option value="settimana">${t('agenda.ogniSettimanaCap', 'Ogni settimana')}</option>
+            <option value="dueSettimane">${t('agenda.ogniDueSettimaneCap', 'Ogni due settimane')}</option>
           </select>
           <span class="agenda-ricorrenza-extra" data-id="${a.id}" hidden>
             <input type="date" class="agenda-ricorrenza-fino" data-id="${a.id}" min="${escapeHtml(a.data)}">
-            <button type="button" class="ghost small agenda-ricorrenza-crea" data-id="${a.id}">Crea serie</button>
+            <button type="button" class="ghost small agenda-ricorrenza-crea" data-id="${a.id}">${t('agenda.creaSerie', 'Crea serie')}</button>
           </span>`}
         </div>
         <div class="field agenda-field-note">
-          <label>Note</label>
-          <textarea class="agenda-input" data-id="${a.id}" data-field="note" placeholder="Note per l'appuntamento…">${escapeHtml(a.note || '')}</textarea>
+          <label>${t('agenda.note', 'Note')}</label>
+          <textarea class="agenda-input" data-id="${a.id}" data-field="note" placeholder="${t('agenda.notePh', "Note per l'appuntamento…")}">${escapeHtml(a.note || '')}</textarea>
         </div>
         <div class="agenda-row-actions">
-          ${!isLavoro && agendaTelefonoPerPromemoria(a) ? `<a class="ghost small agenda-whatsapp-promemoria" target="_blank" rel="noopener" href="${escapeHtml(agendaLinkWhatsappPromemoria(a))}">Manda promemoria WhatsApp</a>` : ''}
-          <button type="button" class="ghost small agenda-close-edit" data-id="${a.id}">Chiudi</button>
-          <button type="button" class="magazzino-delete agenda-delete" data-id="${a.id}">Elimina</button>
+          ${!isLavoro && agendaTelefonoPerPromemoria(a) ? `<a class="ghost small agenda-whatsapp-promemoria" target="_blank" rel="noopener" href="${escapeHtml(agendaLinkWhatsappPromemoria(a))}">${t('agenda.whatsapp', 'Manda promemoria WhatsApp')}</a>` : ''}
+          <button type="button" class="ghost small agenda-close-edit" data-id="${a.id}">${t('ui.close', 'Chiudi')}</button>
+          <button type="button" class="magazzino-delete agenda-delete" data-id="${a.id}">${t('agenda.elimina', 'Elimina')}</button>
         </div>
       </div>`;
   }
@@ -5612,9 +5697,9 @@
               <button type="button" class="ghost small" id="agendaPrevDay" aria-label="Giorno precedente">‹</button>
               <input type="date" id="agendaDatePicker" value="${escapeHtml(agendaDataSelezionata)}">
               <button type="button" class="ghost small" id="agendaNextDay" aria-label="Giorno successivo">›</button>
-              <button type="button" class="ghost small" id="agendaOggiBtn">Oggi</button>
-              <button type="button" class="ghost small" id="agendaTurniBtn">Turni di lavoro</button>
-              <button type="button" class="ghost small" id="agendaAssenzaBtn">Ferie/permesso</button>
+              <button type="button" class="ghost small" id="agendaOggiBtn">${t('agenda.oggi', 'Oggi')}</button>
+              <button type="button" class="ghost small" id="agendaTurniBtn">${t('agenda.turniLavoro', 'Turni di lavoro')}</button>
+              <button type="button" class="ghost small" id="agendaAssenzaBtn">${t('agenda.feriePermesso', 'Ferie/permesso')}</button>
             </div>
           </div>
           <div class="agenda-date-label">${fmtDateISOLong(agendaDataSelezionata)}</div>
@@ -6020,9 +6105,9 @@
                 <button type="button" class="ghost small" id="agendaPrevDay" aria-label="Giorno precedente">‹</button>
                 <input type="date" id="agendaDatePicker" value="${escapeHtml(agendaDataSelezionata)}">
                 <button type="button" class="ghost small" id="agendaNextDay" aria-label="Giorno successivo">›</button>
-                <button type="button" class="ghost small" id="agendaOggiBtn">Oggi</button>
-                <button type="button" class="ghost small" id="agendaTurniBtn">Turni di lavoro</button>
-                <button type="button" class="ghost small" id="agendaAssenzaBtn">Ferie/permesso</button>
+                <button type="button" class="ghost small" id="agendaOggiBtn">${t('agenda.oggi', 'Oggi')}</button>
+                <button type="button" class="ghost small" id="agendaTurniBtn">${t('agenda.turniLavoro', 'Turni di lavoro')}</button>
+                <button type="button" class="ghost small" id="agendaAssenzaBtn">${t('agenda.feriePermesso', 'Ferie/permesso')}</button>
               </div>
             </div>
             <div class="agenda-date-label">${fmtDateISOLong(agendaDataSelezionata)}</div>
@@ -7022,13 +7107,13 @@
           if (a && a.serieId) {
             // Fa parte di una serie ricorrente (Erica, 16/10: "chiedo ogni volta"): due tasti
             // invece di uno solo, per scegliere se togliere solo questo o anche i successivi.
-            btn.textContent = 'Solo questo';
+            btn.textContent = t('agenda.soloQuesto', 'Solo questo');
             let altroBtn = btn.parentElement.querySelector('.agenda-delete-serie-successivi');
             if (!altroBtn) {
               altroBtn = document.createElement('button');
               altroBtn.type = 'button';
               altroBtn.className = 'magazzino-delete agenda-delete-serie-successivi';
-              altroBtn.textContent = 'Anche i successivi';
+              altroBtn.textContent = t('agenda.ancheISuccessivi', 'Anche i successivi');
               btn.insertAdjacentElement('afterend', altroBtn);
               altroBtn.addEventListener('click', () => {
                 clearTimeout(btn._armTimer);
@@ -7039,12 +7124,12 @@
               });
             }
           } else {
-            btn.textContent = 'Confermi?';
+            btn.textContent = t('agenda.confermi', 'Confermi?');
           }
           clearTimeout(btn._armTimer);
           btn._armTimer = setTimeout(() => {
             btn.classList.remove('armed');
-            btn.textContent = 'Elimina';
+            btn.textContent = t('agenda.elimina', 'Elimina');
             const altroBtn = btn.parentElement.querySelector('.agenda-delete-serie-successivi');
             if (altroBtn) altroBtn.remove();
           }, 4000);
