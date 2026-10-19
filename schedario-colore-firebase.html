@@ -119,6 +119,13 @@
   button.icon-btn {
     padding: 8px 10px; font-size: 17px; line-height: 1; border-color: var(--line);
   }
+  .agenda-whatsapp-promemoria {
+    display: inline-flex; align-items: center; font-family: inherit; font-size: 13px;
+    cursor: pointer; border-radius: var(--radius); border: 1px solid var(--line);
+    background: transparent; color: #1f7a3f; padding: 5px 10px; text-decoration: none;
+    transition: border-color .15s ease;
+  }
+  .agenda-whatsapp-promemoria:hover { border-color: #1f7a3f; }
 
   /* Tasto "Salva" fisso di lato: resta visibile mentre si scorre la scheda cliente. */
   .floating-save-btn {
@@ -276,6 +283,10 @@
   }
   .name-field input:focus-visible { border-color: var(--berry); outline: none; }
   .name-field input::placeholder { color: var(--ink-soft); font-weight: 400; }
+  .name-field-telefono {
+    font-family: inherit !important; font-weight: 400 !important; font-size: 14px !important;
+    margin-top: 4px; border-bottom: 1px solid var(--line) !important;
+  }
   .meta { color: var(--ink-soft); font-size: 12px; margin-top: 6px; }
 
   fieldset { border: none; margin: 0 0 26px; padding: 0; }
@@ -618,6 +629,13 @@
     text-transform: uppercase; margin-bottom: 4px;
   }
   .home-greeting { font-family: 'Fraunces', serif; font-weight: 600; font-size: 26px; margin: 0 0 20px; max-width: 560px; }
+  .home-online-conflitti {
+    background: #fff3e0; border: 1px solid #e0a344; border-radius: var(--radius);
+    padding: 12px 16px; margin-bottom: 16px; max-width: 560px;
+  }
+  .home-online-conflitti-titolo { margin: 0 0 8px; font-size: 13.5px; font-weight: 600; }
+  .home-online-conflitti-lista { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+  .home-online-conflitti-lista li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 0; }
   .home-quote-card {
     background: var(--berry-soft); border: 1px solid var(--berry); border-radius: var(--radius);
     padding: 18px 20px 20px; margin-bottom: 20px; position: relative; max-width: 560px;
@@ -1690,7 +1708,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-16.84-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-19.87-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -1775,6 +1793,15 @@
     messagingSenderId: "156602573513",
     appId: "1:156602573513:web:197cb9b243a5a97890a318"
   };
+
+  // Credenziali dell'app "vera" (questo file), per distinguerla dalla pagina pubblica di
+  // prenotazione (prenota.html), che invece accede in modo anonimo: serve a dare, alle regole del
+  // database, un modo per lasciare alle clienti online SOLO la creazione di una richiesta di
+  // prenotazione, senza poter leggere schede cliniche, magazzino o il resto. Va creato (una volta
+  // sola) un utente con questa email+password in Firebase Console → Authentication → Users →
+  // Add user — vedi le istruzioni date insieme a questa build.
+  const ADMIN_EMAIL = "admin@schedario-colore.app";
+  const ADMIN_PASSWORD = "FeniceColore2026!";
 
   // --- Archiviazione dati -----------------------------------------------------
   // I dati vivono in Firestore (il database di Firebase), collegato a questo
@@ -2118,7 +2145,7 @@
   function saveServizi() {
     if (!db) { showStorageError(); return Promise.resolve(false); }
     return db.doc('app/servizi').set({ servizi: serviziCache.servizi })
-      .then(() => { hideStorageError(); return true; })
+      .then(() => { hideStorageError(); pubblicaDisponibilitaOnline(); return true; })
       .catch(() => { showStorageError('Non sono riuscita a salvare i servizi. Riprova tra poco.'); return false; });
   }
   function getServizio(id) { return serviziCache.servizi.find(s => s.id === id) || null; }
@@ -2149,7 +2176,7 @@
     return { lavorazione: s.tempoLavorazione || 0, posa: s.tempoPosa || 0 };
   }
   function creaServizio() {
-    const s = { id: uid(), nome: '', tempoLavorazione: 0, tempoPosa: 0, colore: '#C9A0AE', tipo: 'semplice', comboDi: [] };
+    const s = { id: uid(), nome: '', tempoLavorazione: 0, tempoPosa: 0, colore: '#C9A0AE', tipo: 'semplice', comboDi: [], prenotabileOnline: false };
     serviziCache.servizi.push(s);
     saveServizi();
     return s;
@@ -2200,7 +2227,7 @@
   function saveAgenda() {
     if (!db) { showStorageError(); return Promise.resolve(false); }
     return db.doc('app/agenda').set({ appuntamenti: agendaCache.appuntamenti })
-      .then(() => { hideStorageError(); return true; })
+      .then(() => { hideStorageError(); pubblicaDisponibilitaOnline(); return true; })
       .catch(() => { showStorageError('Non sono riuscita a salvare l\'agenda. Riprova tra poco.'); return false; });
   }
   // Operatore di un appuntamento: quelli creati prima dei turni divisi non l'avevano (era solo
@@ -2229,7 +2256,7 @@
   function saveAgendaTurni() {
     if (!db) { showStorageError(); return Promise.resolve(false); }
     return db.doc('app/agendaTurni').set({ turni: agendaTurniCache })
-      .then(() => { hideStorageError(); return true; })
+      .then(() => { hideStorageError(); pubblicaDisponibilitaOnline(); return true; })
       .catch(() => { showStorageError('Non sono riuscita a salvare i turni. Riprova tra poco.'); return false; });
   }
   // Operatori che lavorano in un certo giorno (in ordine: Erica prima di Sara), secondo i turni.
@@ -2249,7 +2276,7 @@
   function saveAssenze() {
     if (!db) { showStorageError(); return Promise.resolve(false); }
     return db.doc('app/assenze').set({ assenze: assenzeCache.assenze })
-      .then(() => { hideStorageError(); return true; })
+      .then(() => { hideStorageError(); pubblicaDisponibilitaOnline(); return true; })
       .catch(() => { showStorageError('Non sono riuscita a salvare ferie/permessi. Riprova tra poco.'); return false; });
   }
   function creaAssenza(data) {
@@ -2384,6 +2411,126 @@
     const tempi = servizioTempi(s);
     const totale = tempi.lavorazione || 0;
     return totale > 0 ? Math.ceil(totale / 15) * 15 : 15;
+  }
+  // ---- Prenotazione online (Erica, 16/10: "vorrei impostare gli appuntamenti online con
+  // promemoria") ----------------------------------------------------------------------------
+  // Toglie spazi/parentesi/trattini da un numero, per confrontare "345 134 5313" e "345-1345313"
+  // come lo stesso numero.
+  function normalizzaTelefono(t) { return (t || '').replace(/[^\d+]/g, ''); }
+  // Lista richieste online ancora da controllare perché in conflitto con un appuntamento già
+  // fissato (slot occupato nel frattempo): mostrate come avviso nella home, da risolvere a mano
+  // (si contatta la cliente per un altro orario).
+  let richiesteOnlineConflitto = [];
+  // Rigenera il "pannello" pubblico (app/disponibilitaPubblica), con SOLO i dati che servono alla
+  // pagina di prenotazione online per calcolare gli orari liberi: niente nomi di clienti, niente
+  // servizi/note/formule — solo orari occupati, turni e servizi marcati "prenotabile online".
+  // Richiamata ogni volta che agenda/servizi/turni/assenze cambiano.
+  function pubblicaDisponibilitaOnline() {
+    if (!db) return;
+    const oggi = fmtDateISO(new Date());
+    const occupati = agendaCache.appuntamenti
+      .filter(a => a.data >= oggi)
+      .map(a => ({ data: a.data, ora: a.ora, operatore: a.operatore, durataMin: appuntamentoDurata(a) }));
+    const serviziOnline = serviziCache.servizi.filter(s => s.prenotabileOnline).map(s => {
+      const tempi = servizioTempi(s);
+      return { id: s.id, nome: nomeServizio(s), durataMin: durataServizioMin(s), tempoLavorazione: tempi.lavorazione, tempoPosa: tempi.posa };
+    });
+    const assenzePubbliche = assenzeCache.assenze
+      .filter(a => a.dataFine >= oggi)
+      .map(a => ({ operatore: a.operatore, dataInizio: a.dataInizio, dataFine: a.dataFine, oraInizio: a.oraInizio || '', oraFine: a.oraFine || '' }));
+    db.doc('app/disponibilitaPubblica').set({
+      generatoAt: Date.now(),
+      turni: agendaTurniCache,
+      servizi: serviziOnline,
+      occupati: occupati,
+      assenze: assenzePubbliche
+    }).catch(() => { /* non bloccante: la pagina pubblica semplicemente resterà con dati vecchi finché non si riprova */ });
+  }
+  // Trova la cliente dal telefono scritto nella richiesta online, o ne crea una nuova scheda
+  // vuota (solo nome+telefono) se non esiste ancora.
+  function trovaOCreaClienteDaTelefono(nome, telefono) {
+    const norm = normalizzaTelefono(telefono);
+    if (norm) {
+      const esistente = clients.find(c => normalizzaTelefono(c.telefono) && normalizzaTelefono(c.telefono) === norm);
+      if (esistente) return esistente;
+    }
+    const nuova = hydrate({ id: uid(), nome: nome || '', telefono: telefono || '', createdAt: Date.now(), updatedAt: Date.now() });
+    clients.push(nuova);
+    lastWrittenUpdatedAt[nuova.id] = 0; // forza la scrittura su db al prossimo save()
+    save(clients);
+    return nuova;
+  }
+  // Controlla le nuove richieste di prenotazione online (scritte dalla pagina pubblica) e le
+  // trasforma subito in appuntamenti veri in agenda, senza bisogno di approvarle a mano (Erica,
+  // 16/10: "la pagina pubblica deve confermarsi senza il mio intervento"). Se nel frattempo quello
+  // slot si è occupato, la richiesta resta segnata "in conflitto": va risolta a mano (si contatta
+  // la cliente). Richiamata all'avvio e ogni volta che si riapre la Home/Agenda.
+  function elaboraRichiesteOnlineInSospeso() {
+    if (!db) return Promise.resolve();
+    return db.collection('richiesteOnline').where('stato', '==', 'nuova').get().then(snap => {
+      if (snap.empty) { richiesteOnlineConflitto = []; return puliziaOccupatiProvvisori([]); }
+      const nuoveInConflitto = [];
+      const elaborate = []; // per sbloccare i corrispondenti "occupatiProvvisori" (vedi sotto)
+      snap.docs.forEach(doc => {
+        const r = doc.data();
+        elaborate.push(r);
+        const occupato = agendaCache.appuntamenti.some(a =>
+          a.operatore === r.operatore && a.data === r.data &&
+          a.ora < oraPiuMinuti(r.ora, r.durataMin || 15) && oraPiuMinuti(a.ora, appuntamentoDurata(a)) > r.ora
+        );
+        if (occupato) {
+          doc.ref.update({ stato: 'conflitto' }).catch(() => {});
+          nuoveInConflitto.push(Object.assign({ id: doc.id }, r));
+          return;
+        }
+        const servizio = r.servizioId ? getServizio(r.servizioId) : null;
+        const cliente = trovaOCreaClienteDaTelefono(r.nome, r.telefono);
+        createAppuntamento({
+          data: r.data, ora: r.ora, operatore: r.operatore, tipo: 'cliente',
+          clienteId: cliente.id, servizio: servizio ? nomeServizio(servizio) : (r.nome || ''), servizioId: r.servizioId || null,
+          colore: servizio ? servizio.colore : null,
+          durataMin: servizio ? durataServizioMin(servizio) : 15,
+          durataLavorazioneMin: servizio ? durataLavorazioneServizioMin(servizio) : 15,
+          note: 'Prenotato online.' + (r.note ? ' ' + r.note : '')
+        });
+        doc.ref.update({ stato: 'confermata' }).catch(() => {});
+      });
+      richiesteOnlineConflitto = nuoveInConflitto;
+      if (viewingHome) renderSheet();
+      return puliziaOccupatiProvvisori(elaborate);
+    }).catch(() => { /* si riprova alla prossima apertura */ });
+  }
+  // Toglie i blocchi provvisori (Erica, 16/10, sul rischio di due clienti che prenotano lo
+  // stesso orario online: "può succedere che... c'è un conflitto?") lasciati dalla pagina
+  // pubblica per le richieste appena elaborate (ora che sono diventate appuntamenti veri o sono
+  // segnate in conflitto, il blocco provvisorio non serve più) e quelli ormai vecchi/orfani
+  // (più di un giorno, o riferiti a una data già passata) che per qualche motivo non sono mai
+  // stati ripresi.
+  function puliziaOccupatiProvvisori(richiesteElaborate) {
+    if (!db) return Promise.resolve();
+    return db.collection('occupatiProvvisori').get().then(snap => {
+      const oggi = fmtDateISO(new Date());
+      const scadenza = Date.now() - 24 * 60 * 60 * 1000;
+      const daRimuovere = snap.docs.filter(doc => {
+        const d = doc.data();
+        const vecchio = d.data < oggi || (d.createdAt || 0) < scadenza;
+        const ripreso = richiesteElaborate.some(r => r.data === d.data && r.ora === d.ora && r.operatore === d.operatore);
+        return vecchio || ripreso;
+      });
+      return Promise.all(daRimuovere.map(doc => doc.ref.delete().catch(() => {})));
+    }).catch(() => {});
+  }
+  // "HH:MM" + minuti -> "HH:MM" (somma semplice, usata solo per il confronto di sovrapposizione
+  // tra richiesta online e appuntamenti già fissati).
+  function oraPiuMinuti(ora, minuti) {
+    const [h, m] = (ora || '0:0').split(':').map(Number);
+    const tot = (h || 0) * 60 + (m || 0) + (minuti || 0);
+    return String(Math.floor(tot / 60)).padStart(2, '0') + ':' + String(tot % 60).padStart(2, '0');
+  }
+  function eliminaRichiestaOnlineConflitto(id) {
+    richiesteOnlineConflitto = richiesteOnlineConflitto.filter(r => r.id !== id);
+    if (db) db.doc('richiesteOnline/' + id).delete().catch(() => {});
+    renderSheet();
   }
   function updateAppuntamento(id, patch) {
     const a = agendaCache.appuntamenti.find(x => x.id === id);
@@ -2637,7 +2784,18 @@
     let initPromise;
     try {
       firebase.initializeApp(firebaseConfig);
-      initPromise = firebase.auth().signInAnonymously().catch(() => { /* se l'accesso anonimo non è abilitato, si prosegue comunque: le regole del database decideranno */ });
+      // Accesso come "app vera" (non anonimo): distingue questo file dalla pagina pubblica di
+      // prenotazione, che è invece anonima. Se l'utente admin non è stato ancora creato in
+      // Firebase (prima configurazione) — o il metodo non esiste, come nei test — si ripiega
+      // sull'accesso anonimo di sempre, così l'app continua a funzionare anche senza quel
+      // passaggio. Tutto dentro .then/.catch (niente chiamate dirette) per non rompersi se
+      // l'oggetto "auth" non ha affatto quel metodo.
+      initPromise = Promise.resolve().then(() => {
+        const authObj = firebase.auth();
+        if (typeof authObj.signInWithEmailAndPassword === 'function') return authObj.signInWithEmailAndPassword(ADMIN_EMAIL, ADMIN_PASSWORD);
+        throw new Error('signInWithEmailAndPassword non disponibile');
+      }).catch(() => firebase.auth().signInAnonymously())
+        .catch(() => { /* se nemmeno l'accesso anonimo è abilitato, si prosegue comunque: le regole del database decideranno */ });
     } catch (e) {
       initPromise = Promise.reject(e);
     }
@@ -2689,6 +2847,7 @@
         updateBackupReminderUI();
         hideStorageError();
         renderDiagnostics();
+        elaboraRichiesteOnlineInSospeso().then(() => pubblicaDisponibilitaOnline());
       }).catch(() => {
         showStorageError('Non sono riuscita a caricare i dati. Ricarica la pagina per riprovare.');
         applySettings();
@@ -3366,6 +3525,7 @@
     if (c.consigliMantenimento === undefined) c.consigliMantenimento = "";
     if (!Array.isArray(c.foto)) c.foto = [];
     if (!Array.isArray(c.versioni)) c.versioni = [];
+    if (c.telefono === undefined) c.telefono = "";
     return c;
   }
 
@@ -4984,10 +5144,40 @@
           <textarea class="agenda-input" data-id="${a.id}" data-field="note" placeholder="Note per l'appuntamento…">${escapeHtml(a.note || '')}</textarea>
         </div>
         <div class="agenda-row-actions">
+          ${!isLavoro && agendaTelefonoPerPromemoria(a) ? `<a class="ghost small agenda-whatsapp-promemoria" target="_blank" rel="noopener" href="${escapeHtml(agendaLinkWhatsappPromemoria(a))}">Manda promemoria WhatsApp</a>` : ''}
           <button type="button" class="ghost small agenda-close-edit" data-id="${a.id}">Chiudi</button>
           <button type="button" class="magazzino-delete agenda-delete" data-id="${a.id}">Elimina</button>
         </div>
       </div>`;
+  }
+  // Numero di telefono da usare per il promemoria WhatsApp di questo appuntamento: solo per
+  // appuntamenti collegati a una scheda cliente che ha un telefono salvato.
+  function agendaTelefonoPerPromemoria(a) {
+    if (!a.clienteId) return '';
+    const c = getClient(a.clienteId);
+    return (c && c.telefono) ? c.telefono.trim() : '';
+  }
+  // "345 134 5313" / "+39 345..." -> "393451345313", nel formato che wa.me richiede (senza spazi,
+  // senza "+", col prefisso internazionale: se manca lo mette lei stessa assumendo un numero
+  // italiano, il caso comune per il salone).
+  function telefonoPerWhatsapp(telefono) {
+    let n = normalizzaTelefono(telefono).replace(/^\+/, '');
+    if (!n) return '';
+    if (n.length <= 11 && !n.startsWith('39')) n = '39' + n;
+    return n;
+  }
+  // Messaggio di promemoria pronto per quell'appuntamento: cliente, data, ora, servizio e nome
+  // del salone (se impostato in Impostazioni). Erica/Sara premono "invia" su WhatsApp Web/app,
+  // già aperto col numero e il testo pronti (Erica, 16/10: "iniziamo col tasto whatsapp").
+  function agendaLinkWhatsappPromemoria(a) {
+    const numero = telefonoPerWhatsapp(agendaTelefonoPerPromemoria(a));
+    if (!numero) return '';
+    const nome = appuntamentoNomeDisplay(a);
+    const servizio = appuntamentoServizioNome(a);
+    const salone = appSettingsCache.nome || 'Acconciature la Fenice';
+    const testo = 'Ciao ' + nome + '! Ti ricordiamo il tuo appuntamento di ' + fmtDateISOBreve(a.data) + ' alle ' + a.ora +
+      (servizio ? ' per ' + servizio : '') + ' da ' + salone + '. A presto!';
+    return 'https://wa.me/' + numero + '?text=' + encodeURIComponent(testo);
   }
   // Un appuntamento "chiuso" compare come una targhetta compatta nel suo slot; cliccandola (o il
   // tasto ✎) si apre il modulo completo (renderAgendaRowHtml) per modificarlo.
@@ -5197,24 +5387,26 @@
     // per "hidden", quindi l'elemento restava visibile comunque. Si forza invece lo stile inline
     // "display:none", che vince sempre (tranne sulle regole "!important", qui assenti per le
     // singole voci): una per una sulle voci non ammesse, più sull'intero elenco clienti.
+    // Richiesta di Erica (15/10, poi 19/10): in Magazzino, in qualunque modalità (Tecnico o
+    // Tricologo), deve vedersi SOLO il Magazzino — niente elenco clienti — che deve sfruttare
+    // tutto lo spazio della pagina. Su PC/Mac si nasconde l'intera colonna sidebar-stack (elenco
+    // + menu); su iPhone/tablet (puntatore impreciso) il menu in basso a icone deve restare
+    // visibile "come il resto" (Erica, 19/10): lì si nasconde solo l'elenco clienti/ricerca,
+    // non il menu fisso in basso, perché quest'ultimo vive nello stesso .sidebar-stack ma è
+    // "fixed" fuori dal flusso — nasconderne il contenitore lo nasconderebbe anche lui.
+    const isTouchDevice = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
     const sidebarAsideEl = document.querySelector('.sidebar-stack .sidebar');
-    if (sidebarAsideEl) sidebarAsideEl.style.display = viewingTricologo ? 'none' : '';
+    if (sidebarAsideEl) sidebarAsideEl.style.display = (viewingTricologo || (viewingMagazzino && isTouchDevice)) ? 'none' : '';
     ['blankSheetEntry', 'notesEntry', 'ostwaldEntry', 'ispirazioneEntry', 'serviziEntry'].forEach(id => {
       const voce = document.getElementById(id);
       const wrapper = voce && voce.closest('.notes-banner');
       if (wrapper) wrapper.style.display = viewingTricologo ? 'none' : '';
     });
 
-    // Richiesta di Erica (15/10): in Magazzino, in qualunque modalità (Tecnico o Tricologo),
-    // deve vedersi SOLO il Magazzino — niente elenco clienti, niente menu — che deve sfruttare
-    // tutto lo spazio della pagina. Si nasconde l'intera colonna sidebar-stack (elenco + menu,
-    // compreso il tasto "Agenda" che sta lì dentro) e si passa a una sola colonna piena; resta
-    // comunque un tasto "Agenda" in alto (vedi HTML), per non restarne "bloccati" fuori — si
-    // torna alla schermata iniziale anche cliccando il logo, come sempre.
     const layoutEl = document.querySelector('.layout');
     const sidebarStackEl = document.querySelector('.sidebar-stack');
     if (layoutEl) layoutEl.classList.toggle('layout-magazzino-full', viewingMagazzino);
-    if (sidebarStackEl) sidebarStackEl.style.display = viewingMagazzino ? 'none' : '';
+    if (sidebarStackEl) sidebarStackEl.style.display = (viewingMagazzino && !isTouchDevice) ? 'none' : '';
     const topAgendaBtnEl = document.getElementById('topAgendaBtn');
     if (topAgendaBtnEl) topAgendaBtnEl.hidden = !viewingMagazzino;
 
@@ -5613,6 +5805,17 @@
             <div class="home-date">${escapeHtml(todayCap)}</div>
           </div>
           <h2 class="home-greeting">Ciao Erica &amp; Sara!</h2>
+          ${richiesteOnlineConflitto.length ? `
+          <div class="home-online-conflitti">
+            <p class="home-online-conflitti-titolo">⚠️ ${richiesteOnlineConflitto.length} richiest${richiesteOnlineConflitto.length === 1 ? 'a' : 'e'} di prenotazione online in conflitto — l'orario scelto si è occupato nel frattempo, contatta la cliente per un altro orario:</p>
+            <ul class="home-online-conflitti-lista">
+              ${richiesteOnlineConflitto.map(r => `
+                <li>
+                  <span>${escapeHtml(r.nome || 'Senza nome')} · ${escapeHtml(r.telefono || 'senza telefono')} · ${escapeHtml(fmtDateISOBreve(r.data))} alle ${escapeHtml(r.ora || '')}</span>
+                  <button type="button" class="ghost small home-online-conflitto-elimina" data-id="${r.id}">Ho risolto, elimina</button>
+                </li>`).join('')}
+            </ul>
+          </div>` : ''}
           <div class="home-quote-card">
             <div class="home-quote-mark">“</div>
             <p class="home-quote-text">${escapeHtml(quoteOfTheDay())}</p>
@@ -5642,6 +5845,9 @@
       `;
       const homeNewBtn = document.getElementById('homeNewBtn');
       if (homeNewBtn) homeNewBtn.addEventListener('click', () => createNewClient());
+      document.querySelectorAll('.home-online-conflitto-elimina').forEach(btn => {
+        btn.addEventListener('click', () => eliminaRichiestaOnlineConflitto(btn.dataset.id));
+      });
       renderAgendaApptModal();
       bindAgendaEvents();
       return;
@@ -5686,6 +5892,7 @@
       <div class="sheet-head">
         <div class="name-field">
           <input type="text" id="f-nome" placeholder="Nome cliente" value="${escapeHtml(c.nome)}">
+          <input type="tel" id="f-telefono" class="name-field-telefono" placeholder="Telefono (per WhatsApp)" value="${escapeHtml(c.telefono)}">
           <div class="meta">Creata il ${fmtDate(c.createdAt)} · aggiornata il ${fmtDate(c.updatedAt)}</div>
         </div>
         <button class="danger ghost small" id="deleteBtn">Elimina scheda</button>
@@ -6855,6 +7062,13 @@
           <label>Colore cella</label>
           <input type="color" class="servizio-input" data-id="${s.id}" data-field="colore" value="${s.colore || '#C9A0AE'}">
         </div>
+        <div class="field servizio-field-online">
+          <label>Prenotazione online</label>
+          <label class="servizio-online-toggle">
+            <input type="checkbox" class="servizio-online-check" data-id="${s.id}" ${s.prenotabileOnline ? 'checked' : ''}>
+            Mostra nella pagina di prenotazione online
+          </label>
+        </div>
         <div class="servizio-row-actions">
           <button type="button" class="magazzino-delete servizio-delete" data-id="${s.id}">Elimina</button>
         </div>
@@ -6894,6 +7108,16 @@
         else { s.comboDi = s.comboDi.filter(id => id !== chk.dataset.sub); }
         saveServizi();
         renderSheet(); // per aggiornare subito il tempo totale mostrato
+      });
+    });
+
+    document.querySelectorAll('.servizio-online-check').forEach(chk => {
+      chk.addEventListener('change', () => {
+        const s = serviziCache.servizi.find(x => x.id === chk.dataset.id);
+        if (!s) return;
+        s.prenotabileOnline = chk.checked;
+        saveServizi();
+        pubblicaDisponibilitaOnline();
       });
     });
 
@@ -7338,6 +7562,7 @@
       }
       touch(cl => cl.nome = input.value);
     });
+    on('f-telefono', 'input', e => touch(cl => cl.telefono = e.target.value));
     on('f-note', 'input', e => touch(cl => cl.note = e.target.value));
     on('f-allergie', 'input', e => touch(cl => cl.allergie = e.target.value));
     on('f-livFondo', 'input', e => { applyNFTransform(e.target); touch(cl => cl.livFondo = e.target.value); });
