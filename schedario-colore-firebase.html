@@ -1725,7 +1725,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-19.89-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-19.90-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -2546,17 +2546,33 @@
     a.serieId = serieId;
     a.serieRicorrenza = ricorrenza;
     a.serieFino = fino;
+    // Se l'appuntamento da cui si preme "Crea serie" fa parte di una combo esplosa in più
+    // blocchi (es. Colore, poi Taglio, poi Piega), la serie deve riprodurre TUTTI i pezzi della
+    // combo per ogni data futura — non solo quello su cui si è cliccato (Erica, 19/10: "mi mette
+    // solo la voce colore in quelli futuri, il resto no"). I "fratelli" (stesso comboGroupId)
+    // entrano anche loro nella stessa serie, così eliminandola si tolgono insieme.
+    const fratelli = a.comboGroupId
+      ? agendaCache.appuntamenti.filter(x => x.comboGroupId === a.comboGroupId && x.id !== a.id)
+      : [];
+    fratelli.forEach(f => { f.serieId = serieId; f.serieRicorrenza = ricorrenza; f.serieFino = fino; });
+    const blocchi = [a].concat(fratelli);
     const [y, m, d] = a.data.split('-').map(Number);
     let cursore = new Date(y, (m || 1) - 1, d || 1);
     for (;;) {
       cursore = new Date(cursore.getFullYear(), cursore.getMonth(), cursore.getDate() + passoGiorni);
       const iso = fmtDateISO(cursore);
       if (iso > fino) break;
-      createAppuntamento({
-        data: iso, ora: a.ora, operatore: a.operatore, tipo: a.tipo, titolo: a.titolo,
-        clienteId: a.clienteId, nomeManuale: a.nomeManuale, servizio: a.servizio, servizioId: a.servizioId,
-        colore: a.colore, durataMin: a.durataMin, durataLavorazioneMin: a.durataLavorazioneMin, note: a.note,
-        serieId: serieId, serieRicorrenza: ricorrenza, serieFino: fino
+      // Ogni data futura ha un comboGroupId tutto suo (condiviso solo tra i pezzi di quel
+      // giorno), così eliminare una combo futura non tocca quelle delle altre date della serie.
+      const nuovoGruppo = blocchi.length > 1 ? uid() : null;
+      blocchi.forEach(b => {
+        createAppuntamento({
+          data: iso, ora: b.ora, operatore: b.operatore, tipo: b.tipo, titolo: b.titolo,
+          clienteId: b.clienteId, nomeManuale: b.nomeManuale, servizio: b.servizio, servizioId: b.servizioId,
+          colore: b.colore, durataMin: b.durataMin, durataLavorazioneMin: b.durataLavorazioneMin, note: b.note,
+          comboGroupId: nuovoGruppo,
+          serieId: serieId, serieRicorrenza: ricorrenza, serieFino: fino
+        });
       });
     }
     saveAgenda();
