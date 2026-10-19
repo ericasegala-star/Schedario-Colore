@@ -1694,7 +1694,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-19.93-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-19.94-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -1742,7 +1742,19 @@
       'settings.recontact.label': 'Flag clients to follow up with',
       'settings.recontact.suffix': 'months without an updated record (0 = off)',
       'settings.recontact.hint': 'Anyone without a record filled in or saved for longer than this gets a "Follow up" tag in the list on the left.',
-      'settings.reset': 'Restore default appearance', 'ui.close': 'Close'
+      'settings.reset': 'Restore default appearance', 'ui.close': 'Close',
+      'mag.titolo': 'Inventory', 'mag.selectAll': 'Select all', 'mag.prodotto': 'Product',
+      'mag.tipo': 'Type', 'mag.marcaFornitore': 'Brand/supplier', 'mag.prezzo': 'Price €',
+      'mag.quantita': 'Quantity', 'mag.qtyMin': 'Min qty', 'mag.fornitore': 'Supplier',
+      'mag.importaFattura': 'Import from invoice', 'mag.scaricaPdf': 'Download PDF',
+      'mag.scaricaExcel': 'Download Excel', 'mag.statistiche': 'Reorder statistics',
+      'mag.listaRiordini': 'Download reorder list', 'mag.tutti': 'All',
+      'mag.materiePrime': 'Raw materials', 'mag.merciVendita': 'Retail goods',
+      'mag.cercaProdotto': 'Search product', 'mag.cercaProdottoPh': 'Search by name or brand…',
+      'mag.aggiungiProdotto': '+ Add product', 'mag.deseleziona': 'Deselect all',
+      'mag.spostaVendita': 'Move to Retail goods', 'mag.spostaMateria': 'Move to Raw materials',
+      'mag.eliminaSelezionati': 'Delete selected', 'mag.rinominaPh': 'New name for the selected items…',
+      'mag.rinomina': 'Rename selected'
     },
     es: {
       'nav.tecnico': 'Estilista', 'nav.tricologo': 'Tricólogo', 'nav.agenda': 'Agenda',
@@ -1762,7 +1774,19 @@
       'settings.recontact.label': 'Señalar clientas para volver a contactar',
       'settings.recontact.suffix': 'meses sin una ficha actualizada (0 = desactivado)',
       'settings.recontact.hint': 'Quien no tenga una ficha completada o guardada desde hace más de este tiempo recibe una etiqueta "Volver a contactar" en la lista de la izquierda.',
-      'settings.reset': 'Restaurar aspecto predeterminado', 'ui.close': 'Cerrar'
+      'settings.reset': 'Restaurar aspecto predeterminado', 'ui.close': 'Cerrar',
+      'mag.titolo': 'Almacén', 'mag.selectAll': 'Seleccionar todo', 'mag.prodotto': 'Producto',
+      'mag.tipo': 'Tipo', 'mag.marcaFornitore': 'Marca/proveedor', 'mag.prezzo': 'Precio €',
+      'mag.quantita': 'Cantidad', 'mag.qtyMin': 'Cant. mín.', 'mag.fornitore': 'Proveedor',
+      'mag.importaFattura': 'Importar desde factura', 'mag.scaricaPdf': 'Descargar PDF',
+      'mag.scaricaExcel': 'Descargar Excel', 'mag.statistiche': 'Estadísticas de reposición',
+      'mag.listaRiordini': 'Descargar lista de reposición', 'mag.tutti': 'Todos',
+      'mag.materiePrime': 'Materias primas', 'mag.merciVendita': 'Productos de venta',
+      'mag.cercaProdotto': 'Buscar producto', 'mag.cercaProdottoPh': 'Buscar por nombre o marca…',
+      'mag.aggiungiProdotto': '+ Añadir producto', 'mag.deseleziona': 'Deseleccionar todo',
+      'mag.spostaVendita': 'Mover a Productos de venta', 'mag.spostaMateria': 'Mover a Materias primas',
+      'mag.eliminaSelezionati': 'Eliminar seleccionados', 'mag.rinominaPh': 'Nuevo nombre para los seleccionados…',
+      'mag.rinomina': 'Renombrar seleccionados'
     },
     ro: {
       'nav.tecnico': 'Stilist', 'nav.tricologo': 'Tricolog', 'nav.agenda': 'Agendă',
@@ -1782,7 +1806,19 @@
       'settings.recontact.label': 'Semnalează clientele de recontactat',
       'settings.recontact.suffix': 'luni fără o fișă actualizată (0 = dezactivat)',
       'settings.recontact.hint': 'Cine nu are o fișă completată sau salvată de mai mult timp decât atât primește o etichetă "De recontactat" în lista din stânga.',
-      'settings.reset': 'Restabilește aspectul implicit', 'ui.close': 'Închide'
+      'settings.reset': 'Restabilește aspectul implicit', 'ui.close': 'Închide',
+      'mag.titolo': 'Depozit', 'mag.selectAll': 'Selectează tot', 'mag.prodotto': 'Produs',
+      'mag.tipo': 'Tip', 'mag.marcaFornitore': 'Marcă/furnizor', 'mag.prezzo': 'Preț €',
+      'mag.quantita': 'Cantitate', 'mag.qtyMin': 'Cant. min.', 'mag.fornitore': 'Furnizor',
+      'mag.importaFattura': 'Importă din factură', 'mag.scaricaPdf': 'Descarcă PDF',
+      'mag.scaricaExcel': 'Descarcă Excel', 'mag.statistiche': 'Statistici reaprovizionare',
+      'mag.listaRiordini': 'Descarcă lista de reaprovizionare', 'mag.tutti': 'Toate',
+      'mag.materiePrime': 'Materii prime', 'mag.merciVendita': 'Produse de vânzare',
+      'mag.cercaProdotto': 'Caută produs', 'mag.cercaProdottoPh': 'Caută după nume sau marcă…',
+      'mag.aggiungiProdotto': '+ Adaugă produs', 'mag.deseleziona': 'Deselectează tot',
+      'mag.spostaVendita': 'Mută la Produse de vânzare', 'mag.spostaMateria': 'Mută la Materii prime',
+      'mag.eliminaSelezionati': 'Șterge selectate', 'mag.rinominaPh': 'Nume nou pentru cele selectate…',
+      'mag.rinomina': 'Redenumește selectate'
     },
     sq: {
       'nav.tecnico': 'Stiliste', 'nav.tricologo': 'Trikologe', 'nav.agenda': 'Agjenda',
@@ -1802,7 +1838,19 @@
       'settings.recontact.label': "Shëno klientet për t'u ri-kontaktuar",
       'settings.recontact.suffix': 'muaj pa një fletë të përditësuar (0 = çaktivizuar)',
       'settings.recontact.hint': "Kush nuk ka një fletë të plotësuar ose ruajtur për më shumë kohë se kjo, merr etiketën \"Për t'u ri-kontaktuar\" në listën në të majtë.",
-      'settings.reset': 'Rikthe pamjen e parazgjedhur', 'ui.close': 'Mbyll'
+      'settings.reset': 'Rikthe pamjen e parazgjedhur', 'ui.close': 'Mbyll',
+      'mag.titolo': 'Magazina', 'mag.selectAll': 'Zgjidh të gjitha', 'mag.prodotto': 'Produkti',
+      'mag.tipo': 'Lloji', 'mag.marcaFornitore': 'Marka/furnitori', 'mag.prezzo': 'Çmimi €',
+      'mag.quantita': 'Sasia', 'mag.qtyMin': 'Sasia min.', 'mag.fornitore': 'Furnitori',
+      'mag.importaFattura': 'Importo nga fatura', 'mag.scaricaPdf': 'Shkarko PDF-në',
+      'mag.scaricaExcel': 'Shkarko Excel-in', 'mag.statistiche': 'Statistikat e riblerjes',
+      'mag.listaRiordini': 'Shkarko listën e riblerjes', 'mag.tutti': 'Të gjitha',
+      'mag.materiePrime': 'Lëndë të para', 'mag.merciVendita': 'Mallra për shitje',
+      'mag.cercaProdotto': 'Kërko produktin', 'mag.cercaProdottoPh': 'Kërko sipas emrit ose markës…',
+      'mag.aggiungiProdotto': '+ Shto produkt', 'mag.deseleziona': 'Hiq zgjedhjen e gjithçkaje',
+      'mag.spostaVendita': 'Zhvendos te Mallra për shitje', 'mag.spostaMateria': 'Zhvendos te Lëndë të para',
+      'mag.eliminaSelezionati': 'Fshi të zgjedhurat', 'mag.rinominaPh': "Emri i ri për të zgjedhurat…",
+      'mag.rinomina': 'Riemërto të zgjedhurat'
     },
     pl: {
       'nav.tecnico': 'Stylista', 'nav.tricologo': 'Trycholog', 'nav.agenda': 'Kalendarz',
@@ -1822,7 +1870,19 @@
       'settings.recontact.label': 'Oznacz klientki do ponownego kontaktu',
       'settings.recontact.suffix': 'miesięcy bez zaktualizowanej karty (0 = wyłączone)',
       'settings.recontact.hint': 'Osoba, która nie ma wypełnionej lub zapisanej karty od dłuższego czasu niż ten, otrzymuje etykietę "Do ponownego kontaktu" na liście po lewej.',
-      'settings.reset': 'Przywróć domyślny wygląd', 'ui.close': 'Zamknij'
+      'settings.reset': 'Przywróć domyślny wygląd', 'ui.close': 'Zamknij',
+      'mag.titolo': 'Magazyn', 'mag.selectAll': 'Wybierz wszystko', 'mag.prodotto': 'Produkt',
+      'mag.tipo': 'Typ', 'mag.marcaFornitore': 'Marka/dostawca', 'mag.prezzo': 'Cena €',
+      'mag.quantita': 'Ilość', 'mag.qtyMin': 'Min. ilość', 'mag.fornitore': 'Dostawca',
+      'mag.importaFattura': 'Importuj z faktury', 'mag.scaricaPdf': 'Pobierz PDF',
+      'mag.scaricaExcel': 'Pobierz Excel', 'mag.statistiche': 'Statystyki zamówień',
+      'mag.listaRiordini': 'Pobierz listę zamówień', 'mag.tutti': 'Wszystkie',
+      'mag.materiePrime': 'Surowce', 'mag.merciVendita': 'Towary na sprzedaż',
+      'mag.cercaProdotto': 'Szukaj produktu', 'mag.cercaProdottoPh': 'Szukaj po nazwie lub marce…',
+      'mag.aggiungiProdotto': '+ Dodaj produkt', 'mag.deseleziona': 'Odznacz wszystko',
+      'mag.spostaVendita': 'Przenieś do Towarów na sprzedaż', 'mag.spostaMateria': 'Przenieś do Surowców',
+      'mag.eliminaSelezionati': 'Usuń wybrane', 'mag.rinominaPh': 'Nowa nazwa dla wybranych…',
+      'mag.rinomina': 'Zmień nazwę wybranych'
     }
   };
   function linguaCorrente() {
@@ -5081,14 +5141,14 @@
     return `
       <div class="magazzino-row magazzino-header-row">
         <div class="magazzino-row-check-col">
-          <input type="checkbox" id="magazzinoSelectAll" title="Seleziona tutto" ${tuttiSelezionati ? 'checked' : ''}>
+          <input type="checkbox" id="magazzinoSelectAll" title="${t('mag.selectAll', 'Seleziona tutto')}" ${tuttiSelezionati ? 'checked' : ''}>
         </div>
-        <div class="field magazzino-field-nome"><label>Prodotto</label><div class="magazzino-nome-resizer" title="Trascina per allargare o stringere la colonna Prodotto (su tutte le righe)"></div></div>
-        <div class="field magazzino-field-tipo"><label>Tipo</label></div>
-        <div class="field magazzino-field-marca"><label>Marca/fornitore</label></div>
-        <div class="field magazzino-field-prezzo"><label>Prezzo €</label></div>
-        <div class="field magazzino-field-qty"><label>Quantità</label></div>
-        <div class="field magazzino-field-qtymin"><label title="Sotto questa soglia il prodotto entra nella lista riordini">Qtà min.</label></div>
+        <div class="field magazzino-field-nome"><label>${t('mag.prodotto', 'Prodotto')}</label><div class="magazzino-nome-resizer" title="Trascina per allargare o stringere la colonna Prodotto (su tutte le righe)"></div></div>
+        <div class="field magazzino-field-tipo"><label>${t('mag.tipo', 'Tipo')}</label></div>
+        <div class="field magazzino-field-marca"><label>${t('mag.marcaFornitore', 'Marca/fornitore')}</label></div>
+        <div class="field magazzino-field-prezzo"><label>${t('mag.prezzo', 'Prezzo €')}</label></div>
+        <div class="field magazzino-field-qty"><label>${t('mag.quantita', 'Quantità')}</label></div>
+        <div class="field magazzino-field-qtymin"><label title="Sotto questa soglia il prodotto entra nella lista riordini">${t('mag.qtyMin', 'Qtà min.')}</label></div>
         <div class="magazzino-row-actions"></div>
       </div>`;
   }
@@ -5659,14 +5719,14 @@
       panel.innerHTML = `
         <div class="sheet-head">
           <div class="name-field">
-            <div class="notes-title">Magazzino</div>
+            <div class="notes-title">${t('mag.titolo', 'Magazzino')}</div>
           </div>
           <div class="mag-head-actions">
-            <button class="ghost small" id="magazzinoImportBtn">Importa da fattura</button>
-            <button class="ghost small" id="magazzinoPdfBtn">Scarica PDF</button>
-            <button class="ghost small" id="magazzinoExcelBtn">Scarica Excel</button>
-            <button class="ghost small" id="magazzinoStatsBtn">Statistiche riordini</button>
-            <button class="ghost small" id="magazzinoRiordiniBtn">Scarica lista riordini</button>
+            <button class="ghost small" id="magazzinoImportBtn">${t('mag.importaFattura', 'Importa da fattura')}</button>
+            <button class="ghost small" id="magazzinoPdfBtn">${t('mag.scaricaPdf', 'Scarica PDF')}</button>
+            <button class="ghost small" id="magazzinoExcelBtn">${t('mag.scaricaExcel', 'Scarica Excel')}</button>
+            <button class="ghost small" id="magazzinoStatsBtn">${t('mag.statistiche', 'Statistiche riordini')}</button>
+            <button class="ghost small" id="magazzinoRiordiniBtn">${t('mag.listaRiordini', 'Scarica lista riordini')}</button>
             <!-- "Business Plan" nascosto per ora (Erica, 15/10: "non mi serve"): il codice resta,
                  così si può rimettere facilmente il tasto se dovesse servire di nuovo. -->
           </div>
@@ -5674,17 +5734,17 @@
         <fieldset>
           <div class="magazzino-filtri">
             <div class="field magazzino-filtro-field">
-              <label>Tipo</label>
+              <label>${t('mag.tipo', 'Tipo')}</label>
               <select id="magazzinoFiltroTipoSel" class="magazzino-select">
-                <option value="tutti" ${magazzinoFiltroTipo === 'tutti' ? 'selected' : ''}>Tutti</option>
-                <option value="materiaPrima" ${magazzinoFiltroTipo === 'materiaPrima' ? 'selected' : ''}>Materie prime</option>
-                <option value="vendita" ${magazzinoFiltroTipo === 'vendita' ? 'selected' : ''}>Merci vendita</option>
+                <option value="tutti" ${magazzinoFiltroTipo === 'tutti' ? 'selected' : ''}>${t('mag.tutti', 'Tutti')}</option>
+                <option value="materiaPrima" ${magazzinoFiltroTipo === 'materiaPrima' ? 'selected' : ''}>${t('mag.materiePrime', 'Materie prime')}</option>
+                <option value="vendita" ${magazzinoFiltroTipo === 'vendita' ? 'selected' : ''}>${t('mag.merciVendita', 'Merci vendita')}</option>
               </select>
             </div>
             <div class="field magazzino-filtro-field">
-              <label>Fornitore</label>
+              <label>${t('mag.fornitore', 'Fornitore')}</label>
               <select id="magazzinoFiltroFornitoreSel" class="magazzino-select">
-                <option value="">Tutti</option>
+                <option value="">${t('mag.tutti', 'Tutti')}</option>
                 ${fornitoriDisponibili.map(f => {
                   const val = f.key || '__nomarca__';
                   return `<option value="${escapeHtml(val)}" ${magazzinoFiltroFornitore === val ? 'selected' : ''}>${escapeHtml(f.marca)}</option>`;
@@ -5693,20 +5753,20 @@
             </div>
           </div>
           <div class="field">
-            <label>Cerca prodotto</label>
-            <input type="text" id="magazzinoSearch" placeholder="Cerca per nome o marca…" value="${escapeHtml(magazzinoSearchTerm)}">
+            <label>${t('mag.cercaProdotto', 'Cerca prodotto')}</label>
+            <input type="text" id="magazzinoSearch" placeholder="${t('mag.cercaProdottoPh', 'Cerca per nome o marca…')}" value="${escapeHtml(magazzinoSearchTerm)}">
           </div>
           <div class="magazzino-sticky-top">
             <div class="magazzino-bulk-row">
-              <button type="button" class="ghost small" id="magazzinoAddBtn">+ Aggiungi prodotto</button>
+              <button type="button" class="ghost small" id="magazzinoAddBtn">${t('mag.aggiungiProdotto', '+ Aggiungi prodotto')}</button>
               ${nSel ? `
-              <button type="button" class="ghost small" id="magazzinoDeselezionaBtn">Deseleziona tutto</button>
-              <button type="button" class="ghost small" id="magazzinoBulkVenditaBtn">Sposta in Merci vendita (${nSel})</button>
-              <button type="button" class="ghost small" id="magazzinoBulkMateriaBtn">Sposta in Materie prime (${nSel})</button>
-              <button type="button" class="magazzino-delete-bulk" id="magazzinoDeleteSelBtn">Elimina selezionati (${nSel})</button>
+              <button type="button" class="ghost small" id="magazzinoDeselezionaBtn">${t('mag.deseleziona', 'Deseleziona tutto')}</button>
+              <button type="button" class="ghost small" id="magazzinoBulkVenditaBtn">${t('mag.spostaVendita', 'Sposta in Merci vendita')} (${nSel})</button>
+              <button type="button" class="ghost small" id="magazzinoBulkMateriaBtn">${t('mag.spostaMateria', 'Sposta in Materie prime')} (${nSel})</button>
+              <button type="button" class="magazzino-delete-bulk" id="magazzinoDeleteSelBtn">${t('mag.eliminaSelezionati', 'Elimina selezionati')} (${nSel})</button>
               <span class="magazzino-bulk-rename">
-                <input type="text" id="magazzinoBulkRenameInput" placeholder="Nuovo nome per i ${nSel} selezionati…">
-                <button type="button" class="ghost small" id="magazzinoBulkRenameBtn">Rinomina selezionati</button>
+                <input type="text" id="magazzinoBulkRenameInput" placeholder="${t('mag.rinominaPh', 'Nuovo nome per i selezionati…')}">
+                <button type="button" class="ghost small" id="magazzinoBulkRenameBtn">${t('mag.rinomina', 'Rinomina selezionati')}</button>
               </span>
               <span class="magazzino-bulk-rename magazzino-bulk-qtymin">
                 <input type="number" id="magazzinoBulkQtyMinInput" min="0" step="1" placeholder="Quantità minima…">
@@ -8365,6 +8425,10 @@
     if (!btn) return;
     try { localStorage.setItem(LANG_STORAGE_KEY, btn.dataset.lang); } catch (err) {}
     applyTraduzioni();
+    // Dalla fase 2 (Erica, 19/10, "continua con la traduzione"): alcune sezioni (es. Magazzino)
+    // si disegnano da zero in JavaScript invece di usare attributi data-i18n statici, quindi
+    // vanno ridisegnate per mostrare la lingua appena scelta.
+    renderSheet();
   });
   document.getElementById('settingsLogoInput').addEventListener('change', async (e) => {
     const file = (e.target.files || [])[0];
