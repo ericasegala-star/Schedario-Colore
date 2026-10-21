@@ -501,6 +501,15 @@
     });
   });
   document.getElementById('btnRiprenota').addEventListener('click', () => location.reload());
+  // Il link personale, se premuto mentre la pagina è già aperta (es. subito dopo aver prenotato),
+  // cambia solo la parte dopo il "#" e il browser non ricarica nulla: lo forzo io.
+  document.getElementById('linkModifica').addEventListener('click', (e) => {
+    if (!mia) return;
+    e.preventDefault();
+    try { history.replaceState(null, '', linkPersonale()); } catch (er) {}
+    location.reload();
+  });
+  window.addEventListener('hashchange', () => { if (/^#m=/.test(location.hash)) location.reload(); });
   document.getElementById('annullaModifica').addEventListener('click', (e) => { e.preventDefault(); esciDaModifica(); });
   disegnaContatti();
 
