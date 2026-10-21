@@ -1470,13 +1470,13 @@
           </div>
         </aside>
         <aside class="panel notes-banner">
-          <div class="notes-banner-item" id="consigliGenericiEntry">
+          <div class="notes-banner-item" id="consigliGenericiEntry" data-sezione-generica="1">
             <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/></svg></span>
             <span class="name">Consigli generici</span>
           </div>
         </aside>
         <aside class="panel notes-banner">
-          <div class="notes-banner-item" id="schedaGenericaEntry">
+          <div class="notes-banner-item" id="schedaGenericaEntry" data-sezione-generica="1">
             <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l3 3v15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M8 11h8M8 15h8M8 7h4"/></svg></span>
             <span class="name">Scheda generica</span>
           </div>
@@ -1716,7 +1716,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-21.101-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-21.102-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -4123,6 +4123,11 @@
   // Richiesta di Erica (19/10): contenuti generici (non legati a Oway), per rendere l'app
   // adatta anche ad altri saloni — due voci di menu NUOVE e SEPARATE, che non toccano in
   // nessun modo "Consigli di utilizzo" o la scheda cliente esistenti.
+  // "Consigli generici" e "Scheda generica" (build .96) fanno parte di un altro progetto: per ora
+  // sono NASCOSTE (menu e ricerca) ma il codice e i dati salvati restano intatti. Per riaverle:
+  // metti true qui sotto.
+  const SEZIONI_GENERICHE_VISIBILI = false;
+
   let viewingConsigliGenerici = false; // true quando il pannello principale mostra "Consigli generici"
   let viewingSchedaGenerica = false; // true quando il pannello principale mostra "Scheda generica"
 
@@ -5758,6 +5763,7 @@
   registerSearchAppSource({
     categoria: 'Consigli generici',
     cerca(term) {
+      if (!SEZIONI_GENERICHE_VISIBILI) return [];
       const argomenti = ['ruota dei colori', 'riflessi', 'altezza di tono', 'sigla', 'ossidante', 'volumi', 'proporzioni', 'giallo', 'verde', 'bianchi'];
       const trovato = argomenti.find(a => a.includes(term));
       return trovato ? [{ titolo: 'Consigli generici', matches: [], apri: () => chiudiAltreSezioniEApri('consigliGenerici') }] : [];
@@ -5767,6 +5773,7 @@
   registerSearchAppSource({
     categoria: 'Scheda generica',
     cerca(term) {
+      if (!SEZIONI_GENERICHE_VISIBILI) return [];
       return schedeGenericheCache.schede
         .filter(s => (s.nome || '').toLowerCase().includes(term))
         .map(s => ({ titolo: s.nome || 'Senza nome', matches: [], apri: () => chiudiAltreSezioniEApri('schedaGenerica') }));
@@ -9093,6 +9100,7 @@
   });
 
   // Consigli generici: contenuto fisso, come "Disco di Newton" — nessun caricamento da db.
+  document.querySelectorAll('[data-sezione-generica]').forEach(el => { el.style.display = SEZIONI_GENERICHE_VISIBILI ? '' : 'none'; });
   document.getElementById('consigliGenericiEntry').addEventListener('click', () => {
     viewingConsigliGenerici = true;
     viewingServizi = false;
