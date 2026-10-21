@@ -1716,7 +1716,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-21.97-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-21.98-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -1811,7 +1811,25 @@
       'serv.tempoPosa': 'Waiting time (min)',
       'serv.colore': 'Cell colour',
       'serv.online': 'Online booking',
-      'serv.mostraOnline': 'Show on the online booking page'
+      'serv.mostraOnline': 'Show on the online booking page',
+      'isp.titolo': 'Inspiration',
+      'isp.soloVis': 'View only: only Erica can edit this section.',
+      'isp.foto': 'Photos of your work',
+      'isp.creaLibro': 'Create a new book',
+      'isp.aggiungiLibro': 'Add book',
+      'isp.hintEdit': 'Click "+ Add book" to create a new one. Click an empty book to add photos, a full one to flip through it: the procedure is written on the last page of the book. They are saved automatically, like the client cards.',
+      'isp.hintView': 'Click a book to flip through it.',
+      'isp.eliminaLibro': 'Delete this book',
+      'isp.sfoglia': 'Flip through the photos',
+      'isp.clicAggiungi': 'Click to add photos',
+      'isp.nessunaFotoAncora': 'No photos yet',
+      'isp.fotoCount': 'photos',
+      'isp.nessunaFoto': 'No photos',
+      'isp.nomePh': 'Name…',
+      'isp.confermaClick': 'Click again to confirm',
+      'isp.libroEliminato': 'Book deleted.',
+      'isp.salvato': 'Saved.',
+      'isp.nonCaricata': 'Could not upload "{f}".'
     },
     es: {
       'nav.tecnico': 'Estilista', 'nav.tricologo': 'Tricólogo', 'nav.agenda': 'Agenda',
@@ -1878,7 +1896,25 @@
       'serv.tempoPosa': 'Tiempo de exposición (min)',
       'serv.colore': 'Color de la celda',
       'serv.online': 'Reserva online',
-      'serv.mostraOnline': 'Mostrar en la página de reserva online'
+      'serv.mostraOnline': 'Mostrar en la página de reserva online',
+      'isp.titolo': 'Inspiración',
+      'isp.soloVis': 'Solo lectura: esta sección solo la modifica Erica.',
+      'isp.foto': 'Fotos de tus trabajos',
+      'isp.creaLibro': 'Crear un libro nuevo',
+      'isp.aggiungiLibro': 'Añadir libro',
+      'isp.hintEdit': 'Haz clic en "+ Añadir libro" para crear uno nuevo. Haz clic en un libro vacío para añadir fotos, en uno lleno para hojearlo: el procedimiento se escribe en la última página del libro. Se guardan automáticamente, como las fichas de clientes.',
+      'isp.hintView': 'Haz clic en un libro para hojearlo.',
+      'isp.eliminaLibro': 'Eliminar este libro',
+      'isp.sfoglia': 'Hojear las fotos',
+      'isp.clicAggiungi': 'Haz clic para añadir fotos',
+      'isp.nessunaFotoAncora': 'Aún no hay fotos',
+      'isp.fotoCount': 'fotos',
+      'isp.nessunaFoto': 'Sin fotos',
+      'isp.nomePh': 'Nombre…',
+      'isp.confermaClick': 'Haz clic de nuevo para confirmar',
+      'isp.libroEliminato': 'Libro eliminado.',
+      'isp.salvato': 'Guardado.',
+      'isp.nonCaricata': 'No se pudo subir "{f}".'
     },
     ro: {
       'nav.tecnico': 'Stilist', 'nav.tricologo': 'Tricolog', 'nav.agenda': 'Agendă',
@@ -1945,7 +1981,25 @@
       'serv.tempoPosa': 'Timp de pauză (min)',
       'serv.colore': 'Culoarea celulei',
       'serv.online': 'Rezervare online',
-      'serv.mostraOnline': 'Afișează pe pagina de rezervare online'
+      'serv.mostraOnline': 'Afișează pe pagina de rezervare online',
+      'isp.titolo': 'Inspirație',
+      'isp.soloVis': 'Doar vizualizare: această secțiune o modifică doar Erica.',
+      'isp.foto': 'Fotografii cu lucrările tale',
+      'isp.creaLibro': 'Creează o carte nouă',
+      'isp.aggiungiLibro': 'Adaugă carte',
+      'isp.hintEdit': 'Apasă pe "+ Adaugă carte" pentru a crea una nouă. Apasă pe o carte goală pentru a adăuga fotografii, pe una plină pentru a o răsfoi: procedura se scrie pe ultima pagină a cărții. Se salvează automat, ca fișele clienților.',
+      'isp.hintView': 'Apasă pe o carte pentru a o răsfoi.',
+      'isp.eliminaLibro': 'Șterge această carte',
+      'isp.sfoglia': 'Răsfoiește fotografiile',
+      'isp.clicAggiungi': 'Apasă pentru a adăuga fotografii',
+      'isp.nessunaFotoAncora': 'Încă nicio fotografie',
+      'isp.fotoCount': 'fotografii',
+      'isp.nessunaFoto': 'Nicio fotografie',
+      'isp.nomePh': 'Nume…',
+      'isp.confermaClick': 'Apasă din nou pentru a confirma',
+      'isp.libroEliminato': 'Carte ștearsă.',
+      'isp.salvato': 'Salvat.',
+      'isp.nonCaricata': 'Nu am reușit să încarc „{f}".'
     },
     sq: {
       'nav.tecnico': 'Stiliste', 'nav.tricologo': 'Trikologe', 'nav.agenda': 'Agjenda',
@@ -2012,7 +2066,25 @@
       'serv.tempoPosa': 'Koha e pritjes (min)',
       'serv.colore': 'Ngjyra e qelizës',
       'serv.online': 'Rezervim online',
-      'serv.mostraOnline': 'Shfaq në faqen e rezervimit online'
+      'serv.mostraOnline': 'Shfaq në faqen e rezervimit online',
+      'isp.titolo': 'Frymëzim',
+      'isp.soloVis': 'Vetëm shikim: këtë seksion e ndryshon vetëm Erica.',
+      'isp.foto': 'Foto të punëve të tua',
+      'isp.creaLibro': 'Krijo një libër të ri',
+      'isp.aggiungiLibro': 'Shto libër',
+      'isp.hintEdit': 'Kliko "+ Shto libër" për të krijuar një të ri. Kliko një libër bosh për të shtuar foto, një të mbushur për ta shfletuar: procedura shkruhet në faqen e fundit të librit. Ruhen automatikisht, si kartelat e klientëve.',
+      'isp.hintView': 'Kliko një libër për ta shfletuar.',
+      'isp.eliminaLibro': 'Fshi këtë libër',
+      'isp.sfoglia': 'Shfleto fotot',
+      'isp.clicAggiungi': 'Kliko për të shtuar foto',
+      'isp.nessunaFotoAncora': 'Ende asnjë foto',
+      'isp.fotoCount': 'foto',
+      'isp.nessunaFoto': 'Pa foto',
+      'isp.nomePh': 'Emri…',
+      'isp.confermaClick': 'Kliko përsëri për të konfirmuar',
+      'isp.libroEliminato': 'Libri u fshi.',
+      'isp.salvato': 'U ruajt.',
+      'isp.nonCaricata': 'Nuk arrita të ngarkoj "{f}".'
     },
     pl: {
       'nav.tecnico': 'Stylista', 'nav.tricologo': 'Trycholog', 'nav.agenda': 'Kalendarz',
@@ -2079,7 +2151,25 @@
       'serv.tempoPosa': 'Czas działania (min)',
       'serv.colore': 'Kolor komórki',
       'serv.online': 'Rezerwacja online',
-      'serv.mostraOnline': 'Pokaż na stronie rezerwacji online'
+      'serv.mostraOnline': 'Pokaż na stronie rezerwacji online',
+      'isp.titolo': 'Inspiracja',
+      'isp.soloVis': 'Tylko podgląd: tę sekcję edytuje tylko Erica.',
+      'isp.foto': 'Zdjęcia twoich prac',
+      'isp.creaLibro': 'Utwórz nową księgę',
+      'isp.aggiungiLibro': 'Dodaj księgę',
+      'isp.hintEdit': 'Kliknij „+ Dodaj księgę”, aby utworzyć nową. Kliknij pustą księgę, aby dodać zdjęcia, a pełną, aby ją przeglądać: opis wykonania pisze się na ostatniej stronie księgi. Zapisują się automatycznie, jak karty klientek.',
+      'isp.hintView': 'Kliknij księgę, aby ją przeglądać.',
+      'isp.eliminaLibro': 'Usuń tę księgę',
+      'isp.sfoglia': 'Przeglądaj zdjęcia',
+      'isp.clicAggiungi': 'Kliknij, aby dodać zdjęcia',
+      'isp.nessunaFotoAncora': 'Brak zdjęć',
+      'isp.fotoCount': 'zdjęć',
+      'isp.nessunaFoto': 'Brak zdjęć',
+      'isp.nomePh': 'Nazwa…',
+      'isp.confermaClick': 'Kliknij ponownie, aby potwierdzić',
+      'isp.libroEliminato': 'Księga usunięta.',
+      'isp.salvato': 'Zapisano.',
+      'isp.nonCaricata': 'Nie udało się wczytać „{f}".'
     }
   };
   function linguaCorrente() {
@@ -5376,15 +5466,15 @@
     const clickable = hasFoto || canEdit;
     return `
       <div class="ins-book-cover">
-        ${canEdit ? `<button type="button" class="ins-book-delete" data-libro-id="${libro.id}" title="Elimina questo libro" aria-label="Elimina questo libro">×</button>` : ''}
-        <div class="ins-book-cover-clickarea${clickable ? '' : ' ins-book-cover-clickarea-inert'}" data-libro-id="${libro.id}" title="${hasFoto ? 'Sfoglia le foto' : (canEdit ? 'Clicca per aggiungere le foto' : 'Nessuna foto ancora')}">
+        ${canEdit ? `<button type="button" class="ins-book-delete" data-libro-id="${libro.id}" title="${t('isp.eliminaLibro', 'Elimina questo libro')}" aria-label="${t('isp.eliminaLibro', 'Elimina questo libro')}">×</button>` : ''}
+        <div class="ins-book-cover-clickarea${clickable ? '' : ' ins-book-cover-clickarea-inert'}" data-libro-id="${libro.id}" title="${hasFoto ? t('isp.sfoglia', 'Sfoglia le foto') : (canEdit ? t('isp.clicAggiungi', 'Clicca per aggiungere le foto') : t('isp.nessunaFotoAncora', 'Nessuna foto ancora'))}">
           <div class="ins-book-cover-spine"></div>
           <div class="ins-book-cover-face">
             ${hasFoto ? `<img src="${libro.foto[0].dataUrl}" alt="">` : ''}
-            <div class="ins-book-cover-count">${hasFoto ? libro.foto.length + ' foto' : 'Nessuna foto'}</div>
+            <div class="ins-book-cover-count">${hasFoto ? libro.foto.length + ' ' + t('isp.fotoCount', 'foto') : t('isp.nessunaFoto', 'Nessuna foto')}</div>
           </div>
         </div>
-        <input type="text" class="ins-book-cover-title" data-libro-id="${libro.id}" placeholder="Nome…" value="${escapeHtml(libro.titolo || '')}" ${canEdit ? '' : 'readonly'}>
+        <input type="text" class="ins-book-cover-title" data-libro-id="${libro.id}" placeholder="${t('isp.nomePh', 'Nome…')}" value="${escapeHtml(libro.titolo || '')}" ${canEdit ? '' : 'readonly'}>
       </div>`;
   }
 
@@ -5955,23 +6045,23 @@
       panel.innerHTML = `
         <div class="sheet-head">
           <div class="name-field">
-            <div class="notes-title">Ispirazione</div>
-            ${canEdit ? '' : '<div class="sub">Solo visualizzazione: questa sezione la modifica solo Erica.</div>'}
+            <div class="notes-title">${t('isp.titolo', 'Ispirazione')}</div>
+            ${canEdit ? '' : `<div class="sub">${t('isp.soloVis', 'Solo visualizzazione: questa sezione la modifica solo Erica.')}</div>`}
           </div>
         </div>
         <fieldset>
           <div class="field">
-            <label class="label-legend-style">Foto dei tuoi lavori</label>
+            <label class="label-legend-style">${t('isp.foto', 'Foto dei tuoi lavori')}</label>
             <div class="ins-book-area" id="insFotoGrid">
               ${ins.libri.map(l => renderIspirazioneLibroHtml(l, canEdit)).join('')}
               ${canEdit ? `
-              <button type="button" class="ins-book-add" id="insBookAdd" title="Crea un nuovo libro">
+              <button type="button" class="ins-book-add" id="insBookAdd" title="${t('isp.creaLibro', 'Crea un nuovo libro')}">
                 <span class="ins-book-add-icon">+</span>
-                <span class="ins-book-add-label">Aggiungi<br>libro</span>
+                <span class="ins-book-add-label">${t('isp.aggiungiLibro', 'Aggiungi libro').replace(' ', '<br>')}</span>
               </button>
               <input type="file" id="ins-foto-input" accept="image/*" multiple hidden>` : ''}
             </div>
-            <p class="hint">${canEdit ? 'Clicca su "+ Aggiungi libro" per crearne uno nuovo. Clicca su un libro vuoto per aggiungere le foto, su uno pieno per sfogliarlo: il procedimento si scrive nell\'ultima pagina del libro. Restano salvate in automatico, come le schede clienti.' : 'Clicca su un libro per sfogliarlo.'}</p>
+            <p class="hint">${canEdit ? t('isp.hintEdit', "Clicca su \"+ Aggiungi libro\" per crearne uno nuovo. Clicca su un libro vuoto per aggiungere le foto, su uno pieno per sfogliarlo: il procedimento si scrive nell'ultima pagina del libro. Restano salvate in automatico, come le schede clienti.") : t('isp.hintView', 'Clicca su un libro per sfogliarlo.')}</p>
           </div>
         </fieldset>
         <div class="sheet-footer">
@@ -6612,7 +6702,7 @@
             libro.foto.push(Object.assign({ id: photoId }, body));
             saveIspirazioneFotoDoc(libroId, photoId, body);
           } catch (err) {
-            ispirazioneNotify('Non sono riuscita a caricare "' + file.name + '".', true);
+            ispirazioneNotify(t('isp.nonCaricata', 'Non sono riuscita a caricare "{f}".').replace('{f}', file.name), true);
           }
         }
         e.target.value = ''; // l'input è condiviso tra tutti i libri: si ripulisce per poterlo riusare
@@ -6626,18 +6716,18 @@
         if (!btn.classList.contains('armed')) {
           btn.classList.add('armed');
           btn.textContent = '✓';
-          btn.title = 'Clicca di nuovo per confermare';
+          btn.title = t('isp.confermaClick', 'Clicca di nuovo per confermare');
           clearTimeout(btn._armTimer);
           btn._armTimer = setTimeout(() => {
             btn.classList.remove('armed');
             btn.textContent = '×';
-            btn.title = 'Elimina questo libro';
+            btn.title = t('isp.eliminaLibro', 'Elimina questo libro');
           }, 4000);
           return;
         }
         clearTimeout(btn._armTimer);
         const libroId = btn.dataset.libroId;
-        deleteIspirazioneLibro(libroId).then(() => { ispirazioneNotify('Libro eliminato.'); renderSheet(); });
+        deleteIspirazioneLibro(libroId).then(() => { ispirazioneNotify(t('isp.libroEliminato', 'Libro eliminato.')); renderSheet(); });
       });
     });
 
@@ -6672,7 +6762,7 @@
         const libro = ins.libri.find(l => l.id === libroId);
         if (libro) libro.titolo = titleInput.value;
         saveIspirazioneLibroTitolo(libroId, titleInput.value);
-        ispirazioneNotify('Salvato.');
+        ispirazioneNotify(t('isp.salvato', 'Salvato.'));
       });
     });
 
@@ -9143,7 +9233,7 @@
     if (!f || !bookLibroId) return;
     f.commento = imgModalCommentInput.value;
     updateIspirazioneFotoCommento(bookLibroId, f.id, imgModalCommentInput.value);
-    ispirazioneNotify('Salvato.');
+    ispirazioneNotify(t('isp.salvato', 'Salvato.'));
   });
   imgModalProcedimento.addEventListener('input', () => {
     if (!canEditIspirazione() || !bookLibroId) return;
@@ -9151,7 +9241,7 @@
     const libro = ins.libri.find(l => l.id === bookLibroId);
     if (libro) libro.procedimento = imgModalProcedimento.value;
     saveIspirazioneLibroProcedimento(bookLibroId, imgModalProcedimento.value);
-    ispirazioneNotify('Salvato.');
+    ispirazioneNotify(t('isp.salvato', 'Salvato.'));
   });
   imgModalRemove.addEventListener('click', () => {
     if (!canEditIspirazione()) return;
