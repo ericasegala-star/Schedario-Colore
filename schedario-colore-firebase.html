@@ -1716,7 +1716,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-21.99-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-21.100-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -3201,6 +3201,13 @@
       titolo: data.titolo || '',
       clienteId: data.clienteId || null,
       nomeManuale: data.nomeManuale || '',
+      // Prenotazione online di una cliente senza scheda (Erica, 21/10: "se la cliente non ce l'ha
+      // non bisogna crearla"): il telefono resta sull'appuntamento, così il promemoria WhatsApp
+      // funziona comunque; richiestaId/tokenModifica servono a riconoscere una richiesta di
+      // modifica fatta dalla cliente col suo link (vedi elaboraRichiesteOnlineInSospeso).
+      telefonoManuale: data.telefonoManuale || '',
+      richiestaId: data.richiestaId || null,
+      tokenModifica: data.tokenModifica || null,
       servizio: data.servizio || '',
       servizioId: data.servizioId || null,
       colore: data.colore || null,
@@ -3344,19 +3351,12 @@
       assenze: assenzePubbliche
     }).catch(() => { /* non bloccante: la pagina pubblica semplicemente resterà con dati vecchi finché non si riprova */ });
   }
-  // Trova la cliente dal telefono scritto nella richiesta online, o ne crea una nuova scheda
-  // vuota (solo nome+telefono) se non esiste ancora.
-  function trovaOCreaClienteDaTelefono(nome, telefono) {
+  // Trova la cliente dal telefono scritto nella richiesta online. Se non ha una scheda NON se ne
+  // crea una (Erica, 21/10): l'appuntamento resta col solo nome e telefono scritti da lei.
+  function trovaClienteDaTelefono(telefono) {
     const norm = normalizzaTelefono(telefono);
-    if (norm) {
-      const esistente = clients.find(c => normalizzaTelefono(c.telefono) && normalizzaTelefono(c.telefono) === norm);
-      if (esistente) return esistente;
-    }
-    const nuova = hydrate({ id: uid(), nome: nome || '', telefono: telefono || '', createdAt: Date.now(), updatedAt: Date.now() });
-    clients.push(nuova);
-    lastWrittenUpdatedAt[nuova.id] = 0; // forza la scrittura su db al prossimo save()
-    save(clients);
-    return nuova;
+    if (!norm) return null;
+    return clients.find(c => normalizzaTelefono(c.telefono) && normalizzaTelefono(c.telefono) === norm) || null;
   }
   // Controlla le nuove richieste di prenotazione online (scritte dalla pagina pubblica) e le
   // trasforma subito in appuntamenti veri in agenda, senza bisogno di approvarle a mano (Erica,
@@ -3369,9 +3369,38 @@
       if (snap.empty) { richiesteOnlineConflitto = []; return puliziaOccupatiProvvisori([]); }
       const nuoveInConflitto = [];
       const elaborate = []; // per sbloccare i corrispondenti "occupatiProvvisori" (vedi sotto)
-      snap.docs.forEach(doc => {
+      // Prima le prenotazioni nuove, poi le richieste di modifica (una modifica può riguardare una
+      // prenotazione arrivata proprio in questo giro), ciascun gruppo in ordine di arrivo.
+      const ordinati = snap.docs.slice().sort((x, y) => {
+        const mx = x.data().tipo === 'modifica' ? 1 : 0, my = y.data().tipo === 'modifica' ? 1 : 0;
+        return (mx - my) || ((x.data().createdAt || 0) - (y.data().createdAt || 0));
+      });
+      ordinati.forEach(doc => {
         const r = doc.data();
         elaborate.push(r);
+        if (r.tipo === 'modifica') {
+          const app = r.token ? agendaCache.appuntamenti.find(x => x.richiestaId === r.rifRichiestaId && x.tokenModifica === r.token) : null;
+          const fineNuova = oraPiuMinuti(r.ora, r.durataMin || 15);
+          const occupatoMod = app && agendaCache.appuntamenti.some(x =>
+            x.id !== app.id && x.operatore === r.operatore && x.data === r.data &&
+            x.ora < fineNuova && oraPiuMinuti(x.ora, appuntamentoDurata(x)) > r.ora
+          );
+          if (!app || occupatoMod) {
+            doc.ref.update({ stato: 'conflitto' }).catch(() => {});
+            nuoveInConflitto.push(Object.assign({ id: doc.id }, r));
+            return;
+          }
+          const servMod = r.servizioId ? getServizio(r.servizioId) : null;
+          app.data = r.data; app.ora = r.ora; app.operatore = r.operatore;
+          if (servMod) {
+            app.servizio = nomeServizio(servMod); app.servizioId = servMod.id; app.colore = servMod.colore;
+            app.durataMin = durataServizioMin(servMod); app.durataLavorazioneMin = durataLavorazioneServizioMin(servMod);
+          }
+          app.note = (app.note ? app.note + ' ' : '') + 'Modificata online dalla cliente.';
+          saveAgenda();
+          doc.ref.update({ stato: 'confermata' }).catch(() => {});
+          return;
+        }
         const occupato = agendaCache.appuntamenti.some(a =>
           a.operatore === r.operatore && a.data === r.data &&
           a.ora < oraPiuMinuti(r.ora, r.durataMin || 15) && oraPiuMinuti(a.ora, appuntamentoDurata(a)) > r.ora
@@ -3382,10 +3411,13 @@
           return;
         }
         const servizio = r.servizioId ? getServizio(r.servizioId) : null;
-        const cliente = trovaOCreaClienteDaTelefono(r.nome, r.telefono);
+        const cliente = trovaClienteDaTelefono(r.telefono);
         createAppuntamento({
           data: r.data, ora: r.ora, operatore: r.operatore, tipo: 'cliente',
-          clienteId: cliente.id, servizio: servizio ? nomeServizio(servizio) : (r.nome || ''), servizioId: r.servizioId || null,
+          clienteId: cliente ? cliente.id : null,
+          nomeManuale: cliente ? '' : (r.nome || ''), telefonoManuale: cliente ? '' : (r.telefono || ''),
+          richiestaId: doc.id, tokenModifica: r.token || null,
+          servizio: servizio ? nomeServizio(servizio) : (r.nome || ''), servizioId: r.servizioId || null,
           colore: servizio ? servizio.colore : null,
           durataMin: servizio ? durataServizioMin(servizio) : 15,
           durataLavorazioneMin: servizio ? durataLavorazioneServizioMin(servizio) : 15,
@@ -6133,9 +6165,11 @@
   // Numero di telefono da usare per il promemoria WhatsApp di questo appuntamento: solo per
   // appuntamenti collegati a una scheda cliente che ha un telefono salvato.
   function agendaTelefonoPerPromemoria(a) {
-    if (!a.clienteId) return '';
-    const c = getClient(a.clienteId);
-    return (c && c.telefono) ? c.telefono.trim() : '';
+    if (a.clienteId) {
+      const c = getClient(a.clienteId);
+      if (c && c.telefono) return c.telefono.trim();
+    }
+    return (a.telefonoManuale || '').trim();
   }
   // "345 134 5313" / "+39 345..." -> "393451345313", nel formato che wa.me richiede (senza spazi,
   // senza "+", col prefisso internazionale: se manca lo mette lei stessa assumendo un numero
@@ -6833,7 +6867,7 @@
             <ul class="home-online-conflitti-lista">
               ${richiesteOnlineConflitto.map(r => `
                 <li>
-                  <span>${escapeHtml(r.nome || 'Senza nome')} · ${escapeHtml(r.telefono || 'senza telefono')} · ${escapeHtml(fmtDateISOBreve(r.data))} alle ${escapeHtml(r.ora || '')}</span>
+                  <span>${r.tipo === 'modifica' ? 'MODIFICA · ' : ''}${escapeHtml(r.nome || 'Senza nome')} · ${escapeHtml(r.telefono || 'senza telefono')} · ${escapeHtml(fmtDateISOBreve(r.data))} alle ${escapeHtml(r.ora || '')}</span>
                   <button type="button" class="ghost small home-online-conflitto-elimina" data-id="${r.id}">Ho risolto, elimina</button>
                 </li>`).join('')}
             </ul>
