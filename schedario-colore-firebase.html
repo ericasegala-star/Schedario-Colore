@@ -1716,7 +1716,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-21.100-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-21.101-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -3372,12 +3372,26 @@
       // Prima le prenotazioni nuove, poi le richieste di modifica (una modifica può riguardare una
       // prenotazione arrivata proprio in questo giro), ciascun gruppo in ordine di arrivo.
       const ordinati = snap.docs.slice().sort((x, y) => {
-        const mx = x.data().tipo === 'modifica' ? 1 : 0, my = y.data().tipo === 'modifica' ? 1 : 0;
+        const mx = x.data().tipo === 'annulla' ? 2 : (x.data().tipo === 'modifica' ? 1 : 0), my = y.data().tipo === 'annulla' ? 2 : (y.data().tipo === 'modifica' ? 1 : 0);
         return (mx - my) || ((x.data().createdAt || 0) - (y.data().createdAt || 0));
       });
       ordinati.forEach(doc => {
         const r = doc.data();
         elaborate.push(r);
+        if (r.tipo === 'annulla') {
+          // La cliente annulla col suo link personale (id richiesta + token segreto). L'appuntamento
+          // sparisce dall'agenda e a Erica resta un avviso in home, per sapere che è stato annullato.
+          const appA = r.token ? agendaCache.appuntamenti.find(x => x.richiestaId === r.rifRichiestaId && x.tokenModifica === r.token) : null;
+          if (appA) {
+            const info = Object.assign({ id: doc.id }, r, { data: appA.data, ora: appA.ora });
+            deleteAppuntamento(appA.id);
+            doc.ref.update({ stato: 'annullata' }).catch(() => {});
+            nuoveInConflitto.push(info);
+          } else {
+            doc.ref.update({ stato: 'annullata' }).catch(() => {});
+          }
+          return;
+        }
         if (r.tipo === 'modifica') {
           const app = r.token ? agendaCache.appuntamenti.find(x => x.richiestaId === r.rifRichiestaId && x.tokenModifica === r.token) : null;
           const fineNuova = oraPiuMinuti(r.ora, r.durataMin || 15);
@@ -6863,11 +6877,11 @@
           <h2 class="home-greeting">Ciao Erica &amp; Sara!</h2>
           ${richiesteOnlineConflitto.length ? `
           <div class="home-online-conflitti">
-            <p class="home-online-conflitti-titolo">⚠️ ${richiesteOnlineConflitto.length} richiest${richiesteOnlineConflitto.length === 1 ? 'a' : 'e'} di prenotazione online in conflitto — l'orario scelto si è occupato nel frattempo, contatta la cliente per un altro orario:</p>
+            <p class="home-online-conflitti-titolo">⚠️ ${richiesteOnlineConflitto.length} richiest${richiesteOnlineConflitto.length === 1 ? 'a' : 'e'} di prenotazione online in conflitto o annullate — se in conflitto l'orario scelto si è occupato nel frattempo, contatta la cliente per un altro orario:</p>
             <ul class="home-online-conflitti-lista">
               ${richiesteOnlineConflitto.map(r => `
                 <li>
-                  <span>${r.tipo === 'modifica' ? 'MODIFICA · ' : ''}${escapeHtml(r.nome || 'Senza nome')} · ${escapeHtml(r.telefono || 'senza telefono')} · ${escapeHtml(fmtDateISOBreve(r.data))} alle ${escapeHtml(r.ora || '')}</span>
+                  <span>${r.tipo === 'modifica' ? 'MODIFICA · ' : (r.tipo === 'annulla' ? 'ANNULLATA DALLA CLIENTE · ' : '')}${escapeHtml(r.nome || 'Senza nome')} · ${escapeHtml(r.telefono || 'senza telefono')} · ${escapeHtml(fmtDateISOBreve(r.data))} alle ${escapeHtml(r.ora || '')}</span>
                   <button type="button" class="ghost small home-online-conflitto-elimina" data-id="${r.id}">Ho risolto, elimina</button>
                 </li>`).join('')}
             </ul>
