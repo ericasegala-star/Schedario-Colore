@@ -47,6 +47,14 @@
   .errore { background: #FBEAEA; border: 1px solid #C76B63; border-radius: var(--radius); padding: 12px 14px; font-size: 14px; margin-bottom: 18px; }
   .non-attivo { text-align: center; padding: 40px 20px; color: var(--ink-soft); }
   .aggiornato { font-size: 11.5px; color: var(--ink-soft); text-align: center; margin-top: 30px; }
+  .tua { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 22px; }
+  .tua h2 { font-family: 'Fraunces', serif; font-size: 18px; margin: 0 0 6px; }
+  .tua p { margin: 0 0 10px; font-size: 14px; }
+  button.secondary { font-family: inherit; font-size: 14px; padding: 9px 16px; background: var(--paper-raised); border: 1px solid var(--berry); color: var(--berry); border-radius: var(--radius); cursor: pointer; }
+  .link-modifica { display: block; margin-top: 12px; font-size: 14px; word-break: break-all; color: var(--berry); }
+  .contatti { margin-top: 34px; text-align: center; font-size: 14px; }
+  .contatti a { color: var(--berry); text-decoration: none; margin: 0 8px; display: inline-block; padding: 4px 0; }
+  .contatti a:hover { text-decoration: underline; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -59,8 +67,15 @@
     La prenotazione online non è ancora attiva. Chiamaci per fissare un appuntamento.
   </div>
 
+  <div id="tuaBox" class="tua" hidden>
+    <h2>La tua prenotazione</h2>
+    <p id="tuaTesto"></p>
+    <button type="button" class="secondary" id="btnModifica">Sposta o modifica</button>
+  </div>
+
   <form id="formPrenota" hidden>
     <div id="erroreBox" class="errore" hidden></div>
+    <p class="hint" id="modificaIntro" hidden style="margin: 0 0 16px;">Stai modificando la tua prenotazione: cambia servizio, giorno o orario e conferma. <a href="#" id="annullaModifica">Lascia com'è</a></p>
 
     <fieldset>
       <legend>Servizio</legend>
@@ -105,7 +120,11 @@
     <h2>Richiesta inviata!</h2>
     <p id="confermaTesto"></p>
     <p class="hint">Se per qualche motivo quell'orario non fosse più disponibile, ti contattiamo noi al numero che hai scritto.</p>
+    <a id="linkModifica" class="link-modifica" href="#"></a>
+    <p class="hint">Hai bisogno di cambiare giorno, orario o servizio? Salva questo link tra i preferiti: con quello puoi modificare la prenotazione quando vuoi.</p>
   </div>
+
+  <div class="contatti" id="contatti" hidden></div>
 
   <p class="aggiornato" id="aggiornatoTxt"></p>
 </div>
@@ -126,7 +145,59 @@
     appId: "1:156602573513:web:197cb9b243a5a97890a318"
   };
 
+  // Dove trovarci: lasciando vuoto un campo, quel collegamento non compare. Se sono tutti vuoti
+  // il blocco sotto la pagina resta nascosto.
+  const CONTATTI = {
+    sito: 'https://www.acconciaturelafenice.it/',        // es. 'https://www.tuosito.it'
+    instagram: 'https://instagram.com/acconciature_la_fenice',   // es. 'https://www.instagram.com/tuoprofilo'
+    facebook: 'https://facebook.com/AcconciatureLaFenice',    // es. 'https://www.facebook.com/tuapagina'
+    tiktok: ''       // es. 'https://www.tiktok.com/@tuoprofilo'
+  };
+  function disegnaContatti() {
+    const box = document.getElementById('contatti');
+    const voci = [['Sito web', CONTATTI.sito], ['Instagram', CONTATTI.instagram], ['Facebook', CONTATTI.facebook], ['TikTok', CONTATTI.tiktok]]
+      .filter(v => /^https?:\/\//i.test(v[1] || ''));
+    if (!voci.length) { box.hidden = true; return; }
+    box.innerHTML = '';
+    voci.forEach(v => {
+      const a = document.createElement('a');
+      a.href = v[1]; a.target = '_blank'; a.rel = 'noopener'; a.textContent = v[0];
+      box.appendChild(a);
+    });
+    box.hidden = false;
+  }
+
   const NOME_OPERATORE = { Erica: 'Erica', Sara: 'Sara' };
+  // Prenotazione già fatta da questa persona (letta dal link personale o dal browser) e modalità
+  // "modifica": in quel caso il vecchio orario risulta di nuovo libero per lei.
+  let mia = null;
+  let modifica = false;
+  const CHIAVE_MIA = 'prenotaUltima';
+  function codifica(o) { return btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+  function decodifica(t) {
+    try { return JSON.parse(decodeURIComponent(escape(atob(t.replace(/-/g, '+').replace(/_/g, '/'))))); } catch (e) { return null; }
+  }
+  function nuovoToken() {
+    const a = new Uint8Array(16);
+    (window.crypto || window.msCrypto).getRandomValues(a);
+    return Array.from(a).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+  function linkPersonale() { return location.href.split('#')[0] + '#m=' + codifica(mia); }
+  function salvaMia() { try { localStorage.setItem(CHIAVE_MIA, JSON.stringify(mia)); } catch (e) {} }
+  function miaValida(m) {
+    return m && typeof m === 'object' && m.id && m.k && m.d && m.o && m.op && m.dm;
+  }
+  function miaNelPassato() { return new Date(mia.d + 'T' + mia.o + ':00').getTime() < Date.now(); }
+  function descrizioneMia() {
+    return new Date(mia.d + 'T00:00:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }) +
+      ' alle ' + mia.o + ' da ' + (NOME_OPERATORE[mia.op] || mia.op) + (mia.sn ? ' per ' + mia.sn : '') + '.';
+  }
+  function mostraTua() {
+    const box = document.getElementById('tuaBox');
+    if (!mia || miaNelPassato()) { box.hidden = true; return; }
+    document.getElementById('tuaTesto').textContent = descrizioneMia();
+    box.hidden = false;
+  }
   let disp = null; // dati pubblici letti da app/disponibilitaPubblica
   let db = null;
   let servizioScelto = null;
@@ -158,6 +229,7 @@
     if (!turno) return [];
     const [inizio, fine] = turno;
     const blocchi = (disp.occupati || []).concat(provvisori).filter(o => o.operatore === operatore && o.data === dataISO)
+      .filter(o => !(modifica && mia && o.operatore === mia.op && o.data === mia.d && o.ora === mia.o))
       .map(o => [parseOra(o.ora), parseOra(o.ora) + (o.durataMin || 15)]);
     (disp.assenze || []).filter(a => a.operatore === operatore && a.dataInizio <= dataISO && a.dataFine >= dataISO)
       .forEach(a => blocchi.push(a.oraInizio ? [parseOra(a.oraInizio), parseOra(a.oraFine)] : [0, 24 * 60]));
@@ -210,7 +282,7 @@
       btn.addEventListener('click', () => {
         slotScelto = s;
         cont.querySelectorAll('.slot-btn').forEach(b => b.classList.toggle('scelto', b === btn));
-        document.getElementById('fieldsetContatto').hidden = false;
+        document.getElementById('fieldsetContatto').hidden = modifica;
         aggiornaTastoInvia();
       });
       cont.appendChild(btn);
@@ -221,6 +293,12 @@
     const nome = document.getElementById('campoNome').value.trim();
     const telefono = document.getElementById('campoTelefono').value.trim();
     const consenso = document.getElementById('campoConsenso').checked;
+    if (modifica && mia) {
+      const cambiato = slotScelto && (document.getElementById('selData').value !== mia.d || slotScelto !== mia.o ||
+        operatoreScelto !== mia.op || (servizioScelto && servizioScelto.id !== mia.s));
+      document.getElementById('btnInvia').disabled = !(servizioScelto && operatoreScelto && slotScelto && cambiato);
+      return;
+    }
     document.getElementById('btnInvia').disabled = !(servizioScelto && operatoreScelto && slotScelto && nome && telefono && consenso);
   }
 
@@ -267,20 +345,21 @@
       e.preventDefault();
       nascondiErrore();
       if (!servizioScelto || !operatoreScelto || !slotScelto) return;
-      if (!document.getElementById('campoConsenso').checked) return;
-      const nome = document.getElementById('campoNome').value.trim();
-      const telefono = document.getElementById('campoTelefono').value.trim();
-      const note = document.getElementById('campoNote').value.trim();
+      if (!modifica && !document.getElementById('campoConsenso').checked) return;
+      const nome = modifica ? mia.n : document.getElementById('campoNome').value.trim();
+      const telefono = modifica ? mia.t : document.getElementById('campoTelefono').value.trim();
+      const note = modifica ? '' : document.getElementById('campoNote').value.trim();
       const data = document.getElementById('selData').value;
       const operatore = operatoreScelto, slot = slotScelto, servizio = servizioScelto;
       const btn = document.getElementById('btnInvia');
       btn.disabled = true; btn.textContent = 'Invio…';
+      const testoBtn = modifica ? 'Conferma modifica' : 'Richiedi appuntamento';
       // Ultimo controllo, appena prima di inviare: nel caso qualcun altro abbia preso proprio
       // questo orario nei pochi secondi da quando è stata disegnata la lista.
       caricaProvvisori().then(() => {
         const ancoraLibero = slotsLiberi(operatore, data, servizio.durataMin).includes(slot);
         if (!ancoraLibero) {
-          btn.disabled = false; btn.textContent = 'Richiedi appuntamento';
+          btn.disabled = false; btn.textContent = testoBtn;
           mostraErrore('Questo orario è stato appena preso da un\'altra persona: scegline un altro tra quelli rimasti.');
           disegnaSlot(data);
           return Promise.reject(new Error('slot-appena-preso'));
@@ -288,19 +367,33 @@
         // Blocco subito l'orario per chi sta guardando in questo momento, poi registro la
         // richiesta vera: Erica/Sara la trasformeranno in appuntamento riaprendo l'app.
         return db.collection('occupatiProvvisori').add({ data: data, ora: slot, operatore: operatore, durataMin: servizio.durataMin, createdAt: Date.now() });
-      }).then(() => db.collection('richiesteOnline').add({
-        data: data, ora: slot, operatore: operatore, servizioId: servizio.id,
-        durataMin: servizio.durataMin, nome: nome, telefono: telefono, note: note,
-        stato: 'nuova', createdAt: Date.now()
-      })).then(() => {
+      }).then(() => {
+        const token = modifica ? mia.k : nuovoToken();
+        const richiesta = {
+          data: data, ora: slot, operatore: operatore, servizioId: servizio.id,
+          durataMin: servizio.durataMin, nome: nome, telefono: telefono, note: note,
+          token: token, stato: 'nuova', createdAt: Date.now()
+        };
+        if (modifica) richiesta.tipo = 'modifica', richiesta.rifRichiestaId = mia.id;
+        return db.collection('richiesteOnline').add(richiesta).then(ref => ({ id: modifica ? mia.id : ref.id, token: token }));
+      }).then(rif => {
+        mia = { id: rif.id, k: rif.token, d: data, o: slot, op: operatore, s: servizio.id, sn: servizio.nome, dm: servizio.durataMin, n: nome, t: telefono };
+        salvaMia();
+        const eraModifica = modifica;
+        modifica = false;
+        document.getElementById('tuaBox').hidden = true;
+        document.getElementById('modificaIntro').hidden = true;
         document.getElementById('formPrenota').hidden = true;
         document.getElementById('confermaBox').hidden = false;
+        document.querySelector('#confermaBox h2').textContent = eraModifica ? 'Modifica inviata!' : 'Richiesta inviata!';
+        const lk = document.getElementById('linkModifica');
+        lk.href = linkPersonale(); lk.textContent = 'Il tuo link per modificare la prenotazione';
         document.getElementById('confermaTesto').textContent =
           'Ti aspettiamo ' + new Date(data + 'T00:00:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }) +
           ' alle ' + slot + ' da ' + NOME_OPERATORE[operatore] + ' per ' + servizio.nome + '.';
       }).catch((err) => {
         if (err && err.message === 'slot-appena-preso') return;
-        btn.disabled = false; btn.textContent = 'Richiedi appuntamento';
+        btn.disabled = false; btn.textContent = testoBtn;
         mostraErrore('Non sono riuscita a inviare la richiesta. Controlla la connessione e riprova, oppure chiamaci.');
       });
     });
@@ -315,9 +408,51 @@
     disp = doc.data();
     document.getElementById('formPrenota').hidden = false;
     inizializza();
+    caricaMia();
   }).catch(() => {
     document.getElementById('nonAttivo').hidden = false;
   });
+
+  // Legge la prenotazione della persona: prima dal link personale (#m=...), altrimenti da ciò che
+  // questo browser ha salvato dopo l'ultima prenotazione.
+  function caricaMia() {
+    let m = null;
+    const h = (location.hash || '').match(/^#m=(.+)$/);
+    if (h) m = decodifica(h[1]);
+    if (!miaValida(m)) {
+      try { m = JSON.parse(localStorage.getItem(CHIAVE_MIA) || 'null'); } catch (e) { m = null; }
+    }
+    if (!miaValida(m)) return;
+    mia = m; salvaMia(); mostraTua();
+  }
+  function entraInModifica() {
+    if (!mia) return;
+    modifica = true;
+    document.getElementById('tuaBox').hidden = true;
+    document.getElementById('modificaIntro').hidden = false;
+    document.getElementById('fieldsetContatto').hidden = true;
+    document.getElementById('btnInvia').textContent = 'Conferma modifica';
+    nascondiErrore();
+    const sel = document.getElementById('selServizio');
+    sel.value = mia.s; if (sel.value !== mia.s) sel.value = '';
+    servizioScelto = (disp.servizi || []).find(x => x.id === sel.value) || null;
+    operatoreScelto = mia.op;
+    document.querySelectorAll('#opScelta .op-btn').forEach(b => b.classList.toggle('scelto', b.textContent === (NOME_OPERATORE[mia.op] || mia.op)));
+    const sd = document.getElementById('selData');
+    sd.value = mia.d >= sd.min ? mia.d : sd.min;
+    aggiornaOrari();
+  }
+  function esciDaModifica() {
+    modifica = false;
+    document.getElementById('modificaIntro').hidden = true;
+    document.getElementById('btnInvia').textContent = 'Richiedi appuntamento';
+    document.getElementById('btnInvia').disabled = true;
+    document.getElementById('fieldsetOrario').hidden = true;
+    mostraTua();
+  }
+  document.getElementById('btnModifica').addEventListener('click', entraInModifica);
+  document.getElementById('annullaModifica').addEventListener('click', (e) => { e.preventDefault(); esciDaModifica(); });
+  disegnaContatti();
 
   window.__prenotaReady = true;
 })();
