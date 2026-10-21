@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Prenota un appuntamento — Acconciature la Fenice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #2B2320; --ink-soft: #6B5F57; --paper: #FBF6EF; --paper-raised: #FFFFFF;
+    --line: #E2D5C6; --berry: #7A3B56; --berry-soft: #F3E4EA; --ok: #4C7A5E;
+    --radius: 3px; box-sizing: border-box;
+  }
+  * { box-sizing: inherit; }
+  body {
+    margin: 0; font-family: 'IBM Plex Sans', sans-serif; background: var(--paper); color: var(--ink);
+    padding: 28px 18px 60px;
+  }
+  .wrap { max-width: 480px; margin: 0 auto; }
+  h1 { font-family: 'Fraunces', serif; font-weight: 600; font-size: 24px; margin: 0 0 4px; }
+  .sub { color: var(--ink-soft); font-size: 14px; margin: 0 0 24px; }
+  fieldset { border: none; margin: 0 0 20px; padding: 0; }
+  legend { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--berry); font-weight: 600; margin-bottom: 8px; }
+  select, input[type="date"], input[type="text"], input[type="tel"], textarea {
+    width: 100%; font-family: inherit; font-size: 15px; padding: 10px 12px;
+    border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper-raised); color: var(--ink);
+  }
+  .op-scelta, .slot-scelta { display: flex; flex-wrap: wrap; gap: 8px; }
+  .op-btn, .slot-btn {
+    font-family: inherit; font-size: 14px; padding: 9px 14px; border-radius: var(--radius);
+    border: 1px solid var(--line); background: var(--paper-raised); color: var(--ink); cursor: pointer;
+  }
+  .op-btn.scelto, .slot-btn.scelto { background: var(--berry); border-color: var(--berry); color: #fff; }
+  .hint { font-size: 13px; color: var(--ink-soft); margin: 6px 0 0; }
+  .privacy-testo { font-size: 12px; color: var(--ink-soft); margin: 10px 0 8px; line-height: 1.4; }
+  .privacy-consenso { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; cursor: pointer; }
+  .privacy-consenso input { margin-top: 3px; flex: none; }
+  button.primary {
+    width: 100%; font-family: inherit; font-size: 15px; font-weight: 600; padding: 13px;
+    background: var(--berry); border: 1px solid var(--berry); color: #fff; border-radius: var(--radius); cursor: pointer;
+  }
+  button.primary:disabled { opacity: .5; cursor: default; }
+  .conferma { background: var(--berry-soft); border: 1px solid var(--berry); border-radius: var(--radius); padding: 22px; text-align: center; }
+  .conferma h2 { font-family: 'Fraunces', serif; margin: 0 0 8px; }
+  .errore { background: #FBEAEA; border: 1px solid #C76B63; border-radius: var(--radius); padding: 12px 14px; font-size: 14px; margin-bottom: 18px; }
+  .non-attivo { text-align: center; padding: 40px 20px; color: var(--ink-soft); }
+  .aggiornato { font-size: 11.5px; color: var(--ink-soft); text-align: center; margin-top: 30px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Prenota un appuntamento</h1>
+  <p class="sub">Acconciature la Fenice</p>
+
+  <div id="nonAttivo" class="non-attivo" hidden>
+    La prenotazione online non è ancora attiva. Chiamaci per fissare un appuntamento.
+  </div>
+
+  <form id="formPrenota" hidden>
+    <div id="erroreBox" class="errore" hidden></div>
+
+    <fieldset>
+      <legend>Servizio</legend>
+      <select id="selServizio"><option value="">— scegli —</option></select>
+    </fieldset>
+
+    <fieldset>
+      <legend>Con chi</legend>
+      <div class="op-scelta" id="opScelta"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Quando</legend>
+      <input type="date" id="selData">
+      <p class="hint" id="dataHint"></p>
+    </fieldset>
+
+    <fieldset id="fieldsetOrario" hidden>
+      <legend>Orario</legend>
+      <div class="slot-scelta" id="slotScelta"></div>
+      <p class="hint" id="slotHint"></p>
+    </fieldset>
+
+    <fieldset id="fieldsetContatto" hidden>
+      <legend>I tuoi dati</legend>
+      <input type="text" id="campoNome" placeholder="Nome e cognome" style="margin-bottom: 10px;">
+      <input type="tel" id="campoTelefono" placeholder="Numero di telefono (anche WhatsApp)" style="margin-bottom: 10px;">
+      <textarea id="campoNote" rows="2" placeholder="Note (facoltativo)"></textarea>
+      <p class="privacy-testo">
+        I dati che scrivi qui sono trattati da <strong>Acconciature la Fenice</strong> solo per gestire la tua richiesta di appuntamento e per contattarti (anche su WhatsApp) per promemoria o variazioni di orario. Non vengono condivisi con terzi per scopi commerciali e si conservano solo per il tempo necessario a questo scopo. In qualsiasi momento puoi chiedere di vederli, correggerli o farli cancellare, scrivendo o chiamando il salone.
+      </p>
+      <label class="privacy-consenso">
+        <input type="checkbox" id="campoConsenso">
+        Ho letto l'informativa e acconsento al trattamento dei miei dati per gestire la richiesta di appuntamento.
+      </label>
+    </fieldset>
+
+    <button type="submit" class="primary" id="btnInvia" disabled>Richiedi appuntamento</button>
+  </form>
+
+  <div id="confermaBox" class="conferma" hidden>
+    <h2>Richiesta inviata!</h2>
+    <p id="confermaTesto"></p>
+    <p class="hint">Se per qualche motivo quell'orario non fosse più disponibile, ti contattiamo noi al numero che hai scritto.</p>
+  </div>
+
+  <p class="aggiornato" id="aggiornatoTxt"></p>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script>
+(function () {
+  // Stessa configurazione del file principale (schedario-colore-firebase.html): è lo stesso
+  // database, non un segreto — è già visibile a chiunque apra quel file.
+  const firebaseConfig = {
+    apiKey: "AIzaSyCyU0ZN_c9_7mmro8qnO3E9vhqJKk_zzj4",
+    authDomain: "schedario-colore.firebaseapp.com",
+    projectId: "schedario-colore",
+    storageBucket: "schedario-colore.firebasestorage.app",
+    messagingSenderId: "156602573513",
+    appId: "1:156602573513:web:197cb9b243a5a97890a318"
+  };
+
+  const NOME_OPERATORE = { Erica: 'Erica', Sara: 'Sara' };
+  let disp = null; // dati pubblici letti da app/disponibilitaPubblica
+  let db = null;
+  let servizioScelto = null;
+  let operatoreScelto = null;
+  let slotScelto = null;
+  // Prenotazioni "appena fatte" da altre persone, non ancora riprese dall'app vera (Erica/Sara
+  // devono riaprirla perché diventino appuntamenti definitivi): si bloccano comunque subito qui,
+  // così due persone non possono scegliere lo stesso orario nel frattempo.
+  let provvisori = [];
+
+  function parseOra(ora) { const [h, m] = (ora || '0:0').split(':').map(Number); return (h || 0) * 60 + (m || 0); }
+  function fmtOra(min) { return String(Math.floor(min / 60)).padStart(2, '0') + ':' + String(min % 60).padStart(2, '0'); }
+  function fmtDateISO(d) { const p = n => String(n).padStart(2, '0'); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); }
+
+  function caricaProvvisori() {
+    return db.collection('occupatiProvvisori').get().then(snap => {
+      provvisori = snap.docs.map(d => d.data());
+    }).catch(() => { /* se non si riesce a leggerli, si procede con quello che si ha: il controllo finale prima di inviare resta comunque */ });
+  }
+
+  // Orari liberi per quell'operatore/data/durata: dentro il turno di lavoro, fuori da ferie e
+  // permessi, senza sovrapporsi a un appuntamento già fissato (vedi app/disponibilitaPubblica) né
+  // a una prenotazione fatta da poco da qualcun altro e non ancora riportata in agenda
+  // (occupatiProvvisori).
+  function slotsLiberi(operatore, dataISO, durataMin) {
+    const [y, m, d] = dataISO.split('-').map(Number);
+    const weekday = new Date(y, m - 1, d).getDay();
+    const turno = disp.turni[operatore] && disp.turni[operatore][weekday];
+    if (!turno) return [];
+    const [inizio, fine] = turno;
+    const blocchi = (disp.occupati || []).concat(provvisori).filter(o => o.operatore === operatore && o.data === dataISO)
+      .map(o => [parseOra(o.ora), parseOra(o.ora) + (o.durataMin || 15)]);
+    (disp.assenze || []).filter(a => a.operatore === operatore && a.dataInizio <= dataISO && a.dataFine >= dataISO)
+      .forEach(a => blocchi.push(a.oraInizio ? [parseOra(a.oraInizio), parseOra(a.oraFine)] : [0, 24 * 60]));
+    const slots = [];
+    for (let t = inizio; t + durataMin <= fine; t += 15) {
+      if (!blocchi.some(([bs, be]) => t < be && (t + durataMin) > bs)) slots.push(fmtOra(t));
+    }
+    const oggi = new Date();
+    if (dataISO === fmtDateISO(oggi)) {
+      const adesso = oggi.getHours() * 60 + oggi.getMinutes() + 30;
+      return slots.filter(s => parseOra(s) > adesso);
+    }
+    return slots;
+  }
+
+  function mostraErrore(msg) {
+    const box = document.getElementById('erroreBox');
+    box.textContent = msg; box.hidden = false;
+  }
+  function nascondiErrore() { document.getElementById('erroreBox').hidden = true; }
+
+  function aggiornaOrari() {
+    const fs = document.getElementById('fieldsetOrario');
+    const cont = document.getElementById('slotScelta');
+    const hint = document.getElementById('slotHint');
+    const data = document.getElementById('selData').value;
+    slotScelto = null;
+    aggiornaTastoInvia();
+    if (!servizioScelto || !operatoreScelto || !data) { fs.hidden = true; return; }
+    fs.hidden = false;
+    hint.textContent = 'Un attimo…';
+    cont.innerHTML = '';
+    // Ricarico le prenotazioni "appena fatte" da altri ogni volta, così chi sta scegliendo in
+    // questo momento vede anche quello che altri hanno prenotato un minuto fa.
+    caricaProvvisori().then(() => disegnaSlot(data));
+  }
+  function disegnaSlot(data) {
+    const cont = document.getElementById('slotScelta');
+    const hint = document.getElementById('slotHint');
+    const slots = slotsLiberi(operatoreScelto, data, servizioScelto.durataMin);
+    cont.innerHTML = '';
+    if (!slots.length) {
+      hint.textContent = NOME_OPERATORE[operatoreScelto] + ' non ha orari liberi quel giorno: prova un\'altra data o un\'altra operatrice.';
+      return;
+    }
+    hint.textContent = '';
+    slots.forEach(s => {
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'slot-btn'; btn.textContent = s;
+      btn.addEventListener('click', () => {
+        slotScelto = s;
+        cont.querySelectorAll('.slot-btn').forEach(b => b.classList.toggle('scelto', b === btn));
+        document.getElementById('fieldsetContatto').hidden = false;
+        aggiornaTastoInvia();
+      });
+      cont.appendChild(btn);
+    });
+  }
+
+  function aggiornaTastoInvia() {
+    const nome = document.getElementById('campoNome').value.trim();
+    const telefono = document.getElementById('campoTelefono').value.trim();
+    const consenso = document.getElementById('campoConsenso').checked;
+    document.getElementById('btnInvia').disabled = !(servizioScelto && operatoreScelto && slotScelto && nome && telefono && consenso);
+  }
+
+  function inizializza() {
+    const selServizio = document.getElementById('selServizio');
+    (disp.servizi || []).forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id; opt.textContent = s.nome + ' (' + s.durataMin + ' min)';
+      selServizio.appendChild(opt);
+    });
+    selServizio.addEventListener('change', () => {
+      servizioScelto = (disp.servizi || []).find(s => s.id === selServizio.value) || null;
+      aggiornaOrari();
+    });
+
+    const opCont = document.getElementById('opScelta');
+    Object.keys(disp.turni || {}).filter(op => Object.keys(disp.turni[op] || {}).length > 0).forEach(op => {
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'op-btn'; btn.textContent = NOME_OPERATORE[op] || op;
+      btn.addEventListener('click', () => {
+        operatoreScelto = op;
+        opCont.querySelectorAll('.op-btn').forEach(b => b.classList.toggle('scelto', b === btn));
+        aggiornaOrari();
+      });
+      opCont.appendChild(btn);
+    });
+
+    const selData = document.getElementById('selData');
+    const oggi = new Date();
+    const max = new Date(oggi.getTime() + 60 * 24 * 60 * 60 * 1000);
+    selData.min = fmtDateISO(oggi);
+    selData.max = fmtDateISO(max);
+    selData.value = fmtDateISO(oggi);
+    selData.addEventListener('change', aggiornaOrari);
+
+    ['campoNome', 'campoTelefono'].forEach(id => document.getElementById(id).addEventListener('input', aggiornaTastoInvia));
+    document.getElementById('campoConsenso').addEventListener('change', aggiornaTastoInvia);
+
+    if (disp.generatoAt) {
+      document.getElementById('aggiornatoTxt').textContent = 'Disponibilità aggiornata al ' + new Date(disp.generatoAt).toLocaleString('it-IT');
+    }
+
+    document.getElementById('formPrenota').addEventListener('submit', (e) => {
+      e.preventDefault();
+      nascondiErrore();
+      if (!servizioScelto || !operatoreScelto || !slotScelto) return;
+      if (!document.getElementById('campoConsenso').checked) return;
+      const nome = document.getElementById('campoNome').value.trim();
+      const telefono = document.getElementById('campoTelefono').value.trim();
+      const note = document.getElementById('campoNote').value.trim();
+      const data = document.getElementById('selData').value;
+      const operatore = operatoreScelto, slot = slotScelto, servizio = servizioScelto;
+      const btn = document.getElementById('btnInvia');
+      btn.disabled = true; btn.textContent = 'Invio…';
+      // Ultimo controllo, appena prima di inviare: nel caso qualcun altro abbia preso proprio
+      // questo orario nei pochi secondi da quando è stata disegnata la lista.
+      caricaProvvisori().then(() => {
+        const ancoraLibero = slotsLiberi(operatore, data, servizio.durataMin).includes(slot);
+        if (!ancoraLibero) {
+          btn.disabled = false; btn.textContent = 'Richiedi appuntamento';
+          mostraErrore('Questo orario è stato appena preso da un\'altra persona: scegline un altro tra quelli rimasti.');
+          disegnaSlot(data);
+          return Promise.reject(new Error('slot-appena-preso'));
+        }
+        // Blocco subito l'orario per chi sta guardando in questo momento, poi registro la
+        // richiesta vera: Erica/Sara la trasformeranno in appuntamento riaprendo l'app.
+        return db.collection('occupatiProvvisori').add({ data: data, ora: slot, operatore: operatore, durataMin: servizio.durataMin, createdAt: Date.now() });
+      }).then(() => db.collection('richiesteOnline').add({
+        data: data, ora: slot, operatore: operatore, servizioId: servizio.id,
+        durataMin: servizio.durataMin, nome: nome, telefono: telefono, note: note,
+        stato: 'nuova', createdAt: Date.now()
+      })).then(() => {
+        document.getElementById('formPrenota').hidden = true;
+        document.getElementById('confermaBox').hidden = false;
+        document.getElementById('confermaTesto').textContent =
+          'Ti aspettiamo ' + new Date(data + 'T00:00:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }) +
+          ' alle ' + slot + ' da ' + NOME_OPERATORE[operatore] + ' per ' + servizio.nome + '.';
+      }).catch((err) => {
+        if (err && err.message === 'slot-appena-preso') return;
+        btn.disabled = false; btn.textContent = 'Richiedi appuntamento';
+        mostraErrore('Non sono riuscita a inviare la richiesta. Controlla la connessione e riprova, oppure chiamaci.');
+      });
+    });
+  }
+
+  firebase.initializeApp(firebaseConfig);
+  firebase.auth().signInAnonymously().catch(() => {}).then(() => {
+    db = firebase.firestore();
+    return db.doc('app/disponibilitaPubblica').get();
+  }).then(doc => {
+    if (!doc || !doc.exists) { document.getElementById('nonAttivo').hidden = false; return; }
+    disp = doc.data();
+    document.getElementById('formPrenota').hidden = false;
+    inizializza();
+  }).catch(() => {
+    document.getElementById('nonAttivo').hidden = false;
+  });
+
+  window.__prenotaReady = true;
+})();
+</script>
+</body>
+</html>
