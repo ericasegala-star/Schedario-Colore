@@ -1716,7 +1716,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-19.96-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-21.97-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -1793,7 +1793,25 @@
       'agenda.whatsapp': 'Send WhatsApp reminder', 'agenda.elimina': 'Delete',
       'agenda.oggi': 'Today', 'agenda.turniLavoro': 'Work shifts', 'agenda.feriePermesso': 'Leave/time off',
       'agenda.soloQuesto': 'Just this one', 'agenda.ancheISuccessivi': 'The following ones too',
-      'agenda.confermi': 'Confirm?'
+      'agenda.confermi': 'Confirm?',
+      'serv.titolo': 'Create service',
+      'serv.aggiungi': '+ Add service',
+      'serv.vuoto': 'No services yet: add one with the button below.',
+      'serv.hint': 'It saves itself as you type. Choosing a service in the Agenda will automatically use its time and its cell colour.',
+      'serv.nome': 'Name',
+      'serv.nomePhCombo': 'Leave empty to use the names of the chosen services',
+      'serv.nomePh': 'Blow-dry, colour, cut…',
+      'serv.tipo': 'Type',
+      'serv.semplice': 'Single service',
+      'serv.combo': 'Combo of several services',
+      'serv.inclusi': 'Included services',
+      'serv.creaPrima': 'First create a few single services to combine.',
+      'serv.tempoTotale': 'Total time: {l} min working + {p} min waiting (automatic sum of the chosen services).',
+      'serv.tempoLav': 'Working time (min)',
+      'serv.tempoPosa': 'Waiting time (min)',
+      'serv.colore': 'Cell colour',
+      'serv.online': 'Online booking',
+      'serv.mostraOnline': 'Show on the online booking page'
     },
     es: {
       'nav.tecnico': 'Estilista', 'nav.tricologo': 'Tricólogo', 'nav.agenda': 'Agenda',
@@ -1842,7 +1860,25 @@
       'agenda.whatsapp': 'Enviar recordatorio por WhatsApp', 'agenda.elimina': 'Eliminar',
       'agenda.oggi': 'Hoy', 'agenda.turniLavoro': 'Turnos de trabajo', 'agenda.feriePermesso': 'Vacaciones/permiso',
       'agenda.soloQuesto': 'Solo esta', 'agenda.ancheISuccessivi': 'También las siguientes',
-      'agenda.confermi': '¿Confirmas?'
+      'agenda.confermi': '¿Confirmas?',
+      'serv.titolo': 'Crear servicio',
+      'serv.aggiungi': '+ Añadir servicio',
+      'serv.vuoto': 'Aún no hay servicios: añade uno con el botón de abajo.',
+      'serv.hint': 'Se guarda solo mientras escribes. Al elegir un servicio en la Agenda se usará automáticamente su tiempo y su color en la celda.',
+      'serv.nome': 'Nombre',
+      'serv.nomePhCombo': 'Déjalo vacío para usar los nombres de los servicios elegidos',
+      'serv.nomePh': 'Peinado, color, corte…',
+      'serv.tipo': 'Tipo',
+      'serv.semplice': 'Servicio simple',
+      'serv.combo': 'Combo de varios servicios',
+      'serv.inclusi': 'Servicios incluidos',
+      'serv.creaPrima': 'Primero crea algunos servicios simples para combinar.',
+      'serv.tempoTotale': 'Tiempo total: {l} min de trabajo + {p} min de exposición (suma automática de los servicios elegidos).',
+      'serv.tempoLav': 'Tiempo de trabajo (min)',
+      'serv.tempoPosa': 'Tiempo de exposición (min)',
+      'serv.colore': 'Color de la celda',
+      'serv.online': 'Reserva online',
+      'serv.mostraOnline': 'Mostrar en la página de reserva online'
     },
     ro: {
       'nav.tecnico': 'Stilist', 'nav.tricologo': 'Tricolog', 'nav.agenda': 'Agendă',
@@ -1891,7 +1927,25 @@
       'agenda.whatsapp': 'Trimite memento pe WhatsApp', 'agenda.elimina': 'Șterge',
       'agenda.oggi': 'Astăzi', 'agenda.turniLavoro': 'Program de lucru', 'agenda.feriePermesso': 'Concediu/liber',
       'agenda.soloQuesto': 'Doar aceasta', 'agenda.ancheISuccessivi': 'Și pe cele următoare',
-      'agenda.confermi': 'Confirmi?'
+      'agenda.confermi': 'Confirmi?',
+      'serv.titolo': 'Creează serviciu',
+      'serv.aggiungi': '+ Adaugă serviciu',
+      'serv.vuoto': 'Încă niciun serviciu: adaugă unul cu butonul de mai jos.',
+      'serv.hint': 'Se salvează singur în timp ce scrii. Alegând un serviciu în Agendă se vor folosi automat timpul și culoarea lui din celulă.',
+      'serv.nome': 'Nume',
+      'serv.nomePhCombo': 'Lasă gol pentru a folosi numele serviciilor alese',
+      'serv.nomePh': 'Coafat, culoare, tuns…',
+      'serv.tipo': 'Tip',
+      'serv.semplice': 'Serviciu simplu',
+      'serv.combo': 'Combo de mai multe servicii',
+      'serv.inclusi': 'Servicii incluse',
+      'serv.creaPrima': 'Creează mai întâi câteva servicii simple de combinat.',
+      'serv.tempoTotale': 'Timp total: {l} min de lucru + {p} min de pauză (suma automată a serviciilor alese).',
+      'serv.tempoLav': 'Timp de lucru (min)',
+      'serv.tempoPosa': 'Timp de pauză (min)',
+      'serv.colore': 'Culoarea celulei',
+      'serv.online': 'Rezervare online',
+      'serv.mostraOnline': 'Afișează pe pagina de rezervare online'
     },
     sq: {
       'nav.tecnico': 'Stiliste', 'nav.tricologo': 'Trikologe', 'nav.agenda': 'Agjenda',
@@ -1940,7 +1994,25 @@
       'agenda.whatsapp': 'Dërgo kujtues në WhatsApp', 'agenda.elimina': 'Fshi',
       'agenda.oggi': 'Sot', 'agenda.turniLavoro': 'Orari i punës', 'agenda.feriePermesso': 'Pushime/leje',
       'agenda.soloQuesto': 'Vetëm këtë', 'agenda.ancheISuccessivi': 'Edhe të mëpasshmet',
-      'agenda.confermi': 'Konfirmon?'
+      'agenda.confermi': 'Konfirmon?',
+      'serv.titolo': 'Krijo shërbim',
+      'serv.aggiungi': '+ Shto shërbim',
+      'serv.vuoto': 'Ende asnjë shërbim: shto një me butonin më poshtë.',
+      'serv.hint': 'Ruhet vetë ndërsa shkruan. Duke zgjedhur një shërbim në Axhendë, do të përdoret automatikisht koha dhe ngjyra e tij në qelizë.',
+      'serv.nome': 'Emri',
+      'serv.nomePhCombo': 'Lëre bosh për të përdorur emrat e shërbimeve të zgjedhura',
+      'serv.nomePh': 'Fenë, ngjyrë, prerje…',
+      'serv.tipo': 'Lloji',
+      'serv.semplice': 'Shërbim i thjeshtë',
+      'serv.combo': 'Kombo me disa shërbime',
+      'serv.inclusi': 'Shërbimet e përfshira',
+      'serv.creaPrima': 'Së pari krijo disa shërbime të thjeshta për t\'i kombinuar.',
+      'serv.tempoTotale': 'Koha totale: {l} min punë + {p} min pritje (shuma automatike e shërbimeve të zgjedhura).',
+      'serv.tempoLav': 'Koha e punës (min)',
+      'serv.tempoPosa': 'Koha e pritjes (min)',
+      'serv.colore': 'Ngjyra e qelizës',
+      'serv.online': 'Rezervim online',
+      'serv.mostraOnline': 'Shfaq në faqen e rezervimit online'
     },
     pl: {
       'nav.tecnico': 'Stylista', 'nav.tricologo': 'Trycholog', 'nav.agenda': 'Kalendarz',
@@ -1989,7 +2061,25 @@
       'agenda.whatsapp': 'Wyślij przypomnienie WhatsApp', 'agenda.elimina': 'Usuń',
       'agenda.oggi': 'Dziś', 'agenda.turniLavoro': 'Godziny pracy', 'agenda.feriePermesso': 'Urlop/zwolnienie',
       'agenda.soloQuesto': 'Tylko tę', 'agenda.ancheISuccessivi': 'Także kolejne',
-      'agenda.confermi': 'Potwierdzasz?'
+      'agenda.confermi': 'Potwierdzasz?',
+      'serv.titolo': 'Utwórz usługę',
+      'serv.aggiungi': '+ Dodaj usługę',
+      'serv.vuoto': 'Brak usług: dodaj jedną przyciskiem poniżej.',
+      'serv.hint': 'Zapisuje się sam podczas pisania. Wybranie usługi w Terminarzu automatycznie użyje jej czasu i koloru komórki.',
+      'serv.nome': 'Nazwa',
+      'serv.nomePhCombo': 'Zostaw puste, aby użyć nazw wybranych usług',
+      'serv.nomePh': 'Układanie, koloryzacja, strzyżenie…',
+      'serv.tipo': 'Typ',
+      'serv.semplice': 'Usługa pojedyncza',
+      'serv.combo': 'Zestaw kilku usług',
+      'serv.inclusi': 'Zawarte usługi',
+      'serv.creaPrima': 'Najpierw utwórz kilka pojedynczych usług do połączenia.',
+      'serv.tempoTotale': 'Czas całkowity: {l} min pracy + {p} min działania (automatyczna suma wybranych usług).',
+      'serv.tempoLav': 'Czas pracy (min)',
+      'serv.tempoPosa': 'Czas działania (min)',
+      'serv.colore': 'Kolor komórki',
+      'serv.online': 'Rezerwacja online',
+      'serv.mostraOnline': 'Pokaż na stronie rezerwacji online'
     }
   };
   function linguaCorrente() {
@@ -6001,15 +6091,15 @@
       panel.innerHTML = `
         <div class="sheet-head">
           <div class="name-field">
-            <div class="notes-title">Crea servizio</div>
+            <div class="notes-title">${t('serv.titolo', 'Crea servizio')}</div>
           </div>
         </div>
         <fieldset>
           <div id="serviziList">
-            ${renderServiziListHtml(serviziCache.servizi, 'Nessun servizio ancora: aggiungine uno con il tasto qui sotto.')}
+            ${renderServiziListHtml(serviziCache.servizi, t('serv.vuoto', 'Nessun servizio ancora: aggiungine uno con il tasto qui sotto.'))}
           </div>
-          <button type="button" class="ghost small" id="servizioAddBtn">+ Aggiungi servizio</button>
-          <p class="hint">Si salva da solo mentre scrivi. Scegliendo un servizio nell'Agenda si userà automaticamente il suo tempo e il suo colore in cella.</p>
+          <button type="button" class="ghost small" id="servizioAddBtn">${t('serv.aggiungi', '+ Aggiungi servizio')}</button>
+          <p class="hint">${t('serv.hint', "Si salva da solo mentre scrivi. Scegliendo un servizio nell'Agenda si userà automaticamente il suo tempo e il suo colore in cella.")}</p>
         </fieldset>
         <div class="sheet-footer">
           <span class="save-status" id="serviziSaveStatus"></span>
@@ -7466,49 +7556,49 @@
     return `
       <div class="servizio-row" data-id="${s.id}">
         <div class="field servizio-field-nome">
-          <label>Nome</label>
-          <input type="text" class="servizio-input" data-id="${s.id}" data-field="nome" placeholder="${isCombo ? 'Lascia vuoto per usare i nomi dei servizi scelti' : 'Piega, colore, taglio…'}" value="${escapeHtml(s.nome || '')}">
+          <label>${t('serv.nome', 'Nome')}</label>
+          <input type="text" class="servizio-input" data-id="${s.id}" data-field="nome" placeholder="${isCombo ? t('serv.nomePhCombo', 'Lascia vuoto per usare i nomi dei servizi scelti') : t('serv.nomePh', 'Piega, colore, taglio…')}" value="${escapeHtml(s.nome || '')}">
         </div>
         <div class="field servizio-field-tipo">
-          <label>Tipo</label>
+          <label>${t('serv.tipo', 'Tipo')}</label>
           <select class="servizio-input" data-id="${s.id}" data-field="tipo">
-            <option value="semplice" ${!isCombo ? 'selected' : ''}>Servizio semplice</option>
-            <option value="combo" ${isCombo ? 'selected' : ''}>Combo di più servizi</option>
+            <option value="semplice" ${!isCombo ? 'selected' : ''}>${t('serv.semplice', 'Servizio semplice')}</option>
+            <option value="combo" ${isCombo ? 'selected' : ''}>${t('serv.combo', 'Combo di più servizi')}</option>
           </select>
         </div>
         ${isCombo ? `
         <div class="field servizio-field-combo-lista">
-          <label>Servizi inclusi</label>
+          <label>${t('serv.inclusi', 'Servizi inclusi')}</label>
           <div class="servizio-combo-opzioni">
             ${opzioniCombo.length ? opzioniCombo.map(o => `
               <label class="servizio-combo-opzione">
                 <input type="checkbox" class="servizio-combo-check" data-id="${s.id}" data-sub="${o.id}" ${(s.comboDi || []).includes(o.id) ? 'checked' : ''}>
                 ${escapeHtml(o.nome || 'Senza nome')}
-              </label>`).join('') : '<p class="hint">Crea prima qualche servizio semplice da combinare.</p>'}
+              </label>`).join('') : `<p class="hint">${t('serv.creaPrima', 'Crea prima qualche servizio semplice da combinare.')}</p>`}
           </div>
-          <p class="hint">Tempo totale: ${tempi.lavorazione} min lavorazione + ${tempi.posa} min posa (somma automatica dei servizi scelti).</p>
+          <p class="hint">${t('serv.tempoTotale', 'Tempo totale: {l} min lavorazione + {p} min posa (somma automatica dei servizi scelti).').replace('{l}', tempi.lavorazione).replace('{p}', tempi.posa)}</p>
         </div>` : `
         <div class="field servizio-field-tempo">
-          <label>Tempo di lavorazione (min)</label>
+          <label>${t('serv.tempoLav', 'Tempo di lavorazione (min)')}</label>
           <input type="number" min="0" step="5" class="servizio-input" data-id="${s.id}" data-field="tempoLavorazione" value="${s.tempoLavorazione || 0}">
         </div>
         <div class="field servizio-field-tempo">
-          <label>Tempo di posa (min)</label>
+          <label>${t('serv.tempoPosa', 'Tempo di posa (min)')}</label>
           <input type="number" min="0" step="5" class="servizio-input" data-id="${s.id}" data-field="tempoPosa" placeholder="0" value="${s.tempoPosa ? s.tempoPosa : ''}">
         </div>`}
         <div class="field servizio-field-colore">
-          <label>Colore cella</label>
+          <label>${t('serv.colore', 'Colore cella')}</label>
           <input type="color" class="servizio-input" data-id="${s.id}" data-field="colore" value="${s.colore || '#C9A0AE'}">
         </div>
         <div class="field servizio-field-online">
-          <label>Prenotazione online</label>
+          <label>${t('serv.online', 'Prenotazione online')}</label>
           <label class="servizio-online-toggle">
             <input type="checkbox" class="servizio-online-check" data-id="${s.id}" ${s.prenotabileOnline ? 'checked' : ''}>
-            Mostra nella pagina di prenotazione online
+            ${t('serv.mostraOnline', 'Mostra nella pagina di prenotazione online')}
           </label>
         </div>
         <div class="servizio-row-actions">
-          <button type="button" class="magazzino-delete servizio-delete" data-id="${s.id}">Elimina</button>
+          <button type="button" class="magazzino-delete servizio-delete" data-id="${s.id}">${t('agenda.elimina', 'Elimina')}</button>
         </div>
       </div>`;
   }
@@ -7563,9 +7653,9 @@
       btn.addEventListener('click', () => {
         if (!btn.classList.contains('armed')) {
           btn.classList.add('armed');
-          btn.textContent = 'Confermi?';
+          btn.textContent = t('agenda.confermi', 'Confermi?');
           clearTimeout(btn._armTimer);
-          btn._armTimer = setTimeout(() => { btn.classList.remove('armed'); btn.textContent = 'Elimina'; }, 4000);
+          btn._armTimer = setTimeout(() => { btn.classList.remove('armed'); btn.textContent = t('agenda.elimina', 'Elimina'); }, 4000);
           return;
         }
         clearTimeout(btn._armTimer);
