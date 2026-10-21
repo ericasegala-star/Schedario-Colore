@@ -1505,17 +1505,17 @@
 
 <div class="img-modal" id="imgModal" hidden>
   <button type="button" class="img-modal-close" id="imgModalClose" aria-label="Chiudi" data-i18n-aria="ui.close">×</button>
-  <button type="button" class="img-modal-nav img-modal-prev" id="imgModalPrev" aria-label="Pagina precedente" hidden>‹</button>
+  <button type="button" class="img-modal-nav img-modal-prev" id="imgModalPrev" aria-label="Pagina precedente" data-i18n-aria="sc.pagPrec" hidden>‹</button>
   <div class="img-modal-page" id="imgModalPage">
     <img id="imgModalImg" src="" alt="">
-    <textarea class="img-modal-procedimento" id="imgModalProcedimento" placeholder="Scrivi qui il procedimento…" hidden></textarea>
+    <textarea class="img-modal-procedimento" id="imgModalProcedimento" placeholder="Scrivi qui il procedimento…" data-i18n-placeholder="sc.procedimentoPh" hidden></textarea>
     <div class="img-modal-page-comment" id="imgModalCommentArea" hidden>
-      <input type="text" id="imgModalCommentInput" placeholder="Commento…">
+      <input type="text" id="imgModalCommentInput" placeholder="Commento…" data-i18n-placeholder="sc.commento">
     </div>
-    <button type="button" class="img-modal-page-remove" id="imgModalRemove" hidden>Elimina questa foto</button>
+    <button type="button" class="img-modal-page-remove" id="imgModalRemove" data-i18n="sc.eliminaFoto" hidden>Elimina questa foto</button>
     <div class="img-modal-page-count" id="imgModalPageCount" hidden></div>
   </div>
-  <button type="button" class="img-modal-nav img-modal-next" id="imgModalNext" aria-label="Pagina successiva" hidden>›</button>
+  <button type="button" class="img-modal-nav img-modal-next" id="imgModalNext" aria-label="Pagina successiva" data-i18n-aria="sc.pagSucc" hidden>›</button>
 </div>
 
 <div class="settings-modal" id="settingsModal" hidden>
@@ -1716,7 +1716,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-21.98-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-21.99-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -1829,7 +1829,85 @@
       'isp.confermaClick': 'Click again to confirm',
       'isp.libroEliminato': 'Book deleted.',
       'isp.salvato': 'Saved.',
-      'isp.nonCaricata': 'Could not upload "{f}".'
+      'isp.nonCaricata': 'Could not upload "{f}".',
+      'sc.nessunaSelezionata': 'No card selected',
+      'sc.nessunaSelezionataTxt': 'Create a new card or pick one from the list on the left.',
+      'sc.nomeCliente': 'Client name',
+      'sc.telefonoPh': 'Phone (for WhatsApp)',
+      'sc.meta': 'Created on {c} · updated on {u}',
+      'sc.eliminaScheda': 'Delete card',
+      'sc.mostraNonCompilati': 'Also show the empty fields',
+      'sc.noteEPref': 'Notes and preferences',
+      'sc.notePh': 'E.g. light coverage, not heavy…',
+      'sc.allergie': 'Allergies / sensitivities',
+      'sc.allergiePh': 'Note any known reactions here…',
+      'sc.diagnosi': 'Hair diagnosis',
+      'sc.bianchi': 'White hair',
+      'sc.davanti': 'front',
+      'sc.dietro': 'back',
+      'sc.abbassaTono': 'Lower by one tone',
+      'sc.livFondo': 'Root level',
+      'sc.livLunghezze': 'Mid-length level',
+      'sc.livPunte': 'Ends level',
+      'sc.hintDiagnosi': 'Remember that lightening the base depends on the developer: low volumes = little lift, high volumes = good lift. If the mid-lengths or ends are coloured, the new colour must be the same level or darker.',
+      'sc.obiettivo': 'Goal',
+      'sc.obiettivoPh': 'E.g. keep the base colour, go for white hair coverage…',
+      'sc.tecnicaLinea': 'Technique and services by colour line',
+      'sc.storico': 'Version history',
+      'sc.eliminaVersione': 'Delete this version',
+      'sc.vedi': 'View',
+      'sc.nascondi': 'Hide',
+      'sc.soloUltimeDue': 'Show only the last two',
+      'sc.vediTutte': 'See all versions',
+      'sc.nessunaVersione': 'No previous versions yet. Every time you edit the card and save it or switch client, the previous version is archived here.',
+      'sc.dopoColore': 'After the colour',
+      'sc.cosaFatto': 'What we did in the salon',
+      'sc.cosaFattoPh': 'E.g. restructuring treatment, gloss, blow-dry…',
+      'sc.consigliMant': 'Home maintenance advice',
+      'sc.consigliMantPh': 'E.g. recommended shampoo and mask, how often to wash…',
+      'sc.prossimaVolta': 'For next time',
+      'sc.modifichePh': 'Notes for the next appointment…',
+      'sc.fotoPrimaDopo': 'Before / after photos',
+      'sc.rimuoviFoto': 'Remove photo',
+      'sc.commento': 'Comment…',
+      'sc.aggiungiFoto': '+ Add',
+      'sc.fotoHint': 'Photos are saved automatically, like the rest of the card.',
+      'sc.contatti': 'Contacts',
+      'sc.contattiTxt': 'For doubts, questions or concerns about colour: {x}.',
+      'sc.duplica': 'Duplicate card',
+      'sc.stampa': 'Print card',
+      'sc.scaricaPdf': 'Download card (PDF)',
+      'sc.salva': 'Save',
+      'sc.schedaSalvata': 'Card saved.',
+      'sc.fatto': 'Done',
+      'sc.sicura': 'Sure? Click again to delete',
+      'sc.schedaEliminata': 'Card deleted.',
+      'sc.schedaDuplicata': 'Card duplicated.',
+      'sc.pdfPronto': 'PDF ready: open it and print from there.',
+      'sc.erroreFoto': 'Could not upload "{f}".',
+      'sc.errorePdf': 'Could not generate the PDF.',
+      'sc.formulaBase': 'Base colour formula',
+      'sc.formulaBasePh': 'E.g. 6.1 + 7.21…',
+      'sc.mordenzatura': 'Pre-pigmentation',
+      'sc.correttore': 'Corrector / booster',
+      'sc.lunghezze': 'Mid-lengths',
+      'sc.tonalizzazione': 'Toning',
+      'sc.tecnicaServizi': 'Technique and services',
+      'sc.tecnicaPh': 'E.g. balayage, highlights, treatment…',
+      'sc.glossPh': 'E.g. 1+1/2, process 20 minutes',
+      'sc.ossigeno': 'Oxidant',
+      'sc.minuti': 'minutes',
+      'sc.noSchiaritura': 'no lightening',
+      'sc.schiaritura': 'lightening',
+      'sc.copertura': 'coverage',
+      'sc.tono': 'tone',
+      'sc.toni': 'tones',
+      'sc.nessunDato': 'No data filled in for this version.',
+      'sc.procedimentoPh': 'Write the procedure here…',
+      'sc.eliminaFoto': 'Delete this photo',
+      'sc.pagPrec': 'Previous page',
+      'sc.pagSucc': 'Next page',
+      'sc.nuovaCreata': 'New card created.'
     },
     es: {
       'nav.tecnico': 'Estilista', 'nav.tricologo': 'Tricólogo', 'nav.agenda': 'Agenda',
@@ -1914,7 +1992,85 @@
       'isp.confermaClick': 'Haz clic de nuevo para confirmar',
       'isp.libroEliminato': 'Libro eliminado.',
       'isp.salvato': 'Guardado.',
-      'isp.nonCaricata': 'No se pudo subir "{f}".'
+      'isp.nonCaricata': 'No se pudo subir "{f}".',
+      'sc.nessunaSelezionata': 'Ninguna ficha seleccionada',
+      'sc.nessunaSelezionataTxt': 'Crea una ficha nueva o elige una de la lista de la izquierda.',
+      'sc.nomeCliente': 'Nombre de la clienta',
+      'sc.telefonoPh': 'Teléfono (para WhatsApp)',
+      'sc.meta': 'Creada el {c} · actualizada el {u}',
+      'sc.eliminaScheda': 'Eliminar ficha',
+      'sc.mostraNonCompilati': 'Mostrar también los campos vacíos',
+      'sc.noteEPref': 'Notas y preferencias',
+      'sc.notePh': 'P. ej. cobertura ligera, no pesada…',
+      'sc.allergie': 'Alergias / sensibilidades',
+      'sc.allergiePh': 'Anota aquí posibles reacciones conocidas…',
+      'sc.diagnosi': 'Diagnóstico del cabello',
+      'sc.bianchi': 'Canas',
+      'sc.davanti': 'delante',
+      'sc.dietro': 'detrás',
+      'sc.abbassaTono': 'Bajar un tono',
+      'sc.livFondo': 'Nivel de raíz',
+      'sc.livLunghezze': 'Nivel de medios',
+      'sc.livPunte': 'Nivel de puntas',
+      'sc.hintDiagnosi': 'Recuerda que el aclarado de la raíz depende del oxidante: volúmenes bajos = poco aclarado, volúmenes altos = buen aclarado. Si medios o puntas están coloreados, el nuevo color debe ser del mismo nivel o más oscuro.',
+      'sc.obiettivo': 'Objetivo',
+      'sc.obiettivoPh': 'P. ej. mantener el color base, cubrir las canas…',
+      'sc.tecnicaLinea': 'Técnica y servicios por línea de color',
+      'sc.storico': 'Historial de versiones',
+      'sc.eliminaVersione': 'Eliminar esta versión',
+      'sc.vedi': 'Ver',
+      'sc.nascondi': 'Ocultar',
+      'sc.soloUltimeDue': 'Mostrar solo las dos últimas',
+      'sc.vediTutte': 'Ver todas las versiones',
+      'sc.nessunaVersione': 'Aún no hay versiones anteriores. Cada vez que modificas la ficha y la guardas o cambias de clienta, la versión anterior se archiva aquí.',
+      'sc.dopoColore': 'Después del color',
+      'sc.cosaFatto': 'Qué hicimos en el salón',
+      'sc.cosaFattoPh': 'P. ej. tratamiento reestructurante, gloss, peinado…',
+      'sc.consigliMant': 'Consejos de mantenimiento en casa',
+      'sc.consigliMantPh': 'P. ej. champú y mascarilla recomendados, cada cuánto lavar…',
+      'sc.prossimaVolta': 'Para la próxima vez',
+      'sc.modifichePh': 'Notas para la próxima cita…',
+      'sc.fotoPrimaDopo': 'Fotos antes / después',
+      'sc.rimuoviFoto': 'Quitar foto',
+      'sc.commento': 'Comentario…',
+      'sc.aggiungiFoto': '+ Añadir',
+      'sc.fotoHint': 'Las fotos se guardan automáticamente, como el resto de la ficha.',
+      'sc.contatti': 'Contactos',
+      'sc.contattiTxt': 'Para dudas, preguntas o inquietudes sobre el color: {x}.',
+      'sc.duplica': 'Duplicar ficha',
+      'sc.stampa': 'Imprimir ficha',
+      'sc.scaricaPdf': 'Descargar ficha (PDF)',
+      'sc.salva': 'Guardar',
+      'sc.schedaSalvata': 'Ficha guardada.',
+      'sc.fatto': 'Hecho',
+      'sc.sicura': '¿Segura? Haz clic de nuevo para eliminar',
+      'sc.schedaEliminata': 'Ficha eliminada.',
+      'sc.schedaDuplicata': 'Ficha duplicada.',
+      'sc.pdfPronto': 'PDF listo: ábrelo e imprímelo desde ahí.',
+      'sc.erroreFoto': 'No se pudo subir "{f}".',
+      'sc.errorePdf': 'No se pudo generar el PDF.',
+      'sc.formulaBase': 'Fórmula del color base',
+      'sc.formulaBasePh': 'P. ej. 6.1 + 7.21…',
+      'sc.mordenzatura': 'Mordentado',
+      'sc.correttore': 'Corrector / booster',
+      'sc.lunghezze': 'Medios',
+      'sc.tonalizzazione': 'Matizado',
+      'sc.tecnicaServizi': 'Técnica y servicios',
+      'sc.tecnicaPh': 'P. ej. balayage, mechas, tratamiento…',
+      'sc.glossPh': 'P. ej. 1+1/2, exposición 20 minutos',
+      'sc.ossigeno': 'Oxidante',
+      'sc.minuti': 'minutos',
+      'sc.noSchiaritura': 'sin aclarado',
+      'sc.schiaritura': 'aclarado',
+      'sc.copertura': 'cobertura',
+      'sc.tono': 'tono',
+      'sc.toni': 'tonos',
+      'sc.nessunDato': 'No hay datos rellenados en esta versión.',
+      'sc.procedimentoPh': 'Escribe aquí el procedimiento…',
+      'sc.eliminaFoto': 'Eliminar esta foto',
+      'sc.pagPrec': 'Página anterior',
+      'sc.pagSucc': 'Página siguiente',
+      'sc.nuovaCreata': 'Nueva ficha creada.'
     },
     ro: {
       'nav.tecnico': 'Stilist', 'nav.tricologo': 'Tricolog', 'nav.agenda': 'Agendă',
@@ -1999,7 +2155,85 @@
       'isp.confermaClick': 'Apasă din nou pentru a confirma',
       'isp.libroEliminato': 'Carte ștearsă.',
       'isp.salvato': 'Salvat.',
-      'isp.nonCaricata': 'Nu am reușit să încarc „{f}".'
+      'isp.nonCaricata': 'Nu am reușit să încarc „{f}".',
+      'sc.nessunaSelezionata': 'Nicio fișă selectată',
+      'sc.nessunaSelezionataTxt': 'Creează o fișă nouă sau alege una din lista din stânga.',
+      'sc.nomeCliente': 'Numele clientei',
+      'sc.telefonoPh': 'Telefon (pentru WhatsApp)',
+      'sc.meta': 'Creată pe {c} · actualizată pe {u}',
+      'sc.eliminaScheda': 'Șterge fișa',
+      'sc.mostraNonCompilati': 'Arată și câmpurile necompletate',
+      'sc.noteEPref': 'Note și preferințe',
+      'sc.notePh': 'Ex. acoperire ușoară, nu grea…',
+      'sc.allergie': 'Alergii / sensibilități',
+      'sc.allergiePh': 'Notează aici eventuale reacții cunoscute…',
+      'sc.diagnosi': 'Diagnosticul părului',
+      'sc.bianchi': 'Păr alb',
+      'sc.davanti': 'în față',
+      'sc.dietro': 'în spate',
+      'sc.abbassaTono': 'Coboară cu un ton',
+      'sc.livFondo': 'Nivelul rădăcinii',
+      'sc.livLunghezze': 'Nivelul lungimilor',
+      'sc.livPunte': 'Nivelul vârfurilor',
+      'sc.hintDiagnosi': 'Reține că decolorarea rădăcinii depinde de oxidant: volume mici = decolorare slabă, volume mari = decolorare bună. Dacă lungimile sau vârfurile sunt colorate, noua culoare trebuie să fie de același nivel sau mai închisă.',
+      'sc.obiettivo': 'Obiectiv',
+      'sc.obiettivoPh': 'Ex. păstrarea culorii de bază, acoperirea părului alb…',
+      'sc.tecnicaLinea': 'Tehnică și servicii pe linie de culoare',
+      'sc.storico': 'Istoricul versiunilor',
+      'sc.eliminaVersione': 'Șterge această versiune',
+      'sc.vedi': 'Vezi',
+      'sc.nascondi': 'Ascunde',
+      'sc.soloUltimeDue': 'Arată doar ultimele două',
+      'sc.vediTutte': 'Vezi toate versiunile',
+      'sc.nessunaVersione': 'Încă nicio versiune anterioară. De fiecare dată când modifici fișa și o salvezi sau schimbi clienta, versiunea anterioară este arhivată aici.',
+      'sc.dopoColore': 'După culoare',
+      'sc.cosaFatto': 'Ce am făcut în salon',
+      'sc.cosaFattoPh': 'Ex. tratament de reconstrucție, gloss, coafat…',
+      'sc.consigliMant': 'Sfaturi de întreținere acasă',
+      'sc.consigliMantPh': 'Ex. șampon și mască recomandate, cât de des se spală…',
+      'sc.prossimaVolta': 'Pentru data viitoare',
+      'sc.modifichePh': 'Note pentru următoarea programare…',
+      'sc.fotoPrimaDopo': 'Fotografii înainte / după',
+      'sc.rimuoviFoto': 'Elimină fotografia',
+      'sc.commento': 'Comentariu…',
+      'sc.aggiungiFoto': '+ Adaugă',
+      'sc.fotoHint': 'Fotografiile se salvează automat, ca restul fișei.',
+      'sc.contatti': 'Contacte',
+      'sc.contattiTxt': 'Pentru nelămuriri, întrebări sau nedumeriri despre culoare: {x}.',
+      'sc.duplica': 'Duplică fișa',
+      'sc.stampa': 'Printează fișa',
+      'sc.scaricaPdf': 'Descarcă fișa (PDF)',
+      'sc.salva': 'Salvează',
+      'sc.schedaSalvata': 'Fișă salvată.',
+      'sc.fatto': 'Gata',
+      'sc.sicura': 'Sigură? Apasă din nou pentru a șterge',
+      'sc.schedaEliminata': 'Fișă ștearsă.',
+      'sc.schedaDuplicata': 'Fișă duplicată.',
+      'sc.pdfPronto': 'PDF gata: deschide-l și printează de acolo.',
+      'sc.erroreFoto': 'Nu am reușit să încarc „{f}".',
+      'sc.errorePdf': 'Nu am reușit să generez PDF-ul.',
+      'sc.formulaBase': 'Formula culorii de bază',
+      'sc.formulaBasePh': 'Ex. 6.1 + 7.21…',
+      'sc.mordenzatura': 'Mordansare',
+      'sc.correttore': 'Corector / booster',
+      'sc.lunghezze': 'Lungimi',
+      'sc.tonalizzazione': 'Tonalizare',
+      'sc.tecnicaServizi': 'Tehnică și servicii',
+      'sc.tecnicaPh': 'Ex. balayage, șuvițe, tratament…',
+      'sc.glossPh': 'Ex. 1+1/2, timp de pauză 20 minute',
+      'sc.ossigeno': 'Oxidant',
+      'sc.minuti': 'minute',
+      'sc.noSchiaritura': 'fără decolorare',
+      'sc.schiaritura': 'decolorare',
+      'sc.copertura': 'acoperire',
+      'sc.tono': 'ton',
+      'sc.toni': 'tonuri',
+      'sc.nessunDato': 'Nicio dată completată în această versiune.',
+      'sc.procedimentoPh': 'Scrie aici procedura…',
+      'sc.eliminaFoto': 'Șterge această fotografie',
+      'sc.pagPrec': 'Pagina anterioară',
+      'sc.pagSucc': 'Pagina următoare',
+      'sc.nuovaCreata': 'Fișă nouă creată.'
     },
     sq: {
       'nav.tecnico': 'Stiliste', 'nav.tricologo': 'Trikologe', 'nav.agenda': 'Agjenda',
@@ -2084,7 +2318,85 @@
       'isp.confermaClick': 'Kliko përsëri për të konfirmuar',
       'isp.libroEliminato': 'Libri u fshi.',
       'isp.salvato': 'U ruajt.',
-      'isp.nonCaricata': 'Nuk arrita të ngarkoj "{f}".'
+      'isp.nonCaricata': 'Nuk arrita të ngarkoj "{f}".',
+      'sc.nessunaSelezionata': 'Asnjë kartelë e zgjedhur',
+      'sc.nessunaSelezionataTxt': 'Krijo një kartelë të re ose zgjidh një nga lista në të majtë.',
+      'sc.nomeCliente': 'Emri i klientes',
+      'sc.telefonoPh': 'Telefoni (për WhatsApp)',
+      'sc.meta': 'Krijuar më {c} · përditësuar më {u}',
+      'sc.eliminaScheda': 'Fshi kartelën',
+      'sc.mostraNonCompilati': 'Shfaq edhe fushat e paplotësuara',
+      'sc.noteEPref': 'Shënime dhe preferenca',
+      'sc.notePh': 'P.sh. mbulim i lehtë, jo i rëndë…',
+      'sc.allergie': 'Alergji / ndjeshmëri',
+      'sc.allergiePh': 'Shënoji këtu reagimet e njohura…',
+      'sc.diagnosi': 'Diagnoza e flokëve',
+      'sc.bianchi': 'Flokë të bardhë',
+      'sc.davanti': 'përpara',
+      'sc.dietro': 'prapa',
+      'sc.abbassaTono': 'Ule me një ton',
+      'sc.livFondo': 'Niveli i rrënjës',
+      'sc.livLunghezze': 'Niveli i gjatësive',
+      'sc.livPunte': 'Niveli i skajeve',
+      'sc.hintDiagnosi': 'Mos harro që çelja e rrënjës varet nga oksidanti: vëllime të ulëta = çelje e vogël, vëllime të larta = çelje e mirë. Nëse gjatësitë ose skajet janë të ngjyrosura, ngjyra e re duhet të jetë e të njëjtit nivel ose më e errët.',
+      'sc.obiettivo': 'Qëllimi',
+      'sc.obiettivoPh': 'P.sh. ruajtja e ngjyrës bazë, mbulimi i flokëve të bardhë…',
+      'sc.tecnicaLinea': 'Teknika dhe shërbimet sipas linjës së ngjyrës',
+      'sc.storico': 'Historiku i versioneve',
+      'sc.eliminaVersione': 'Fshi këtë version',
+      'sc.vedi': 'Shih',
+      'sc.nascondi': 'Fshih',
+      'sc.soloUltimeDue': 'Shfaq vetëm dy të fundit',
+      'sc.vediTutte': 'Shih të gjitha versionet',
+      'sc.nessunaVersione': 'Ende asnjë version i mëparshëm. Sa herë që ndryshon kartelën dhe e ruan ose ndërron klienten, versioni i mëparshëm arkivohet këtu.',
+      'sc.dopoColore': 'Pas ngjyrës',
+      'sc.cosaFatto': 'Çfarë bëmë në sallon',
+      'sc.cosaFattoPh': 'P.sh. trajtim restrukturues, gloss, feni…',
+      'sc.consigliMant': 'Këshilla mirëmbajtjeje në shtëpi',
+      'sc.consigliMantPh': 'P.sh. shampo dhe maskë e rekomanduar, sa shpesh të lahet…',
+      'sc.prossimaVolta': 'Për herën tjetër',
+      'sc.modifichePh': 'Shënime për takimin e radhës…',
+      'sc.fotoPrimaDopo': 'Foto para / pas',
+      'sc.rimuoviFoto': 'Hiq foton',
+      'sc.commento': 'Koment…',
+      'sc.aggiungiFoto': '+ Shto',
+      'sc.fotoHint': 'Fotot ruhen automatikisht, si pjesa tjetër e kartelës.',
+      'sc.contatti': 'Kontakte',
+      'sc.contattiTxt': 'Për dyshime, pyetje ose paqartësi mbi ngjyrën: {x}.',
+      'sc.duplica': 'Dyfisho kartelën',
+      'sc.stampa': 'Printo kartelën',
+      'sc.scaricaPdf': 'Shkarko kartelën (PDF)',
+      'sc.salva': 'Ruaj',
+      'sc.schedaSalvata': 'Kartela u ruajt.',
+      'sc.fatto': 'U krye',
+      'sc.sicura': 'Të sigurt? Kliko përsëri për ta fshirë',
+      'sc.schedaEliminata': 'Kartela u fshi.',
+      'sc.schedaDuplicata': 'Kartela u dyfishua.',
+      'sc.pdfPronto': 'PDF gati: hape dhe printoje që andej.',
+      'sc.erroreFoto': 'Nuk arrita të ngarkoj "{f}".',
+      'sc.errorePdf': 'Nuk arrita të gjeneroj PDF-në.',
+      'sc.formulaBase': 'Formula e ngjyrës bazë',
+      'sc.formulaBasePh': 'P.sh. 6.1 + 7.21…',
+      'sc.mordenzatura': 'Mordansim',
+      'sc.correttore': 'Korrektor / booster',
+      'sc.lunghezze': 'Gjatësitë',
+      'sc.tonalizzazione': 'Tonalizim',
+      'sc.tecnicaServizi': 'Teknika dhe shërbimet',
+      'sc.tecnicaPh': 'P.sh. balayage, çelje, trajtim…',
+      'sc.glossPh': 'P.sh. 1+1/2, pritje 20 minuta',
+      'sc.ossigeno': 'Oksidant',
+      'sc.minuti': 'minuta',
+      'sc.noSchiaritura': 'pa çelje',
+      'sc.schiaritura': 'çelje',
+      'sc.copertura': 'mbulim',
+      'sc.tono': 'ton',
+      'sc.toni': 'tone',
+      'sc.nessunDato': 'Asnjë të dhënë e plotësuar në këtë version.',
+      'sc.procedimentoPh': 'Shkruaj këtu procedurën…',
+      'sc.eliminaFoto': 'Fshi këtë foto',
+      'sc.pagPrec': 'Faqja e mëparshme',
+      'sc.pagSucc': 'Faqja tjetër',
+      'sc.nuovaCreata': 'Kartela e re u krijua.'
     },
     pl: {
       'nav.tecnico': 'Stylista', 'nav.tricologo': 'Trycholog', 'nav.agenda': 'Kalendarz',
@@ -2169,7 +2481,85 @@
       'isp.confermaClick': 'Kliknij ponownie, aby potwierdzić',
       'isp.libroEliminato': 'Księga usunięta.',
       'isp.salvato': 'Zapisano.',
-      'isp.nonCaricata': 'Nie udało się wczytać „{f}".'
+      'isp.nonCaricata': 'Nie udało się wczytać „{f}".',
+      'sc.nessunaSelezionata': 'Nie wybrano karty',
+      'sc.nessunaSelezionataTxt': 'Utwórz nową kartę lub wybierz jedną z listy po lewej.',
+      'sc.nomeCliente': 'Imię klientki',
+      'sc.telefonoPh': 'Telefon (do WhatsApp)',
+      'sc.meta': 'Utworzona {c} · zaktualizowana {u}',
+      'sc.eliminaScheda': 'Usuń kartę',
+      'sc.mostraNonCompilati': 'Pokaż także niewypełnione pola',
+      'sc.noteEPref': 'Notatki i preferencje',
+      'sc.notePh': 'Np. lekkie krycie, nie ciężkie…',
+      'sc.allergie': 'Alergie / nadwrażliwości',
+      'sc.allergiePh': 'Zanotuj tu znane reakcje…',
+      'sc.diagnosi': 'Diagnoza włosów',
+      'sc.bianchi': 'Siwe włosy',
+      'sc.davanti': 'z przodu',
+      'sc.dietro': 'z tyłu',
+      'sc.abbassaTono': 'Obniż o jeden ton',
+      'sc.livFondo': 'Poziom odrostów',
+      'sc.livLunghezze': 'Poziom długości',
+      'sc.livPunte': 'Poziom końcówek',
+      'sc.hintDiagnosi': 'Pamiętaj, że rozjaśnienie odrostu zależy od utleniacza: niskie objętości = małe rozjaśnienie, wysokie objętości = dobre rozjaśnienie. Jeśli długości lub końcówki są farbowane, nowy kolor musi być na tym samym poziomie lub ciemniejszy.',
+      'sc.obiettivo': 'Cel',
+      'sc.obiettivoPh': 'Np. zachowanie koloru bazowego, pokrycie siwych włosów…',
+      'sc.tecnicaLinea': 'Technika i usługi według linii koloru',
+      'sc.storico': 'Historia wersji',
+      'sc.eliminaVersione': 'Usuń tę wersję',
+      'sc.vedi': 'Zobacz',
+      'sc.nascondi': 'Ukryj',
+      'sc.soloUltimeDue': 'Pokaż tylko ostatnie dwie',
+      'sc.vediTutte': 'Zobacz wszystkie wersje',
+      'sc.nessunaVersione': 'Brak wcześniejszych wersji. Za każdym razem, gdy zmieniasz kartę i ją zapisujesz lub zmieniasz klientkę, poprzednia wersja jest archiwizowana tutaj.',
+      'sc.dopoColore': 'Po koloryzacji',
+      'sc.cosaFatto': 'Co zrobiłyśmy w salonie',
+      'sc.cosaFattoPh': 'Np. zabieg odbudowujący, gloss, układanie…',
+      'sc.consigliMant': 'Wskazówki pielęgnacji w domu',
+      'sc.consigliMantPh': 'Np. polecany szampon i maska, jak często myć…',
+      'sc.prossimaVolta': 'Na następny raz',
+      'sc.modifichePh': 'Notatki na następną wizytę…',
+      'sc.fotoPrimaDopo': 'Zdjęcia przed / po',
+      'sc.rimuoviFoto': 'Usuń zdjęcie',
+      'sc.commento': 'Komentarz…',
+      'sc.aggiungiFoto': '+ Dodaj',
+      'sc.fotoHint': 'Zdjęcia zapisują się automatycznie, jak reszta karty.',
+      'sc.contatti': 'Kontakt',
+      'sc.contattiTxt': 'W razie wątpliwości, pytań lub obaw dotyczących koloru: {x}.',
+      'sc.duplica': 'Duplikuj kartę',
+      'sc.stampa': 'Drukuj kartę',
+      'sc.scaricaPdf': 'Pobierz kartę (PDF)',
+      'sc.salva': 'Zapisz',
+      'sc.schedaSalvata': 'Karta zapisana.',
+      'sc.fatto': 'Gotowe',
+      'sc.sicura': 'Na pewno? Kliknij ponownie, aby usunąć',
+      'sc.schedaEliminata': 'Karta usunięta.',
+      'sc.schedaDuplicata': 'Karta zduplikowana.',
+      'sc.pdfPronto': 'PDF gotowy: otwórz go i wydrukuj stamtąd.',
+      'sc.erroreFoto': 'Nie udało się wczytać „{f}".',
+      'sc.errorePdf': 'Nie udało się wygenerować PDF.',
+      'sc.formulaBase': 'Formuła koloru bazowego',
+      'sc.formulaBasePh': 'Np. 6.1 + 7.21…',
+      'sc.mordenzatura': 'Zaprawa',
+      'sc.correttore': 'Korektor / booster',
+      'sc.lunghezze': 'Długości',
+      'sc.tonalizzazione': 'Tonowanie',
+      'sc.tecnicaServizi': 'Technika i usługi',
+      'sc.tecnicaPh': 'Np. balayage, pasemka, zabieg…',
+      'sc.glossPh': 'Np. 1+1/2, czas działania 20 minut',
+      'sc.ossigeno': 'Utleniacz',
+      'sc.minuti': 'minut',
+      'sc.noSchiaritura': 'bez rozjaśnienia',
+      'sc.schiaritura': 'rozjaśnienie',
+      'sc.copertura': 'krycie',
+      'sc.tono': 'ton',
+      'sc.toni': 'tony',
+      'sc.nessunDato': 'Brak wypełnionych danych w tej wersji.',
+      'sc.procedimentoPh': 'Wpisz tutaj opis wykonania…',
+      'sc.eliminaFoto': 'Usuń to zdjęcie',
+      'sc.pagPrec': 'Poprzednia strona',
+      'sc.pagSucc': 'Następna strona',
+      'sc.nuovaCreata': 'Utworzono nową kartę.'
     }
   };
   function linguaCorrente() {
@@ -3818,6 +4208,20 @@
     return anyTempo || anyFormula;
   }
 
+  // Traduce le diciture fisse delle tabelle dosi (Ossigeno, toni, schiaritura, copertura, minuti)
+  // lasciando intatti i numeri e i "vol": parola per parola, perché cambia solo il testo, non i dati.
+  function trDose(str) {
+    return String(str).replace(/no schiaritura|schiaritura|copertura|Ossigeno|minuti|toni|tono/g, m => ({
+      'no schiaritura': () => t('sc.noSchiaritura', 'no schiaritura'),
+      'schiaritura': () => t('sc.schiaritura', 'schiaritura'),
+      'copertura': () => t('sc.copertura', 'copertura'),
+      'Ossigeno': () => t('sc.ossigeno', 'Ossigeno'),
+      'minuti': () => t('sc.minuti', 'minuti'),
+      'toni': () => t('sc.toni', 'toni'),
+      'tono': () => t('sc.tono', 'tono')
+    }[m]()));
+  }
+
   function renderVersionLineBlock(data, lineKey) {
     const line = LINES[lineKey];
     const tempi = (lineKey === 'time' ? data.tempiTime : data.tempiGreen) || {};
@@ -3825,15 +4229,15 @@
 
     const groupsHtml = line.groups.map(g => `
       <div class="dose-group">
-        <div class="dose-title">${g.title}</div>
+        <div class="dose-title">${trDose(g.title)}</div>
         <div class="dose-table-wrap">
           <table class="dose-table">
-            <thead><tr>${g.cols.map(col => `<th>${col.label}</th>`).join('')}</tr></thead>
+            <thead><tr>${g.cols.map(col => `<th>${trDose(col.label)}</th>`).join('')}</tr></thead>
             <tbody><tr>
               ${g.cols.map(col => {
                 const key = g.key + '|' + col.key;
                 const cell = tempi[key] || { on: false, min: '' };
-                return `<td>${cell.on ? ('✓ ' + escapeHtml(cell.min || col.hint)) : '—'}</td>`;
+                return `<td>${cell.on ? ('✓ ' + escapeHtml(cell.min || trDose(col.hint))) : '—'}</td>`;
               }).join('')}
             </tr></tbody>
           </table>
@@ -3842,17 +4246,17 @@
 
     const fRows = [];
     const addF = (label, value) => { if (value) fRows.push(`<div class="field"><label>${label}</label><div class="version-readonly-value">${escapeHtml(value)}</div></div>`); };
-    addF('Formula colore base', formula.base);
+    addF(t('sc.formulaBase', 'Formula colore base'), formula.base);
     const row2a = [];
-    if (formula.mordenzatura) row2a.push(`<div class="field"><label>Mordenzatura</label><div class="version-readonly-value">${escapeHtml(formula.mordenzatura)}</div></div>`);
-    if (formula.correttore) row2a.push(`<div class="field"><label>Correttore / booster</label><div class="version-readonly-value">${escapeHtml(formula.correttore)}</div></div>`);
+    if (formula.mordenzatura) row2a.push(`<div class="field"><label>${t('sc.mordenzatura', "Mordenzatura")}</label><div class="version-readonly-value">${escapeHtml(formula.mordenzatura)}</div></div>`);
+    if (formula.correttore) row2a.push(`<div class="field"><label>${t('sc.correttore', "Correttore / booster")}</label><div class="version-readonly-value">${escapeHtml(formula.correttore)}</div></div>`);
     if (row2a.length) fRows.push(`<div class="row2">${row2a.join('')}</div>`);
     const row2b = [];
-    if (formula.lunghezze) row2b.push(`<div class="field"><label>Lunghezze</label><div class="version-readonly-value">${escapeHtml(formula.lunghezze)}</div></div>`);
-    if (formula.tonalizzazione) row2b.push(`<div class="field"><label>Tonalizzazione</label><div class="version-readonly-value">${escapeHtml(formula.tonalizzazione)}</div></div>`);
+    if (formula.lunghezze) row2b.push(`<div class="field"><label>${t('sc.lunghezze', "Lunghezze")}</label><div class="version-readonly-value">${escapeHtml(formula.lunghezze)}</div></div>`);
+    if (formula.tonalizzazione) row2b.push(`<div class="field"><label>${t('sc.tonalizzazione', "Tonalizzazione")}</label><div class="version-readonly-value">${escapeHtml(formula.tonalizzazione)}</div></div>`);
     if (row2b.length) fRows.push(`<div class="row2">${row2b.join('')}</div>`);
-    addF('Tecnica e servizi', formula.tecnica);
-    addF('Tonalizzazione Forever Gloss', formula.gloss);
+    addF(t('sc.tecnicaServizi', 'Tecnica e servizi'), formula.tecnica);
+    addF(t('sc.tonalizzazione', 'Tonalizzazione') + ' Forever Gloss', formula.gloss);
 
     return `
       <div class="line-block ${lineKey}">
@@ -3867,29 +4271,29 @@
   function renderVersionDetailHtml(data) {
     const parts = [];
 
-    if (data.note) parts.push(`<fieldset><legend>Note e preferenze</legend><div class="version-readonly-value">${escapeHtml(data.note)}</div></fieldset>`);
-    if (data.allergie) parts.push(`<fieldset><legend>Allergie / ipersensibilità</legend><div class="version-readonly-value">${escapeHtml(data.allergie)}</div></fieldset>`);
+    if (data.note) parts.push(`<fieldset><legend>${t('sc.noteEPref', "Note e preferenze")}</legend><div class="version-readonly-value">${escapeHtml(data.note)}</div></fieldset>`);
+    if (data.allergie) parts.push(`<fieldset><legend>${t('sc.allergie', "Allergie / ipersensibilità")}</legend><div class="version-readonly-value">${escapeHtml(data.allergie)}</div></fieldset>`);
 
     const diagRows = [];
     const addD = (label, value) => { if (value) diagRows.push(`<div class="field"><label>${label}</label><div class="version-readonly-value">${escapeHtml(value)}</div></div>`); };
-    addD('Capelli bianchi — davanti', bianchiLabel(data.bianchiDavanti));
-    addD('Capelli bianchi — dietro', bianchiLabel(data.bianchiDietro));
+    addD(t('sc.bianchi', 'Capelli bianchi') + ' — ' + t('sc.davanti', 'davanti'), bianchiLabel(data.bianchiDavanti));
+    addD(t('sc.bianchi', 'Capelli bianchi') + ' — ' + t('sc.dietro', 'dietro'), bianchiLabel(data.bianchiDietro));
     const livRow = [];
-    if (data.livFondo) livRow.push(`<div class="field"><label>Livello di fondo</label><div class="version-readonly-value">${escapeHtml(data.livFondo)}</div></div>`);
-    if (data.livLunghezze) livRow.push(`<div class="field"><label>Livello di lunghezze</label><div class="version-readonly-value">${escapeHtml(data.livLunghezze)}</div></div>`);
-    if (data.livPunte) livRow.push(`<div class="field"><label>Livello punte</label><div class="version-readonly-value">${escapeHtml(data.livPunte)}</div></div>`);
+    if (data.livFondo) livRow.push(`<div class="field"><label>${t('sc.livFondo', "Livello di fondo")}</label><div class="version-readonly-value">${escapeHtml(data.livFondo)}</div></div>`);
+    if (data.livLunghezze) livRow.push(`<div class="field"><label>${t('sc.livLunghezze', "Livello di lunghezze")}</label><div class="version-readonly-value">${escapeHtml(data.livLunghezze)}</div></div>`);
+    if (data.livPunte) livRow.push(`<div class="field"><label>${t('sc.livPunte', "Livello punte")}</label><div class="version-readonly-value">${escapeHtml(data.livPunte)}</div></div>`);
     if (livRow.length) diagRows.push(`<div class="row3">${livRow.join('')}</div>`);
-    addD('Obiettivo', data.obiettivo);
-    if (diagRows.length) parts.push(`<fieldset><legend>Diagnosi capello</legend>${diagRows.join('')}</fieldset>`);
+    addD(t('sc.obiettivo', 'Obiettivo'), data.obiettivo);
+    if (diagRows.length) parts.push(`<fieldset><legend>${t('sc.diagnosi', "Diagnosi capello")}</legend>${diagRows.join('')}</fieldset>`);
 
     const lineBlocksHtml = ['time', 'green']
       .filter(key => lineHasContent(data, key))
       .map(key => renderVersionLineBlock(data, key))
       .join('');
-    if (lineBlocksHtml) parts.push(`<fieldset><legend>Tecnica e servizi per linea colore</legend>${lineBlocksHtml}</fieldset>`);
-    if (data.postColoreSalone || data.consigliMantenimento) parts.push(`<fieldset><legend>Dopo il colore</legend>${data.postColoreSalone ? `<div class="version-readonly-label">Cosa abbiamo fatto in salone</div><div class="version-readonly-value">${escapeHtml(data.postColoreSalone)}</div>` : ''}${data.consigliMantenimento ? `<div class="version-readonly-label">Consigli mantenimento a casa</div><div class="version-readonly-value">${escapeHtml(data.consigliMantenimento)}</div>` : ''}</fieldset>`);
+    if (lineBlocksHtml) parts.push(`<fieldset><legend>${t('sc.tecnicaLinea', "Tecnica e servizi per linea colore")}</legend>${lineBlocksHtml}</fieldset>`);
+    if (data.postColoreSalone || data.consigliMantenimento) parts.push(`<fieldset><legend>${t('sc.dopoColore', "Dopo il colore")}</legend>${data.postColoreSalone ? `<div class="version-readonly-label">${t('sc.cosaFatto', "Cosa abbiamo fatto in salone")}</div><div class="version-readonly-value">${escapeHtml(data.postColoreSalone)}</div>` : ''}${data.consigliMantenimento ? `<div class="version-readonly-label">${t('sc.consigliMant', "Consigli mantenimento a casa")}</div><div class="version-readonly-value">${escapeHtml(data.consigliMantenimento)}</div>` : ''}</fieldset>`);
 
-    if (data.modifiche) parts.push(`<fieldset><legend>Per la prossima volta</legend><div class="version-readonly-value">${escapeHtml(data.modifiche)}</div></fieldset>`);
+    if (data.modifiche) parts.push(`<fieldset><legend>${t('sc.prossimaVolta', "Per la prossima volta")}</legend><div class="version-readonly-value">${escapeHtml(data.modifiche)}</div></fieldset>`);
 
     if (Array.isArray(data.foto) && data.foto.length) {
       const fotoHtml = data.foto.map(f => `
@@ -3897,10 +4301,10 @@
           <div class="foto-thumb"><img src="${f.dataUrl}" alt="${escapeHtml(f.name || '')}"></div>
           ${f.commento ? `<div class="version-readonly-value small">${escapeHtml(f.commento)}</div>` : ''}
         </div>`).join('');
-      parts.push(`<fieldset><legend>Foto prima / dopo</legend><div class="foto-grid">${fotoHtml}</div></fieldset>`);
+      parts.push(`<fieldset><legend>${t('sc.fotoPrimaDopo', "Foto prima / dopo")}</legend><div class="foto-grid">${fotoHtml}</div></fieldset>`);
     }
 
-    if (!parts.length) return '<p class="version-empty">Nessun dato compilato in questa versione.</p>';
+    if (!parts.length) return `<p class="version-empty">${t('sc.nessunDato', "Nessun dato compilato in questa versione.")}</p>`;
     return `<div class="version-full">${parts.join('')}</div>`;
   }
 
@@ -5373,10 +5777,10 @@
 
     const groupsHtml = line.groups.map(g => `
       <div class="dose-group">
-        <div class="dose-title">${g.title}</div>
+        <div class="dose-title">${trDose(g.title)}</div>
         <div class="dose-table-wrap">
           <table class="dose-table">
-            <thead><tr>${g.cols.map(col => `<th>${col.label}</th>`).join('')}</tr></thead>
+            <thead><tr>${g.cols.map(col => `<th>${trDose(col.label)}</th>`).join('')}</tr></thead>
             <tbody><tr>
               ${g.cols.map(col => {
                 const key = g.key + '|' + col.key;
@@ -5384,7 +5788,7 @@
                 return `<td>
                   <div class="cell-row">
                     <input type="checkbox" class="tempo-check" data-line="${lineKey}" data-key="${key}" ${cell.on ? 'checked' : ''} ${dis}>
-                    <input type="text" class="tempo-min" data-line="${lineKey}" data-key="${key}" placeholder="${readOnly ? '' : col.hint}" value="${escapeHtml(cell.min)}" ${ro}>
+                    <input type="text" class="tempo-min" data-line="${lineKey}" data-key="${key}" placeholder="${readOnly ? '' : trDose(col.hint)}" value="${escapeHtml(cell.min)}" ${ro}>
                   </div>
                 </td>`;
               }).join('')}
@@ -5400,12 +5804,12 @@
           ${groupsHtml}
           <div class="formula-grid">
             <div class="field${hc(formula.base)}">
-              <label>Formula colore base</label>
-              <textarea id="f-${prefix}-base" class="field-autosize" rows="1" ${readOnly ? '' : 'placeholder="Es. 6.1 + 7.21…"'} ${ro}>${escapeHtml(formula.base)}</textarea>
+              <label>${t('sc.formulaBase', "Formula colore base")}</label>
+              <textarea id="f-${prefix}-base" class="field-autosize" rows="1" ${readOnly ? '' : `placeholder="${t('sc.formulaBasePh', "Es. 6.1 + 7.21…")}"`} ${ro}>${escapeHtml(formula.base)}</textarea>
             </div>
             <div class="row2">
               <div class="field${hc(formula.mordenzatura)}">
-                <label>Mordenzatura</label>
+                <label>${t('sc.mordenzatura', "Mordenzatura")}</label>
                 ${readOnly ? `
                 <input type="text" id="f-${prefix}-mordenzatura" value="${escapeHtml(formula.mordenzatura)}" ${ro}>` : `
                 <div class="field-rich">
@@ -5414,27 +5818,27 @@
                 </div>`}
               </div>
               <div class="field${hc(formula.correttore)}">
-                <label>Correttore / booster</label>
+                <label>${t('sc.correttore', "Correttore / booster")}</label>
                 <input type="text" id="f-${prefix}-correttore" value="${escapeHtml(formula.correttore)}" ${ro}>
               </div>
             </div>
             <div class="row2">
               <div class="field${hc(formula.lunghezze)}">
-                <label>Lunghezze</label>
+                <label>${t('sc.lunghezze', "Lunghezze")}</label>
                 <input type="text" id="f-${prefix}-lunghezze" value="${escapeHtml(formula.lunghezze)}" ${ro}>
               </div>
               <div class="field${hc(formula.tonalizzazione)}">
-                <label>Tonalizzazione</label>
+                <label>${t('sc.tonalizzazione', "Tonalizzazione")}</label>
                 <textarea id="f-${prefix}-tonalizzazione" class="field-autosize" rows="1" ${ro}>${escapeHtml(formula.tonalizzazione)}</textarea>
               </div>
             </div>
             <div class="field${hc(formula.tecnica)}">
-              <label>Tecnica e servizi</label>
-              <textarea id="f-${prefix}-tecnica" class="field-autosize" rows="1" ${readOnly ? '' : 'placeholder="Es. balayage, tocco di luce, trattamento…"'} ${ro}>${escapeHtml(formula.tecnica)}</textarea>
+              <label>${t('sc.tecnicaServizi', "Tecnica e servizi")}</label>
+              <textarea id="f-${prefix}-tecnica" class="field-autosize" rows="1" ${readOnly ? '' : `placeholder="${t('sc.tecnicaPh', "Es. balayage, tocco di luce, trattamento…")}"`} ${ro}>${escapeHtml(formula.tecnica)}</textarea>
             </div>
             <div class="field${hc(formula.gloss)}">
-              <label>Tonalizzazione Forever Gloss</label>
-              <input type="text" id="f-${prefix}-gloss" ${readOnly ? '' : 'placeholder="Es. 1+1/2, posa 20 minuti"'} value="${escapeHtml(formula.gloss)}" ${ro}>
+              <label>${t('sc.tonalizzazione', "Tonalizzazione")} Forever Gloss</label>
+              <input type="text" id="f-${prefix}-gloss" ${readOnly ? '' : `placeholder="${t('sc.glossPh', "Es. 1+1/2, posa 20 minuti")}"`} value="${escapeHtml(formula.gloss)}" ${ro}>
             </div>
           </div>
         </div>
@@ -6273,89 +6677,89 @@
       panel.innerHTML = `
         <div class="sheet-head">
           <div class="name-field">
-            <input type="text" placeholder="Nome cliente" value="" disabled>
+            <input type="text" placeholder="${t('sc.nomeCliente', "Nome cliente")}" value="" disabled>
             <div class="meta">Modulo vuoto da stampare</div>
           </div>
           <button class="primary small" id="printBlankBtn">Stampa modulo</button>
         </div>
 
         <fieldset>
-          <legend>Note e preferenze</legend>
+          <legend>${t('sc.noteEPref', "Note e preferenze")}</legend>
           <div class="field">
             <textarea readonly></textarea>
           </div>
         </fieldset>
 
         <fieldset>
-          <legend>Diagnosi capello</legend>
+          <legend>${t('sc.diagnosi', "Diagnosi capello")}</legend>
           <div class="field">
-            <label>Capelli bianchi — <strong>davanti</strong></label>
+            <label>${t('sc.bianchi', "Capelli bianchi")} — <strong>${t('sc.davanti', "davanti")}</strong></label>
             <div class="choice-group bianchi-row">
               ${BIANCHI_OPTIONS.map(o => `
                 <label class="choice">
                   <input type="radio" disabled> ${o.l}
-                  ${BIANCHI_ABBASSA_TONO.includes(o.v) ? '<span class="bianchi-tag-inline">Abbassare di un tono</span>' : ''}
+                  ${BIANCHI_ABBASSA_TONO.includes(o.v) ? `<span class="bianchi-tag-inline">${t('sc.abbassaTono', "Abbassare di un tono")}</span>` : ''}
                 </label>`).join('')}
             </div>
           </div>
           <div class="field">
-            <label>Capelli bianchi — <strong>dietro</strong></label>
+            <label>${t('sc.bianchi', "Capelli bianchi")} — <strong>${t('sc.dietro', "dietro")}</strong></label>
             <div class="choice-group bianchi-row">
               ${BIANCHI_OPTIONS.map(o => `
                 <label class="choice">
                   <input type="radio" disabled> ${o.l}
-                  ${BIANCHI_ABBASSA_TONO.includes(o.v) ? '<span class="bianchi-tag-inline">Abbassare di un tono</span>' : ''}
+                  ${BIANCHI_ABBASSA_TONO.includes(o.v) ? `<span class="bianchi-tag-inline">${t('sc.abbassaTono', "Abbassare di un tono")}</span>` : ''}
                 </label>`).join('')}
             </div>
           </div>
           <div class="row3">
             <div class="field">
-              <label>Livello di fondo</label>
+              <label>${t('sc.livFondo', "Livello di fondo")}</label>
               <input type="text" value="" readonly>
             </div>
             <div class="field">
-              <label>Livello di lunghezze</label>
+              <label>${t('sc.livLunghezze', "Livello di lunghezze")}</label>
               <input type="text" value="" readonly>
             </div>
             <div class="field">
-              <label>Livello punte</label>
+              <label>${t('sc.livPunte', "Livello punte")}</label>
               <input type="text" value="" readonly>
             </div>
           </div>
           <div class="field">
-            <label>Obiettivo</label>
+            <label>${t('sc.obiettivo', "Obiettivo")}</label>
             <textarea readonly></textarea>
           </div>
         </fieldset>
 
         <fieldset>
-          <legend>Tecnica e servizi per linea colore</legend>
+          <legend>${t('sc.tecnicaLinea', "Tecnica e servizi per linea colore")}</legend>
           ${renderLineBlock(bc, 'time', true)}
           ${renderLineBlock(bc, 'green', true)}
         </fieldset>
 
         <fieldset>
-          <legend>Dopo il colore</legend>
+          <legend>${t('sc.dopoColore', "Dopo il colore")}</legend>
           <div class="field">
-            <label>Cosa abbiamo fatto in salone</label>
+            <label>${t('sc.cosaFatto', "Cosa abbiamo fatto in salone")}</label>
             <textarea readonly></textarea>
           </div>
           <div class="field">
-            <label>Consigli mantenimento a casa</label>
+            <label>${t('sc.consigliMant', "Consigli mantenimento a casa")}</label>
             <textarea readonly></textarea>
           </div>
         </fieldset>
 
         <fieldset>
-          <legend>Per la prossima volta</legend>
+          <legend>${t('sc.prossimaVolta', "Per la prossima volta")}</legend>
           <div class="field">
             <textarea readonly></textarea>
           </div>
         </fieldset>
 
         <fieldset class="contatti-tecnico">
-          <legend>Contatti</legend>
-          <p class="hint hint-contatti">Per dubbi, domande o perplessità sul colore: ${escapeHtml(CONTATTO_TECNICO_COLORE)}.</p>
+          <legend>${t('sc.contatti', "Contatti")}</legend>
+          <p class="hint hint-contatti">${t('sc.contattiTxt', "Per dubbi, domande o perplessità sul colore: {x}.").replace('{x}', escapeHtml(CONTATTO_TECNICO_COLORE))}</p>
         </fieldset>
       `;
       return;
@@ -6476,8 +6880,8 @@
     if (!c) {
       panel.innerHTML = `
         <div class="placeholder">
-          <h2>Nessuna scheda selezionata</h2>
-          <p>Crea una nuova scheda oppure scegline una dall'elenco a sinistra.</p>
+          <h2>${t('sc.nessunaSelezionata', "Nessuna scheda selezionata")}</h2>
+          <p>${t('sc.nessunaSelezionataTxt', "Crea una nuova scheda oppure scegline una dall'elenco a sinistra.")}</p>
         </div>`;
       return;
     }
@@ -6509,88 +6913,88 @@
     panel.innerHTML = `
       <div class="sheet-head">
         <div class="name-field">
-          <input type="text" id="f-nome" placeholder="Nome cliente" value="${escapeHtml(c.nome)}">
-          <input type="tel" id="f-telefono" class="name-field-telefono" placeholder="Telefono (per WhatsApp)" value="${escapeHtml(c.telefono)}">
-          <div class="meta">Creata il ${fmtDate(c.createdAt)} · aggiornata il ${fmtDate(c.updatedAt)}</div>
+          <input type="text" id="f-nome" placeholder="${t('sc.nomeCliente', "Nome cliente")}" value="${escapeHtml(c.nome)}">
+          <input type="tel" id="f-telefono" class="name-field-telefono" placeholder="${t('sc.telefonoPh', "Telefono (per WhatsApp)")}" value="${escapeHtml(c.telefono)}">
+          <div class="meta">${t('sc.meta', "Creata il {c} · aggiornata il {u}").replace('{c}', fmtDate(c.createdAt)).replace('{u}', fmtDate(c.updatedAt))}</div>
         </div>
-        <button class="danger ghost small" id="deleteBtn">Elimina scheda</button>
+        <button class="danger ghost small" id="deleteBtn">${t('sc.eliminaScheda', "Elimina scheda")}</button>
       </div>
-      ${hasHiddenFields ? '<button type="button" class="sheet-show-empty-toggle" id="sheetShowEmptyBtn">Mostra anche i campi non compilati</button>' : ''}
+      ${hasHiddenFields ? `<button type="button" class="sheet-show-empty-toggle" id="sheetShowEmptyBtn">${t('sc.mostraNonCompilati', "Mostra anche i campi non compilati")}</button>` : ''}
 
       <fieldset class="${noteSectionHidden}">
-        <legend>Note e preferenze</legend>
+        <legend>${t('sc.noteEPref', "Note e preferenze")}</legend>
         <div class="field">
           <div class="field-rich">
-            <textarea id="f-note" class="field-rich-input field-autosize" rows="1" placeholder="Es. copertura leggera, non pesante…">${escapeHtml(c.note)}</textarea>
-            <div class="field-rich-overlay" data-placeholder="Es. copertura leggera, non pesante…" aria-hidden="true"></div>
+            <textarea id="f-note" class="field-rich-input field-autosize" rows="1" placeholder="${t('sc.notePh', "Es. copertura leggera, non pesante…")}">${escapeHtml(c.note)}</textarea>
+            <div class="field-rich-overlay" data-placeholder="${t('sc.notePh', "Es. copertura leggera, non pesante…")}" aria-hidden="true"></div>
           </div>
         </div>
       </fieldset>
 
       <fieldset class="${allergieSectionHidden}">
-        <legend>Allergie / ipersensibilità</legend>
+        <legend>${t('sc.allergie', "Allergie / ipersensibilità")}</legend>
         <div class="field">
           <div class="field-rich">
-            <textarea id="f-allergie" class="field-rich-input field-autosize" rows="1" placeholder="Segnala qui eventuali reazioni note…">${escapeHtml(c.allergie)}</textarea>
-            <div class="field-rich-overlay" data-placeholder="Segnala qui eventuali reazioni note…" aria-hidden="true"></div>
+            <textarea id="f-allergie" class="field-rich-input field-autosize" rows="1" placeholder="${t('sc.allergiePh', "Segnala qui eventuali reazioni note…")}">${escapeHtml(c.allergie)}</textarea>
+            <div class="field-rich-overlay" data-placeholder="${t('sc.allergiePh', "Segnala qui eventuali reazioni note…")}" aria-hidden="true"></div>
           </div>
         </div>
       </fieldset>
 
       <fieldset class="${diagnosiSectionHidden}">
-        <legend>Diagnosi capello</legend>
+        <legend>${t('sc.diagnosi', "Diagnosi capello")}</legend>
         <div class="field${hc(c.bianchiDavanti)}">
-          <label>Capelli bianchi — <strong>davanti</strong></label>
+          <label>${t('sc.bianchi', "Capelli bianchi")} — <strong>${t('sc.davanti', "davanti")}</strong></label>
           <div class="choice-group bianchi-row" id="bianchiDavantiGroup">
             ${BIANCHI_OPTIONS.map(o => `
               <label class="choice ${c.bianchiDavanti === o.v ? 'checked' : ''}">
                 <input type="radio" name="bianchiDavanti" value="${o.v}" ${c.bianchiDavanti === o.v ? 'checked' : ''}> ${o.l}
-                ${BIANCHI_ABBASSA_TONO.includes(o.v) ? '<span class="bianchi-tag-inline">Abbassare di un tono</span>' : ''}
+                ${BIANCHI_ABBASSA_TONO.includes(o.v) ? `<span class="bianchi-tag-inline">${t('sc.abbassaTono', "Abbassare di un tono")}</span>` : ''}
               </label>`).join('')}
           </div>
         </div>
         <div class="field${hc(c.bianchiDietro)}">
-          <label>Capelli bianchi — <strong>dietro</strong></label>
+          <label>${t('sc.bianchi', "Capelli bianchi")} — <strong>${t('sc.dietro', "dietro")}</strong></label>
           <div class="choice-group bianchi-row" id="bianchiDietroGroup">
             ${BIANCHI_OPTIONS.map(o => `
               <label class="choice ${c.bianchiDietro === o.v ? 'checked' : ''}">
                 <input type="radio" name="bianchiDietro" value="${o.v}" ${c.bianchiDietro === o.v ? 'checked' : ''}> ${o.l}
-                ${BIANCHI_ABBASSA_TONO.includes(o.v) ? '<span class="bianchi-tag-inline">Abbassare di un tono</span>' : ''}
+                ${BIANCHI_ABBASSA_TONO.includes(o.v) ? `<span class="bianchi-tag-inline">${t('sc.abbassaTono', "Abbassare di un tono")}</span>` : ''}
               </label>`).join('')}
           </div>
         </div>
         <div class="row3">
           <div class="field${hc(c.livFondo)}">
-            <label>Livello di fondo</label>
+            <label>${t('sc.livFondo', "Livello di fondo")}</label>
             <input type="text" id="f-livFondo" value="${escapeHtml(c.livFondo)}">
           </div>
           <div class="field${hc(c.livLunghezze)}">
-            <label>Livello di lunghezze</label>
+            <label>${t('sc.livLunghezze', "Livello di lunghezze")}</label>
             <input type="text" id="f-livLunghezze" value="${escapeHtml(c.livLunghezze)}">
           </div>
           <div class="field${hc(c.livPunte)}">
-            <label>Livello punte</label>
+            <label>${t('sc.livPunte', "Livello punte")}</label>
             <input type="text" id="f-livPunte" value="${escapeHtml(c.livPunte)}">
           </div>
         </div>
-        <p class="hint">Ricordati che la schiaritura del fondo dipende dall'attivatore: bassi volumi = poca schiaritura, alti volumi = buona schiaritura. Se lunghezze o punte sono colorate, il nuovo colore dovrà essere dello stesso livello o più scuro.</p>
+        <p class="hint">${t('sc.hintDiagnosi', "Ricordati che la schiaritura del fondo dipende dall'attivatore: bassi volumi = poca schiaritura, alti volumi = buona schiaritura. Se lunghezze o punte sono colorate, il nuovo colore dovrà essere dello stesso livello o più scuro.")}</p>
         <div class="field${hc(c.obiettivo)}">
-          <label>Obiettivo</label>
+          <label>${t('sc.obiettivo', "Obiettivo")}</label>
           <div class="field-rich">
-            <textarea id="f-obiettivo" class="field-rich-input field-autosize" rows="1" placeholder="Es. lasciare colore di base, andare in copertura dei bianchi…">${escapeHtml(c.obiettivo)}</textarea>
-            <div class="field-rich-overlay" data-placeholder="Es. lasciare colore di base, andare in copertura dei bianchi…" aria-hidden="true"></div>
+            <textarea id="f-obiettivo" class="field-rich-input field-autosize" rows="1" placeholder="${t('sc.obiettivoPh', "Es. lasciare colore di base, andare in copertura dei bianchi…")}">${escapeHtml(c.obiettivo)}</textarea>
+            <div class="field-rich-overlay" data-placeholder="${t('sc.obiettivoPh', "Es. lasciare colore di base, andare in copertura dei bianchi…")}" aria-hidden="true"></div>
           </div>
         </div>
       </fieldset>
 
       <fieldset class="${tecnicaSectionHidden}">
-        <legend>Tecnica e servizi per linea colore</legend>
+        <legend>${t('sc.tecnicaLinea', "Tecnica e servizi per linea colore")}</legend>
         ${renderLineBlock(c, 'time', false, compact)}
         ${renderLineBlock(c, 'green', false, compact)}
       </fieldset>
 
       <fieldset>
-        <legend>Storico versioni</legend>
+        <legend>${t('sc.storico', "Storico versioni")}</legend>
         ${c.versioni.length ? (() => {
           const shown = versionsExpanded ? c.versioni : c.versioni.slice(0, 2);
           return `<div class="version-list">
@@ -6599,75 +7003,75 @@
               <div class="version-item version-toggle" data-idx="${i}" role="button" tabindex="0">
                 <div class="version-date">${fmtDateLong(v.ts)}</div>
                 <div class="version-actions">
-                  <button type="button" class="version-delete" data-idx="${i}" title="Elimina questa versione">Elimina</button>
-                  <span class="version-indicator">Vedi</span>
+                  <button type="button" class="version-delete" data-idx="${i}" title="${t('sc.eliminaVersione', "Elimina questa versione")}">${t('agenda.elimina', "Elimina")}</button>
+                  <span class="version-indicator">${t('sc.vedi', "Vedi")}</span>
                 </div>
               </div>
               <div class="version-detail" id="version-detail-${i}" hidden>${renderVersionDetailHtml(v.data)}</div>
             </div>`).join('')}
         </div>
-        ${c.versioni.length > 2 ? `<button type="button" class="version-see-all" id="versionsToggleAll">${versionsExpanded ? 'Mostra solo le ultime due' : 'Vedi tutte le versioni'}</button>` : ''}`;
-        })() : `<p class="version-empty">Nessuna versione precedente ancora. Ogni volta che modifichi la scheda e la salvi o cambi cliente, la versione precedente viene archiviata qui.</p>`}
+        ${c.versioni.length > 2 ? `<button type="button" class="version-see-all" id="versionsToggleAll">${versionsExpanded ? t('sc.soloUltimeDue', "Mostra solo le ultime due") : t('sc.vediTutte', "Vedi tutte le versioni")}</button>` : ''}`;
+        })() : `<p class="version-empty">${t('sc.nessunaVersione', "Nessuna versione precedente ancora. Ogni volta che modifichi la scheda e la salvi o cambi cliente, la versione precedente viene archiviata qui.")}</p>`}
       </fieldset>
 
       <fieldset class="${postColoreSectionHidden}">
-        <legend>Dopo il colore</legend>
+        <legend>${t('sc.dopoColore', "Dopo il colore")}</legend>
         <div class="field">
-          <label>Cosa abbiamo fatto in salone</label>
+          <label>${t('sc.cosaFatto', "Cosa abbiamo fatto in salone")}</label>
           <div class="field-rich">
-            <textarea id="f-postColoreSalone" class="field-rich-input field-autosize" rows="1" placeholder="Es. trattamento ristrutturante, gloss, piega…">${escapeHtml(c.postColoreSalone)}</textarea>
-            <div class="field-rich-overlay" data-placeholder="Es. trattamento ristrutturante, gloss, piega…" aria-hidden="true"></div>
+            <textarea id="f-postColoreSalone" class="field-rich-input field-autosize" rows="1" placeholder="${t('sc.cosaFattoPh', "Es. trattamento ristrutturante, gloss, piega…")}">${escapeHtml(c.postColoreSalone)}</textarea>
+            <div class="field-rich-overlay" data-placeholder="${t('sc.cosaFattoPh', "Es. trattamento ristrutturante, gloss, piega…")}" aria-hidden="true"></div>
           </div>
         </div>
         <div class="field">
-          <label>Consigli mantenimento a casa</label>
+          <label>${t('sc.consigliMant', "Consigli mantenimento a casa")}</label>
           <div class="field-rich">
-            <textarea id="f-consigliMantenimento" class="field-rich-input field-autosize" rows="1" placeholder="Es. shampoo e maschera consigliati, ogni quanto lavare…">${escapeHtml(c.consigliMantenimento)}</textarea>
-            <div class="field-rich-overlay" data-placeholder="Es. shampoo e maschera consigliati, ogni quanto lavare…" aria-hidden="true"></div>
+            <textarea id="f-consigliMantenimento" class="field-rich-input field-autosize" rows="1" placeholder="${t('sc.consigliMantPh', "Es. shampoo e maschera consigliati, ogni quanto lavare…")}">${escapeHtml(c.consigliMantenimento)}</textarea>
+            <div class="field-rich-overlay" data-placeholder="${t('sc.consigliMantPh', "Es. shampoo e maschera consigliati, ogni quanto lavare…")}" aria-hidden="true"></div>
           </div>
         </div>
       </fieldset>
 
       <fieldset>
-        <legend>Per la prossima volta</legend>
+        <legend>${t('sc.prossimaVolta', "Per la prossima volta")}</legend>
         <div class="field">
           <div class="field-rich">
-            <textarea id="f-modifiche" class="field-rich-input field-autosize" rows="1" placeholder="Note per il prossimo appuntamento…">${escapeHtml(c.modifiche)}</textarea>
-            <div class="field-rich-overlay" data-placeholder="Note per il prossimo appuntamento…" aria-hidden="true"></div>
+            <textarea id="f-modifiche" class="field-rich-input field-autosize" rows="1" placeholder="${t('sc.modifichePh', "Note per il prossimo appuntamento…")}">${escapeHtml(c.modifiche)}</textarea>
+            <div class="field-rich-overlay" data-placeholder="${t('sc.modifichePh', "Note per il prossimo appuntamento…")}" aria-hidden="true"></div>
           </div>
         </div>
         <div class="field">
-          <label class="label-legend-style">Foto prima / dopo</label>
+          <label class="label-legend-style">${t('sc.fotoPrimaDopo', "Foto prima / dopo")}</label>
           <div class="foto-grid" id="fotoGrid">
             ${c.foto.map(f => `
               <div class="foto-card">
                 <div class="foto-thumb">
                   <img src="${f.dataUrl}" data-id="${f.id}" class="foto-open" alt="${escapeHtml(f.name)}">
-                  <button type="button" class="foto-remove" data-id="${f.id}" title="Rimuovi foto">×</button>
+                  <button type="button" class="foto-remove" data-id="${f.id}" title="${t('sc.rimuoviFoto', "Rimuovi foto")}">×</button>
                 </div>
-                <input type="text" class="foto-comment" data-id="${f.id}" placeholder="Commento…" value="${escapeHtml(f.commento || '')}">
+                <input type="text" class="foto-comment" data-id="${f.id}" placeholder="${t('sc.commento', "Commento…")}" value="${escapeHtml(f.commento || '')}">
               </div>`).join('')}
             <label class="foto-add">
               <input type="file" id="f-foto-input" accept="image/*" multiple>
-              <span>+ Aggiungi</span>
+              <span>${t('sc.aggiungiFoto', "+ Aggiungi")}</span>
             </label>
           </div>
-          <p class="hint">Le foto restano salvate in automatico, come il resto della scheda.</p>
+          <p class="hint">${t('sc.fotoHint', "Le foto restano salvate in automatico, come il resto della scheda.")}</p>
         </div>
       </fieldset>
 
       <fieldset class="contatti-tecnico">
-        <legend>Contatti</legend>
-        <p class="hint hint-contatti">Per dubbi, domande o perplessità sul colore: ${escapeHtml(CONTATTO_TECNICO_COLORE)}.</p>
+        <legend>${t('sc.contatti', "Contatti")}</legend>
+        <p class="hint hint-contatti">${t('sc.contattiTxt', "Per dubbi, domande o perplessità sul colore: {x}.").replace('{x}', escapeHtml(CONTATTO_TECNICO_COLORE))}</p>
       </fieldset>
 
       <div class="sheet-footer">
         <span class="save-status" id="saveStatus"></span>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <button class="ghost small" id="duplicateBtn">Duplica scheda</button>
-          <button class="ghost small" id="printBtn">Stampa scheda</button>
-          <button class="ghost small" id="downloadBtn">Scarica scheda (PDF)</button>
-          <button class="primary small" id="saveBtn">Salva</button>
+          <button class="ghost small" id="duplicateBtn">${t('sc.duplica', "Duplica scheda")}</button>
+          <button class="ghost small" id="printBtn">${t('sc.stampa', "Stampa scheda")}</button>
+          <button class="ghost small" id="downloadBtn">${t('sc.scaricaPdf', "Scarica scheda (PDF)")}</button>
+          <button class="primary small" id="saveBtn">${t('sc.salva', "Salva")}</button>
         </div>
       </div>
     `;
@@ -8267,7 +8671,7 @@
             saveClientFotoDoc(c.id, photoId, body);
             renderSheet();
           } catch (err) {
-            notify('Non sono riuscito a caricare "' + file.name + '".', true);
+            notify(t('sc.erroreFoto', 'Non sono riuscito a caricare "{f}".').replace('{f}', file.name), true);
           }
         }
       });
@@ -8386,7 +8790,7 @@
         await downloadClientPdf(c);
       } catch (err) {
         if (err && err.code === 'declined') return;
-        notify('Non sono riuscito a generare il PDF.', true);
+        notify(t('sc.errorePdf', 'Non sono riuscito a generare il PDF.'), true);
       }
     });
 
@@ -8399,7 +8803,7 @@
       c.updatedAt = Date.now();
       commitVersion(c);
       ensureBaseline(c);
-      persist('Scheda salvata.').then(ok => { if (ok) showCenterToast('Fatto'); });
+      persist(t('sc.schedaSalvata', 'Scheda salvata.')).then(ok => { if (ok) showCenterToast(t('sc.fatto', 'Fatto')); });
       renderAll();
     });
 
@@ -8408,11 +8812,11 @@
       const btn = document.getElementById('deleteBtn');
       if (!deleteArmed) {
         deleteArmed = true;
-        if (btn) btn.textContent = 'Sicura? Clicca di nuovo per eliminare';
+        if (btn) btn.textContent = t('sc.sicura', 'Sicura? Clicca di nuovo per eliminare');
         clearTimeout(window.__deleteArmTimer);
         window.__deleteArmTimer = setTimeout(() => {
           deleteArmed = false;
-          if (btn) btn.textContent = 'Elimina scheda';
+          if (btn) btn.textContent = t('sc.eliminaScheda', 'Elimina scheda');
         }, 4000);
         return;
       }
@@ -8422,7 +8826,7 @@
       deleteClientCompletely(c.id);
       renderAll();
       const statusEl = document.getElementById('saveStatus');
-      if (statusEl) { statusEl.textContent = 'Scheda eliminata.'; statusEl.style.color = 'var(--ok)'; clearTimeout(persist._t); persist._t = setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 1800); }
+      if (statusEl) { statusEl.textContent = t('sc.schedaEliminata', 'Scheda eliminata.'); statusEl.style.color = 'var(--ok)'; clearTimeout(persist._t); persist._t = setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 1800); }
     });
 
     on('duplicateBtn', 'click', () => {
@@ -8435,7 +8839,7 @@
       copy.foto = [];
       clients.push(copy);
       activeId = copy.id;
-      persist('Scheda duplicata.');
+      persist(t('sc.schedaDuplicata', 'Scheda duplicata.'));
       persistClientFotoArray(copy.id, fotoToCopy);
       copy.foto = fotoToCopy;
       renderAll();
@@ -8444,10 +8848,10 @@
     on('printBtn', 'click', async () => {
       try {
         await downloadClientPdf(c);
-        notify('PDF pronto: aprilo e stampalo da lì.');
+        notify(t('sc.pdfPronto', 'PDF pronto: aprilo e stampalo da lì.'));
       } catch (err) {
         if (err && err.code === 'declined') return;
-        notify('Non sono riuscito a generare il PDF.', true);
+        notify(t('sc.errorePdf', 'Non sono riuscito a generare il PDF.'), true);
       }
     });
   }
@@ -8510,7 +8914,7 @@
     if (searchEl) searchEl.value = "";
     const searchClearEl = document.getElementById('searchClear');
     if (searchClearEl) searchClearEl.hidden = true;
-    persist('Nuova scheda creata.');
+    persist(t('sc.nuovaCreata', 'Nuova scheda creata.'));
     renderAll();
     // Si va sempre in cima alla pagina, pronti a scrivere il nome: altrimenti, specialmente
     // partendo da "+ Nuova scheda per..." dopo una ricerca, si potrebbe restare scrollati
@@ -9035,11 +9439,11 @@
     const isHidden = detail.hasAttribute('hidden');
     if (isHidden) {
       detail.removeAttribute('hidden');
-      if (indicator) indicator.textContent = 'Nascondi';
+      if (indicator) indicator.textContent = t('sc.nascondi', "Nascondi");
       btn.classList.add('active');
     } else {
       detail.setAttribute('hidden', '');
-      if (indicator) indicator.textContent = 'Vedi';
+      if (indicator) indicator.textContent = t('sc.vedi', "Vedi");
       btn.classList.remove('active');
     }
   }
@@ -9047,11 +9451,11 @@
     const idx = Number(delBtn.dataset.idx);
     if (!delBtn.classList.contains('armed')) {
       delBtn.classList.add('armed');
-      delBtn.textContent = 'Confermi?';
+      delBtn.textContent = t('agenda.confermi', 'Confermi?');
       clearTimeout(delBtn._armTimer);
       delBtn._armTimer = setTimeout(() => {
         delBtn.classList.remove('armed');
-        delBtn.textContent = 'Elimina';
+        delBtn.textContent = t('agenda.elimina', 'Elimina');
       }, 4000);
       return;
     }
