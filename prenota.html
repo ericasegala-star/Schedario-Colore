@@ -251,7 +251,7 @@
   // permessi, senza sovrapporsi a un appuntamento già fissato (vedi app/disponibilitaPubblica) né
   // a una prenotazione fatta da poco da qualcun altro e non ancora riportata in agenda
   // (occupatiProvvisori).
-  function slotsLiberi(operatore, dataISO, durataMin) {
+  function slotsLiberiOp(operatore, dataISO, durataMin) {
     const [y, m, d] = dataISO.split('-').map(Number);
     const weekday = new Date(y, m - 1, d).getDay();
     const turno = disp.turni[operatore] && disp.turni[operatore][weekday];
@@ -272,6 +272,27 @@
       return slots.filter(s => parseOra(s) > adesso);
     }
     return slots;
+  }
+
+  // Operatrici che lavorano (hanno almeno un turno). "Qualsiasi" ('*') = gli orari liberi di
+  // almeno una di loro; al momento dell'invio si assegna l'operatrice libera con meno
+  // appuntamenti quel giorno (a parità, la prima).
+  const QUALSIASI = '*';
+  function operatriciAttive() {
+    return Object.keys(disp.turni || {}).filter(op => Object.keys(disp.turni[op] || {}).length > 0);
+  }
+  function slotsLiberi(operatore, dataISO, durataMin) {
+    if (operatore !== QUALSIASI) return slotsLiberiOp(operatore, dataISO, durataMin);
+    const tutti = new Set();
+    operatriciAttive().forEach(op => slotsLiberiOp(op, dataISO, durataMin).forEach(s => tutti.add(s)));
+    return Array.from(tutti).sort();
+  }
+  function operatriceDelloSlot(operatore, dataISO, slot, durataMin) {
+    if (operatore !== QUALSIASI) return operatore;
+    const libere = operatriciAttive().filter(op => slotsLiberiOp(op, dataISO, durataMin).includes(slot));
+    const carico = op => (disp.occupati || []).concat(provvisori).filter(o => o.operatore === op && o.data === dataISO).length;
+    libere.sort((a, b) => carico(a) - carico(b));
+    return libere[0] || null;
   }
 
   function mostraErrore(msg) {
@@ -301,7 +322,7 @@
     const slots = slotsLiberi(operatoreScelto, data, servizioScelto.durataMin);
     cont.innerHTML = '';
     if (!slots.length) {
-      hint.textContent = NOME_OPERATORE[operatoreScelto] + ' non ha orari liberi quel giorno: prova un\'altra data o un\'altra operatrice.';
+      hint.textContent = (operatoreScelto === QUALSIASI ? 'Non ci sono orari liberi' : NOME_OPERATORE[operatoreScelto] + ' non ha orari liberi') + ' quel giorno: prova un\'altra data' + (operatoreScelto === QUALSIASI ? '.' : ' o un\'altra operatrice.');
       return;
     }
     hint.textContent = '';
@@ -354,6 +375,16 @@
       });
       opCont.appendChild(btn);
     });
+    if (operatriciAttive().length > 1) {
+      const bq = document.createElement('button');
+      bq.type = 'button'; bq.className = 'op-btn'; bq.textContent = 'Qualsiasi';
+      bq.addEventListener('click', () => {
+        operatoreScelto = QUALSIASI;
+        opCont.querySelectorAll('.op-btn').forEach(b => b.classList.toggle('scelto', b === bq));
+        aggiornaOrari();
+      });
+      opCont.appendChild(bq);
+    }
 
     const selData = document.getElementById('selData');
     const oggi = new Date();
@@ -379,15 +410,17 @@
       const telefono = modifica ? mia.t : document.getElementById('campoTelefono').value.trim();
       const note = modifica ? '' : document.getElementById('campoNote').value.trim();
       const data = document.getElementById('selData').value;
-      const operatore = operatoreScelto, slot = slotScelto, servizio = servizioScelto;
+      const scelta = operatoreScelto, slot = slotScelto, servizio = servizioScelto;
+      let operatore = scelta;
       const btn = document.getElementById('btnInvia');
       btn.disabled = true; btn.textContent = 'Invio…';
       const testoBtn = modifica ? 'Conferma modifica' : 'Richiedi appuntamento';
       // Ultimo controllo, appena prima di inviare: nel caso qualcun altro abbia preso proprio
       // questo orario nei pochi secondi da quando è stata disegnata la lista.
       caricaProvvisori().then(() => {
-        const ancoraLibero = slotsLiberi(operatore, data, servizio.durataMin).includes(slot);
-        if (!ancoraLibero) {
+        const ancoraLibero = slotsLiberi(scelta, data, servizio.durataMin).includes(slot);
+        operatore = operatriceDelloSlot(scelta, data, slot, servizio.durataMin);
+        if (!ancoraLibero || !operatore) {
           btn.disabled = false; btn.textContent = testoBtn;
           mostraErrore('Questo orario è stato appena preso da un\'altra persona: scegline un altro tra quelli rimasti.');
           disegnaSlot(data);
