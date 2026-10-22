@@ -1717,7 +1717,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-22.104-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-22.105-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -3745,11 +3745,27 @@
     return new Promise(resolve => {
       const unsub = authObj.onAuthStateChanged(u => { unsub(); resolve(u); });
     }).then(u => {
-      if (u && !u.isAnonymous) { window.__staffEmail = u.email || ''; return u; }
+      if (u && !u.isAnonymous) {
+        return accountAutorizzato().then(buono => {
+          if (buono) { window.__staffEmail = u.email || ''; return u; }
+          return Promise.resolve(authObj.signOut()).catch(() => {}).then(() => mostraSchermataAccesso(authObj, messaggioNonAutorizzato(u)));
+        });
+      }
       return mostraSchermataAccesso(authObj);
     });
   }
-  function mostraSchermataAccesso(authObj) {
+  // Chi si registra con un qualunque account Google/email entra in Firebase ma le regole del
+  // database lo bloccano: lo scopro subito con una lettura di prova e gli spiego, invece di
+  // mostrargli un'app vuota che non salva niente.
+  function accountAutorizzato() {
+    try {
+      return firebase.firestore().doc('impostazioni/aspetto').get().then(() => true, e => !(e && e.code === 'permission-denied'));
+    } catch (e) { return Promise.resolve(true); }
+  }
+  function messaggioNonAutorizzato(u) {
+    return 'Questo account' + (u && u.email ? ' (' + u.email + ')' : '') + ' non è autorizzato a usare l\'app. Chiedi l\'accesso a chi la gestisce.';
+  }
+  function mostraSchermataAccesso(authObj, messaggioIniziale) {
     return new Promise(resolve => {
       const ov = document.createElement('div');
       ov.id = 'loginOverlay';
@@ -3773,7 +3789,12 @@
         </div>`;
       document.body.appendChild(ov);
       const msg = ov.querySelector('#loginMsg');
-      const ok = (u) => { window.__staffEmail = (u && u.email) || ''; ov.remove(); resolve(u); };
+      if (messaggioIniziale) msg.textContent = messaggioIniziale;
+      const ok = (u) => accountAutorizzato().then(buono => {
+        if (buono) { window.__staffEmail = (u && u.email) || ''; ov.remove(); resolve(u); return; }
+        Promise.resolve(authObj.signOut()).catch(() => {});
+        err(null, messaggioNonAutorizzato(u));
+      });
       const err = (e, info) => { msg.style.color = '#a5483f'; msg.textContent = info || messaggioErroreAccesso(e); };
       ov.querySelector('#loginGoogle').addEventListener('click', () => {
         msg.textContent = '';
