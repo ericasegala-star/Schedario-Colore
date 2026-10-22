@@ -34,6 +34,10 @@
     width: 100%; font-family: inherit; font-size: 15px; padding: 10px 12px;
     border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper-raised); color: var(--ink);
   }
+  /* iPhone/Safari: il campo data ha una larghezza propria e "deborda" dal riquadro: lo costringo a restare dentro */
+  input[type="date"] { -webkit-appearance: none; appearance: none; display: block; min-width: 0; max-width: 100%; width: 100%; min-height: 44px; text-align: left; }
+  input[type="date"]::-webkit-date-and-time-value { text-align: left; min-width: 0; }
+  fieldset { min-width: 0; }
   .op-scelta, .slot-scelta { display: flex; flex-wrap: wrap; gap: 8px; }
   .op-btn, .slot-btn {
     font-family: inherit; font-size: 14px; padding: 9px 14px; border-radius: var(--radius);
