@@ -1183,6 +1183,17 @@
     letter-spacing: 0.02em; text-transform: uppercase; border-radius: var(--radius);
     padding: 3px 6px; white-space: nowrap;
   }
+  /* Storico prezzi (Erica, 22/10): piccola freccia sul campo Prezzo (▲ aumentato, ▼ calato
+     nell'ultima variazione) che apre l'elenco delle variazioni di quel prodotto. */
+  .magazzino-field-prezzo { position: relative; }
+  .magazzino-field-prezzo.ha-storico .magazzino-input { padding-right: 20px; }
+  .mag-prezzo-storico { position: absolute; right: 3px; top: 50%; transform: translateY(-50%); border: none; background: none; cursor: pointer; font-size: 11px; line-height: 1; padding: 4px 3px; }
+  .mag-prezzo-storico.su { color: #A8433C; }
+  .mag-prezzo-storico.giu { color: #4C7A5E; }
+  .mag-storico-lista { list-style: none; margin: 8px 0 0; padding: 0; font-size: 14px; }
+  .mag-storico-lista li { padding: 7px 0; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .mag-storico-su { color: #A8433C; font-weight: 600; }
+  .mag-storico-giu { color: #4C7A5E; font-weight: 600; }
   /* Prezzo: via le freccette su/giù native del browser, come richiesto. */
   .magazzino-input[data-field="prezzo"]::-webkit-outer-spin-button,
   .magazzino-input[data-field="prezzo"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
@@ -1717,7 +1728,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-22.105-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-22.106-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -3083,6 +3094,51 @@
   // Tricologia (Cristina): impostato già da ora per quando arriverà la sezione Tricologia, ma
   // non ancora mostrato in scheda (manca il numero e la sezione stessa non esiste ancora).
   const CONTATTO_TECNICO_TRICOLOGIA = { nome: 'Cristina', telefono: '' };
+  // ---- Storico prezzi di un prodotto ----
+  // Ogni volta che il prezzo cambia (da fattura o a mano) si aggiunge una riga con la data, il
+  // prezzo di prima e quello nuovo, così si vede di quanto è salito o sceso nel tempo.
+  function registraVariazionePrezzo(p, nuovo, fonte, dataISO) {
+    if (nuovo == null || isNaN(nuovo)) return;
+    const prima = (p.prezzo != null && !isNaN(p.prezzo)) ? Number(p.prezzo) : null;
+    if (prima !== null && Math.abs(prima - nuovo) < 0.005) return; // nessuna variazione
+    if (!Array.isArray(p.storicoPrezzi)) p.storicoPrezzi = [];
+    p.storicoPrezzi.push({
+      data: /^\d{4}-\d{2}-\d{2}/.test(dataISO || '') ? dataISO.slice(0, 10) : new Date().toISOString().slice(0, 10),
+      prima: prima, prezzo: nuovo, fonte: fonte
+    });
+    if (p.storicoPrezzi.length > 60) p.storicoPrezzi = p.storicoPrezzi.slice(-60);
+  }
+  function storicoPrezzoBottoneHtml(p) {
+    if (!(p.storicoPrezzi && p.storicoPrezzi.length)) return '';
+    const u = p.storicoPrezzi[p.storicoPrezzi.length - 1];
+    const su = u.prima != null && u.prezzo > u.prima, giu = u.prima != null && u.prezzo < u.prima;
+    return `<button type="button" class="mag-prezzo-storico ${su ? 'su' : (giu ? 'giu' : '')}" data-id="${p.id}" title="Storico prezzi" aria-label="Storico prezzi">${su ? '▲' : (giu ? '▼' : '◷')}</button>`;
+  }
+  function fmtPrezzoEuro(n) { return (n == null ? '—' : Number(n).toFixed(2).replace('.', ',') + ' €'); }
+  function mostraStoricoPrezzi(p) {
+    const righe = (p.storicoPrezzi || []).slice().reverse();
+    const old = document.getElementById('magStoricoModal');
+    if (old) old.remove();
+    const ov = document.createElement('div');
+    ov.className = 'settings-modal'; ov.id = 'magStoricoModal';
+    const lista = righe.map(r => {
+      const diff = r.prima != null ? r.prezzo - r.prima : null;
+      const perc = (diff != null && r.prima) ? (diff / r.prima * 100) : null;
+      const segno = diff == null ? '' : (diff > 0 ? '▲ +' : '▼ ');
+      const cls = diff == null ? '' : (diff > 0 ? 'mag-storico-su' : 'mag-storico-giu');
+      const dataBreve = fmtDateISOBreve(r.data);
+      return `<li><span>${escapeHtml(dataBreve)} · ${r.prima != null ? fmtPrezzoEuro(r.prima) + ' → ' : ''}<strong>${fmtPrezzoEuro(r.prezzo)}</strong></span>` +
+        `<span class="${cls}">${diff != null ? segno + fmtPrezzoEuro(Math.abs(diff)).replace(' €', ' €') + (perc != null ? ' (' + (perc > 0 ? '+' : '') + perc.toFixed(1).replace('.', ',') + '%)' : '') : 'primo prezzo'} · ${r.fonte === 'fattura' ? 'fattura' : 'a mano'}</span></li>`;
+    }).join('');
+    ov.innerHTML = `<div class="settings-card"><button type="button" class="settings-close" aria-label="Chiudi">×</button>` +
+      `<h2 style="margin-top:0;">Storico prezzi</h2><p class="hint">${escapeHtml(p.nome || '')}</p>` +
+      `<ul class="mag-storico-lista">${lista || '<li>Nessuna variazione registrata.</li>'}</ul></div>`;
+    document.body.appendChild(ov);
+    const chiudi = () => ov.remove();
+    ov.querySelector('.settings-close').addEventListener('click', chiudi);
+    ov.addEventListener('click', (e) => { if (e.target === ov) chiudi(); });
+  }
+
   function createMagazzinoProdotto() {
     const p = { id: uid(), nome: '', marca: '', tipo: '', prezzo: null, quantita: 0, quantitaMinima: null, createdAt: Date.now() };
     magazzinoCache.prodotti.push(p);
@@ -6057,8 +6113,9 @@
         <div class="field magazzino-field-marca">
           <input type="text" class="magazzino-input" data-id="${p.id}" data-field="marca" placeholder="Es. Wella" value="${escapeHtml(p.marca || '')}">
         </div>
-        <div class="field magazzino-field-prezzo">
+        <div class="field magazzino-field-prezzo${(p.storicoPrezzi && p.storicoPrezzi.length) ? ' ha-storico' : ''}">
           <input type="number" class="magazzino-input" data-id="${p.id}" data-field="prezzo" min="0" step="0.01" placeholder="—" value="${p.prezzo != null ? p.prezzo : ''}">
+          ${storicoPrezzoBottoneHtml(p)}
         </div>
         <div class="field magazzino-field-qty">
           <input type="number" class="magazzino-input magazzino-qty-input" data-id="${p.id}" data-field="quantita" min="0" step="1" value="${p.quantita != null ? p.quantita : 0}">
@@ -7670,6 +7727,43 @@
       });
     });
 
+    document.querySelectorAll('.magazzino-input[data-field="prezzo"]').forEach(input => {
+      input.addEventListener('focus', () => { input.dataset.prima = input.value; });
+      input.addEventListener('change', () => {
+        const p = magazzinoCache.prodotti.find(x => x.id === input.dataset.id);
+        if (!p) return;
+        const prima = input.dataset.prima === '' || input.dataset.prima == null ? null : Number(input.dataset.prima);
+        const nuovo = input.value === '' ? null : Number(input.value);
+        if (nuovo == null || isNaN(nuovo)) return;
+        if (prima != null && Math.abs(prima - nuovo) < 0.005) return;
+        if (prima == null) { // prezzo scritto per la prima volta: si registra senza "prima"
+          if (!Array.isArray(p.storicoPrezzi)) p.storicoPrezzi = [];
+          p.storicoPrezzi.push({ data: new Date().toISOString().slice(0, 10), prima: null, prezzo: nuovo, fonte: 'manuale' });
+        } else {
+          if (!Array.isArray(p.storicoPrezzi)) p.storicoPrezzi = [];
+          p.storicoPrezzi.push({ data: new Date().toISOString().slice(0, 10), prima: prima, prezzo: nuovo, fonte: 'manuale' });
+        }
+        saveMagazzino();
+        // Aggiorno il tasto sul posto, SENZA ridisegnare la lista: altrimenti un clic su un altro
+        // bottone subito dopo aver scritto il prezzo (es. "Importa da fattura") andrebbe perso.
+        const cella = input.closest('.magazzino-field-prezzo');
+        if (cella) {
+          const vecchio = cella.querySelector('.mag-prezzo-storico');
+          if (vecchio) vecchio.remove();
+          cella.classList.add('ha-storico');
+          cella.insertAdjacentHTML('beforeend', storicoPrezzoBottoneHtml(p));
+          const nuovoBtn = cella.querySelector('.mag-prezzo-storico');
+          if (nuovoBtn) nuovoBtn.addEventListener('click', () => mostraStoricoPrezzi(p));
+        }
+      });
+    });
+    document.querySelectorAll('.mag-prezzo-storico').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const p = magazzinoCache.prodotti.find(x => x.id === btn.dataset.id);
+        if (p) mostraStoricoPrezzi(p);
+      });
+    });
+
     document.querySelectorAll('.magazzino-delete').forEach(btn => {
       // Stessa logica "clicca, poi conferma entro 4 secondi" per tutti: il cestino del
       // Magazzino (icona fissa) usa il titolo/aria-label invece del testo per non sovrascrivere
@@ -8714,13 +8808,14 @@
         prod.marca = fornitoreRiga;
         prod.tipo = 'materiaPrima';
         prod.quantita = qty;
+        registraVariazionePrezzo(prod, prezzo, 'fattura', righe[idx] && righe[idx].data);
         prod.prezzo = prezzo;
         nuovi++;
       } else {
         const prod = magazzinoCache.prodotti.find(x => x.id === matchSel);
         if (!prod) return;
         prod.quantita = (prod.quantita || 0) + qty;
-        if (prezzo != null) prod.prezzo = prezzo;
+        if (prezzo != null) { registraVariazionePrezzo(prod, prezzo, 'fattura', righe[idx] && righe[idx].data); prod.prezzo = prezzo; }
         if (!prod.marca && fornitoreRiga) prod.marca = fornitoreRiga;
         aggiornati++;
         // È un vero riordino (prodotto già a magazzino, rifornito con questa fattura): si
