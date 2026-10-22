@@ -635,6 +635,29 @@
   .agenda-date-nav { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .agenda-date-nav input[type=date] { width: auto; flex: none; }
   .agenda-date-nav button { flex: none; }
+  /* Selettore della data in stile "mese + striscia della settimana" (Erica, 22/10): il nome del
+     mese si tocca per scegliere un'altra data (campo data nativo, invisibile, sopra il nome);
+     sotto, i 7 giorni della settimana: lettera, numero; il giorno scelto è un cerchio pieno, oggi
+     è colorato, sabato e domenica più chiari. Su telefono/tablet si scorre per cambiare settimana. */
+  .agenda-mese-riga { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: space-between; margin-bottom: 8px; }
+  .agenda-mese-pill { position: relative; display: inline-flex; align-items: center; gap: 6px; background: var(--paper-raised, #f1ecea); border: 1px solid var(--line); border-radius: 10px; padding: 7px 14px; font-size: 20px; font-weight: 600; cursor: pointer; }
+  .agenda-mese-pill input[type=date] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; margin: 0; min-width: 0; }
+  .agenda-mese-pill .chev { font-size: 12px; color: var(--ink-soft); }
+  .agenda-azioni { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .agenda-azioni button { flex: none; }
+  .agenda-settimana { display: flex; align-items: center; gap: 2px; margin: 4px 0 12px; touch-action: pan-y; user-select: none; }
+  .agenda-settimana-giorni { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; }
+  .agenda-giorno { background: none; border: 0; cursor: pointer; padding: 4px 0; font: inherit; color: var(--ink); display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .agenda-giorno .lettera { font-size: 14px; font-weight: 500; }
+  .agenda-giorno .numero { width: 44px; height: 44px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 500; }
+  .agenda-giorno.weekend { color: var(--ink-soft); }
+  .agenda-giorno.oggi { color: var(--berry); }
+  .agenda-giorno.scelto .numero { background: var(--ink); color: #fff; }
+  .agenda-giorno.scelto.oggi .numero { background: var(--berry); color: #fff; }
+  .agenda-giorno:focus-visible .numero { outline: 2px solid var(--berry); outline-offset: 2px; }
+  .agenda-sett-freccia { flex: none; background: none; border: 0; font-size: 22px; color: var(--ink-soft); cursor: pointer; padding: 6px; }
+  @media (pointer: coarse) { .agenda-sett-freccia { display: none; } }
+  @media (max-width: 480px) { .agenda-giorno .numero { width: 38px; height: 38px; font-size: 19px; } .agenda-mese-pill { font-size: 18px; } }
   .agenda-date-label {
     font-size: 12.5px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase;
     color: var(--berry); margin-bottom: 10px;
@@ -1732,7 +1755,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-22.107-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-22.108-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -4387,6 +4410,42 @@
     return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
   }
   // "YYYY-MM-DD" -> "lunedì 12 ottobre 2026", per l'intestazione del giorno in Agenda.
+  // Intestazione dell'agenda: mese (pillola) + azioni + striscia della settimana.
+  function agendaDateNavHtml() {
+    const [y, m, d] = agendaDataSelezionata.split('-').map(Number);
+    const sel = new Date(y, (m || 1) - 1, d || 1);
+    const oggiISO = fmtDateISO(new Date());
+    const lunedi = new Date(sel); lunedi.setDate(sel.getDate() - ((sel.getDay() + 6) % 7));
+    let mese = sel.toLocaleDateString('it-IT', { month: 'long' });
+    mese = mese.charAt(0).toUpperCase() + mese.slice(1);
+    if (sel.getFullYear() !== new Date().getFullYear()) mese += ' ' + sel.getFullYear();
+    const giorni = [];
+    for (let i = 0; i < 7; i++) {
+      const g = new Date(lunedi); g.setDate(lunedi.getDate() + i);
+      const iso = fmtDateISO(g);
+      const lettera = g.toLocaleDateString('it-IT', { weekday: 'narrow' }).toUpperCase();
+      const nome = g.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+      giorni.push(`<button type="button" class="agenda-giorno${i >= 5 ? ' weekend' : ''}${iso === oggiISO ? ' oggi' : ''}${iso === agendaDataSelezionata ? ' scelto' : ''}" data-data="${iso}" aria-label="${escapeHtml(nome)}"${iso === agendaDataSelezionata ? ' aria-current="date"' : ''}><span class="lettera">${lettera}</span><span class="numero">${g.getDate()}</span></button>`);
+    }
+    return `
+      <div class="agenda-mese-riga">
+        <label class="agenda-mese-pill" title="Scegli una data">
+          ${escapeHtml(mese)} <span class="chev" aria-hidden="true">⌄</span>
+          <input type="date" id="agendaDatePicker" value="${escapeHtml(agendaDataSelezionata)}" aria-label="Scegli una data">
+        </label>
+        <div class="agenda-azioni">
+          <button type="button" class="ghost small" id="agendaOggiBtn">${t('agenda.oggi', 'Oggi')}</button>
+          <button type="button" class="ghost small" id="agendaTurniBtn">${t('agenda.turniLavoro', 'Turni di lavoro')}</button>
+          <button type="button" class="ghost small" id="agendaAssenzaBtn">${t('agenda.feriePermesso', 'Ferie/permesso')}</button>
+        </div>
+      </div>
+      <div class="agenda-settimana" id="agendaSettimana">
+        <button type="button" class="agenda-sett-freccia" id="agendaPrevDay" aria-label="Giorno precedente">‹</button>
+        <div class="agenda-settimana-giorni">${giorni.join('')}</div>
+        <button type="button" class="agenda-sett-freccia" id="agendaNextDay" aria-label="Giorno successivo">›</button>
+      </div>`;
+  }
+
   function fmtDateISOLong(iso) {
     if (!iso) return '';
     const [y, m, d] = iso.split('-').map(Number);
@@ -6609,15 +6668,8 @@
         <div class="home-agenda">
           <div class="home-agenda-head">
             <div class="notes-title">Agenda</div>
-            <div class="agenda-date-nav">
-              <button type="button" class="ghost small" id="agendaPrevDay" aria-label="Giorno precedente">‹</button>
-              <input type="date" id="agendaDatePicker" value="${escapeHtml(agendaDataSelezionata)}">
-              <button type="button" class="ghost small" id="agendaNextDay" aria-label="Giorno successivo">›</button>
-              <button type="button" class="ghost small" id="agendaOggiBtn">${t('agenda.oggi', 'Oggi')}</button>
-              <button type="button" class="ghost small" id="agendaTurniBtn">${t('agenda.turniLavoro', 'Turni di lavoro')}</button>
-              <button type="button" class="ghost small" id="agendaAssenzaBtn">${t('agenda.feriePermesso', 'Ferie/permesso')}</button>
-            </div>
           </div>
+          ${agendaDateNavHtml()}
           <div class="agenda-date-label">${fmtDateISOLong(agendaDataSelezionata)}</div>
           <div id="agendaGridWrap">
             ${renderAgendaGridHtml(agendaDataSelezionata)}
@@ -7059,15 +7111,8 @@
           <div class="home-agenda">
             <div class="home-agenda-head">
               <div class="notes-title">Agenda</div>
-              <div class="agenda-date-nav">
-                <button type="button" class="ghost small" id="agendaPrevDay" aria-label="Giorno precedente">‹</button>
-                <input type="date" id="agendaDatePicker" value="${escapeHtml(agendaDataSelezionata)}">
-                <button type="button" class="ghost small" id="agendaNextDay" aria-label="Giorno successivo">›</button>
-                <button type="button" class="ghost small" id="agendaOggiBtn">${t('agenda.oggi', 'Oggi')}</button>
-                <button type="button" class="ghost small" id="agendaTurniBtn">${t('agenda.turniLavoro', 'Turni di lavoro')}</button>
-                <button type="button" class="ghost small" id="agendaAssenzaBtn">${t('agenda.feriePermesso', 'Ferie/permesso')}</button>
-              </div>
             </div>
+            ${agendaDateNavHtml()}
             <div class="agenda-date-label">${fmtDateISOLong(agendaDataSelezionata)}</div>
             <div id="agendaGridWrap">
               ${renderAgendaGridHtml(agendaDataSelezionata)}
@@ -7971,6 +8016,8 @@
   function bindAgendaEvents() {
     const datePicker = document.getElementById('agendaDatePicker');
     if (datePicker) {
+      // Il campo data è invisibile sopra il nome del mese: al clic apro subito il calendario.
+      datePicker.addEventListener('click', () => { try { if (datePicker.showPicker) datePicker.showPicker(); } catch (e) {} });
       datePicker.addEventListener('change', () => {
         if (datePicker.value) agendaDataSelezionata = datePicker.value;
         renderSheet();
@@ -7988,6 +8035,23 @@
     if (prevBtn) prevBtn.addEventListener('click', () => spostaGiorno(-1));
     const nextBtn = document.getElementById('agendaNextDay');
     if (nextBtn) nextBtn.addEventListener('click', () => spostaGiorno(1));
+    document.querySelectorAll('.agenda-giorno').forEach(b => b.addEventListener('click', () => {
+      agendaDataSelezionata = b.dataset.data;
+      renderSheet();
+      agendaScrollA830();
+    }));
+    // Scorrendo la striscia con il dito si cambia settimana (stesso giorno della settimana).
+    const striscia = document.getElementById('agendaSettimana');
+    if (striscia) {
+      let x0 = null, y0 = null;
+      striscia.addEventListener('touchstart', (e) => { const t0 = e.touches[0]; x0 = t0.clientX; y0 = t0.clientY; }, { passive: true });
+      striscia.addEventListener('touchend', (e) => {
+        if (x0 == null) return;
+        const t1 = e.changedTouches[0], dx = t1.clientX - x0, dy = t1.clientY - y0;
+        x0 = null;
+        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) spostaGiorno(dx < 0 ? 7 : -7);
+      }, { passive: true });
+    }
     const oggiBtn = document.getElementById('agendaOggiBtn');
     if (oggiBtn) oggiBtn.addEventListener('click', () => { agendaDataSelezionata = fmtDateISO(new Date()); renderSheet(); agendaScrollA830(); });
 
