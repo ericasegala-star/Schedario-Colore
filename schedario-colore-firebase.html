@@ -1190,6 +1190,10 @@
   .mag-prezzo-storico { position: absolute; right: 3px; top: 50%; transform: translateY(-50%); border: none; background: none; cursor: pointer; font-size: 11px; line-height: 1; padding: 4px 3px; }
   .mag-prezzo-storico.su { color: #A8433C; }
   .mag-prezzo-storico.giu { color: #4C7A5E; }
+  .mag-import-confronto { font-size: 11.5px; margin-top: 3px; line-height: 1.25; white-space: nowrap; }
+  .mag-import-confronto.su { color: #A8433C; font-weight: 600; }
+  .mag-import-confronto.giu { color: #4C7A5E; font-weight: 600; }
+  .mag-import-confronto.uguale { color: var(--ink-soft); }
   .mag-storico-lista { list-style: none; margin: 8px 0 0; padding: 0; font-size: 14px; }
   .mag-storico-lista li { padding: 7px 0; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
   .mag-storico-su { color: #A8433C; font-weight: 600; }
@@ -1728,7 +1732,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-22.106-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-22.107-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -8749,7 +8753,7 @@
             <select class="mag-import-match" data-idx="${i}">${rowOpts}</select>
           </td>
           <td class="mag-import-col-qty"><input type="number" class="mag-import-qty" data-idx="${i}" min="0" step="0.01" value="${r.quantita != null ? r.quantita : 0}"></td>
-          <td class="mag-import-col-prezzo"><input type="number" class="mag-import-prezzo" data-idx="${i}" min="0" step="0.01" value="${r.prezzoUnitario != null ? r.prezzoUnitario : ''}"></td>
+          <td class="mag-import-col-prezzo"><input type="number" class="mag-import-prezzo" data-idx="${i}" min="0" step="0.01" value="${r.prezzoUnitario != null ? r.prezzoUnitario : ''}"><div class="mag-import-confronto" data-idx="${i}"></div></td>
         </tr>`;
     }).join('');
     reviewEl.innerHTML = `
@@ -8776,6 +8780,28 @@
         <button type="button" class="primary small" id="magImportConfirmBtn">Importa</button>
       </div>
     `;
+    // Confronto col prezzo attuale: "prima 4,00 € ▲ +37,5%" sotto il prezzo della fattura, che si
+    // aggiorna da solo se cambi l'abbinamento o correggi il prezzo.
+    const aggiornaConfronti = () => {
+      reviewEl.querySelectorAll('.mag-import-row').forEach(row => {
+        const el = row.querySelector('.mag-import-confronto');
+        if (!el) return;
+        const sel = row.querySelector('.mag-import-match').value;
+        const prod = sel === '__new__' ? null : magazzinoCache.prodotti.find(x => x.id === sel);
+        const raw = row.querySelector('.mag-import-prezzo').value;
+        const nuovo = raw === '' ? null : Number(raw);
+        el.className = 'mag-import-confronto';
+        if (!prod || prod.prezzo == null || nuovo == null || isNaN(nuovo)) { el.textContent = ''; return; }
+        const prima = Number(prod.prezzo), diff = nuovo - prima;
+        if (Math.abs(diff) < 0.005) { el.textContent = 'prezzo invariato'; el.classList.add('uguale'); return; }
+        const perc = prima ? diff / prima * 100 : null;
+        el.textContent = 'prima ' + fmtPrezzoEuro(prima) + (diff > 0 ? ' ▲ +' : ' ▼ ') + fmtPrezzoEuro(Math.abs(diff)) + (perc != null ? ' (' + (perc > 0 ? '+' : '') + perc.toFixed(1).replace('.', ',') + '%)' : '');
+        el.classList.add(diff > 0 ? 'su' : 'giu');
+      });
+    };
+    reviewEl.querySelectorAll('.mag-import-match').forEach(sel => sel.addEventListener('change', aggiornaConfronti));
+    reviewEl.querySelectorAll('.mag-import-prezzo').forEach(inp => inp.addEventListener('input', aggiornaConfronti));
+    aggiornaConfronti();
     reviewEl.querySelectorAll('.mag-import-check').forEach(chk => {
       chk.addEventListener('change', () => {
         const row = chk.closest('.mag-import-row');
