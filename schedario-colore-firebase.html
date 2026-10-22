@@ -1755,7 +1755,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-22.108-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-22.109-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -3399,6 +3399,47 @@
     const totale = tempi.lavorazione || 0;
     return totale > 0 ? Math.ceil(totale / 15) * 15 : 15;
   }
+  // Applica un servizio del catalogo a un appuntamento, come quando Erica lo sceglie a mano: un
+  // servizio semplice ne imposta nome, colore e durate; una combo si "sfalda" in blocchi
+  // consecutivi (uno per servizio, ciascuno col proprio tempo di lavorazione+posa: il pezzo
+  // successivo parte a fine lavorazione+posa del precedente). Se l'appuntamento faceva già parte
+  // di una combo, i blocchi "fratelli" vengono tolti e ricostruiti. Usata sia dalla scelta
+  // manuale in agenda sia dalle prenotazioni online (nuove e modificate).
+  function applicaServizioAdAppuntamento(a, s) {
+    if (a.comboGroupId) {
+      const vecchioGruppo = a.comboGroupId;
+      agendaCache.appuntamenti = agendaCache.appuntamenti.filter(x => x.id === a.id || x.comboGroupId !== vecchioGruppo);
+      a.comboGroupId = null;
+    }
+    const componenti = (s && s.tipo === 'combo') ? (s.comboDi || []).map(id => getServizio(id)).filter(Boolean) : [];
+    if (componenti.length) {
+      const gruppo = uid();
+      a.comboGroupId = gruppo;
+      a.servizioId = componenti[0].id;
+      a.servizio = nomeServizio(componenti[0]);
+      a.colore = componenti[0].colore;
+      a.durataMin = durataServizioMin(componenti[0]);
+      a.durataLavorazioneMin = durataLavorazioneServizioMin(componenti[0]);
+      let cursore = hhmmToMinuti(a.ora) + a.durataMin;
+      for (let i = 1; i < componenti.length; i++) {
+        const comp = componenti[i];
+        const durata = durataServizioMin(comp);
+        createAppuntamento({
+          data: a.data, ora: minutiToHHMM(cursore), operatore: a.operatore, tipo: 'cliente',
+          clienteId: a.clienteId, nomeManuale: a.nomeManuale, telefonoManuale: a.telefonoManuale,
+          richiestaId: a.richiestaId, tokenModifica: a.tokenModifica,
+          servizioId: comp.id, servizio: nomeServizio(comp), colore: comp.colore,
+          durataMin: durata, durataLavorazioneMin: durataLavorazioneServizioMin(comp), comboGroupId: gruppo
+        });
+        cursore += durata;
+      }
+    } else {
+      a.servizioId = s ? s.id : null;
+      if (s) a.servizio = nomeServizio(s);
+      a.colore = s ? s.colore : null;
+      if (s) { a.durataMin = durataServizioMin(s); a.durataLavorazioneMin = durataLavorazioneServizioMin(s); }
+    }
+  }
   // ---- Prenotazione online (Erica, 16/10: "vorrei impostare gli appuntamenti online con
   // promemoria") ----------------------------------------------------------------------------
   // Toglie spazi/parentesi/trattini da un numero, per confrontare "345 134 5313" e "345-1345313"
@@ -3478,7 +3519,7 @@
           const app = r.token ? agendaCache.appuntamenti.find(x => x.richiestaId === r.rifRichiestaId && x.tokenModifica === r.token) : null;
           const fineNuova = oraPiuMinuti(r.ora, r.durataMin || 15);
           const occupatoMod = app && agendaCache.appuntamenti.some(x =>
-            x.id !== app.id && x.operatore === r.operatore && x.data === r.data &&
+            x.id !== app.id && !(app.comboGroupId && x.comboGroupId === app.comboGroupId) && x.operatore === r.operatore && x.data === r.data &&
             x.ora < fineNuova && oraPiuMinuti(x.ora, appuntamentoDurata(x)) > r.ora
           );
           if (!app || occupatoMod) {
@@ -3488,10 +3529,7 @@
           }
           const servMod = r.servizioId ? getServizio(r.servizioId) : null;
           app.data = r.data; app.ora = r.ora; app.operatore = r.operatore;
-          if (servMod) {
-            app.servizio = nomeServizio(servMod); app.servizioId = servMod.id; app.colore = servMod.colore;
-            app.durataMin = durataServizioMin(servMod); app.durataLavorazioneMin = durataLavorazioneServizioMin(servMod);
-          }
+          if (servMod) applicaServizioAdAppuntamento(app, servMod);
           app.note = (app.note ? app.note + ' ' : '') + 'Modificata online dalla cliente.';
           saveAgenda();
           doc.ref.update({ stato: 'confermata' }).catch(() => {});
@@ -3508,17 +3546,17 @@
         }
         const servizio = r.servizioId ? getServizio(r.servizioId) : null;
         const cliente = trovaClienteDaTelefono(r.telefono);
-        createAppuntamento({
+        const nuovoApp = createAppuntamento({
           data: r.data, ora: r.ora, operatore: r.operatore, tipo: 'cliente',
           clienteId: cliente ? cliente.id : null,
           nomeManuale: cliente ? '' : (r.nome || ''), telefonoManuale: cliente ? '' : (r.telefono || ''),
           richiestaId: doc.id, tokenModifica: r.token || null,
           servizio: servizio ? nomeServizio(servizio) : (r.nome || ''), servizioId: r.servizioId || null,
-          colore: servizio ? servizio.colore : null,
-          durataMin: servizio ? durataServizioMin(servizio) : 15,
-          durataLavorazioneMin: servizio ? durataLavorazioneServizioMin(servizio) : 15,
+          colore: null, durataMin: 15, durataLavorazioneMin: 15,
           note: 'Prenotato online.' + (r.note ? ' ' + r.note : '')
         });
+        if (servizio) applicaServizioAdAppuntamento(nuovoApp, servizio);
+        saveAgenda();
         doc.ref.update({ stato: 'confermata' }).catch(() => {});
       });
       richiesteOnlineConflitto = nuoveInConflitto;
@@ -8110,44 +8148,7 @@
       sel.addEventListener('change', () => {
         const a = agendaCache.appuntamenti.find(x => x.id === sel.dataset.id);
         if (!a) return;
-        // Se questo blocco faceva già parte di una combo esplosa in precedenza, si tolgono prima
-        // i blocchi "fratelli": si ricostruiscono da zero con la nuova scelta.
-        if (a.comboGroupId) {
-          const vecchioGruppo = a.comboGroupId;
-          agendaCache.appuntamenti = agendaCache.appuntamenti.filter(x => x.id === a.id || x.comboGroupId !== vecchioGruppo);
-          a.comboGroupId = null;
-        }
-        const s = getServizio(sel.value);
-        const componenti = (s && s.tipo === 'combo') ? (s.comboDi || []).map(id => getServizio(id)).filter(Boolean) : [];
-        if (componenti.length) {
-          const gruppo = uid();
-          a.comboGroupId = gruppo;
-          a.servizioId = componenti[0].id;
-          a.servizio = nomeServizio(componenti[0]);
-          a.colore = componenti[0].colore;
-          a.durataMin = durataServizioMin(componenti[0]);
-          a.durataLavorazioneMin = durataLavorazioneServizioMin(componenti[0]);
-          // Il pezzo successivo della combo inizia comunque a fine lavorazione+posa (è il tempo
-          // reale: non si può tagliare finché il colore non ha finito di posare), ma solo il
-          // tempo di lavorazione colora/blocca la cella: il tempo di posa resta prenotabile.
-          let cursore = hhmmToMinuti(a.ora) + a.durataMin;
-          for (let i = 1; i < componenti.length; i++) {
-            const comp = componenti[i];
-            const durata = durataServizioMin(comp);
-            createAppuntamento({
-              data: a.data, ora: minutiToHHMM(cursore), operatore: a.operatore, tipo: 'cliente',
-              clienteId: a.clienteId, nomeManuale: a.nomeManuale,
-              servizioId: comp.id, servizio: nomeServizio(comp), colore: comp.colore,
-              durataMin: durata, durataLavorazioneMin: durataLavorazioneServizioMin(comp), comboGroupId: gruppo
-            });
-            cursore += durata;
-          }
-        } else {
-          a.servizioId = s ? s.id : null;
-          if (s) a.servizio = nomeServizio(s);
-          a.colore = s ? s.colore : null;
-          if (s) { a.durataMin = durataServizioMin(s); a.durataLavorazioneMin = durataLavorazioneServizioMin(s); }
-        }
+        applicaServizioAdAppuntamento(a, getServizio(sel.value));
         saveAgenda();
         agendaNotify('Salvato.');
         renderSheetMantenendoScroll();
