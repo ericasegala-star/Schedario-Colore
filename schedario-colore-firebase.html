@@ -1,4 +1,9 @@
 <!DOCTYPE html>
+<!--
+  Ericair — © 2026 Erica Segala. Tutti i diritti riservati.
+  Software proprietario: è vietato copiare, modificare, distribuire o usare questo codice
+  senza autorizzazione scritta dell'autrice. All rights reserved.
+-->
 <html lang="it">
 <head>
 <meta charset="UTF-8">
@@ -1755,7 +1760,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-23.111-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-23.112-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -1763,7 +1768,6 @@
   // che qualcuno apra l'app per errore. L'archivio clienti resta unico e condiviso
   // tra Erica e Sara. Una volta inserito il codice giusto su un dispositivo, quel
   // dispositivo se lo ricorda e non lo richiede più.
-  const LOGIN_PINS = { "Erica": "2609", "Sara": "1410" };
   const LOGIN_REMEMBER_KEY = "schedario-colore:operatore";
 
   // --- Lingua dell'app (Erica, 19/10: "mi piacerebbe fosse tradotto... inglese, spagnolo,
@@ -2661,7 +2665,7 @@
   }
 
   // (La vecchia schermata "Chi sei?" con nome+codice è stata tolta del tutto il 19/10, sostituita
-  // dalla schermata di apertura animata qui sotto. LOGIN_PINS/currentOperator restano, usati
+  // dalla schermata di apertura animata qui sotto. currentOperator resta, usato
   // solo come valore di default "Erica" in alcuni punti dei dati, non più per un vero accesso.)
 
   // --- Configurazione Firebase -------------------------------------------------
@@ -10182,7 +10186,7 @@
 
   // L'app si apre diretta, senza più la schermata "Chi sei?" (Erica, 16/10: "togli il mio
   // account all'inizio"): si entra già come Erica, senza scegliere il nome né inserire un
-  // codice. L'infrastruttura dei codici (LOGIN_PINS/currentOperator, sopra) resta intatta, per
+  // codice. L'infrastruttura (currentOperator, sopra) resta intatta, per
   // poterla ripristinare facilmente se un giorno servisse di nuovo (es. per Sara).
   // Al posto della vecchia schermata (che per un attimo lasciava intravedere il nome "Erica"
   // mentre l'app caricava, Erica 19/10: "c'è sempre il mio nome all'avvio"), una schermata
