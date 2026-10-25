@@ -1032,7 +1032,6 @@
   }
   .settings-close:hover { background: var(--berry-soft); }
   [dir="rtl"] .settings-close { right: auto; left: 14px; }
-  #anagraficaModal .anag-card { width: min(1000px, 100%); }
   .anag-top { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }
   .anag-top input[type="text"] { flex: 1 1 200px; min-width: 0; }
   .anag-filtri { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
@@ -1737,13 +1736,6 @@
   </div>
 </div>
 
-<div class="settings-modal" id="anagraficaModal" hidden>
-  <div class="settings-card anag-card">
-    <button type="button" class="settings-close" id="anagraficaClose" aria-label="Chiudi" data-i18n-aria="ui.close">×</button>
-    <div id="anagraficaBody"></div>
-  </div>
-</div>
-
 <div class="settings-modal" id="agendaAssenzaModal" hidden>
   <div class="settings-card">
     <button type="button" class="settings-close" id="agendaAssenzaClose" aria-label="Chiudi" data-i18n-aria="ui.close">×</button>
@@ -1813,7 +1805,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-25.136-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-25.137-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -5484,7 +5476,8 @@
   let viewingNotes = false; // true quando il pannello principale mostra "Consigli di utilizzo" invece di una scheda cliente
   let viewingIspirazione = false; // true quando il pannello principale mostra "Ispirazione"
   let viewingMagazzino = false; // true quando il pannello principale mostra "Magazzino"
-  let viewingServizi = false; // true quando il pannello principale mostra "Crea servizio"
+  let viewingAnagrafica = false; // true quando il pannello principale mostra l'Anagrafica clienti
+  let viewingServizi = false; viewingAnagrafica = false; // true quando il pannello principale mostra "Crea servizio"
   let viewingAgenda = false; // true quando il pannello principale mostra "Agenda"
   let viewingSearchApp = false; // true quando il pannello principale mostra "Cerca nell'app"
   // Sezione "Tricologo": mostra SOLO Magazzino, Catalogo prodotti HP e Cerca nell'app — niente
@@ -5554,7 +5547,7 @@
     viewingNotes = false;
     viewingIspirazione = false;
     viewingMagazzino = false;
-    viewingServizi = false;
+    viewingServizi = false; viewingAnagrafica = false;
     viewingAgenda = false;
     viewingSearchApp = false;
     viewingBlankSheet = false;
@@ -7051,7 +7044,7 @@
     ul.innerHTML = '';
     filtered.forEach(c => {
       const li = document.createElement('li');
-      li.className = (!viewingNotes && !viewingIspirazione && !viewingMagazzino && !viewingServizi && !viewingAgenda && !viewingSearchApp && !viewingBlankSheet && !viewingOstwald && !viewingCatalogoHp && !viewingConsigliGenerici && !viewingSchedaGenerica && !viewingHome && c.id === activeId) ? 'active' : '';
+      li.className = (!viewingNotes && !viewingIspirazione && !viewingMagazzino && !viewingServizi && !viewingAnagrafica && !viewingAgenda && !viewingSearchApp && !viewingBlankSheet && !viewingOstwald && !viewingCatalogoHp && !viewingConsigliGenerici && !viewingSchedaGenerica && !viewingHome && c.id === activeId) ? 'active' : '';
       const mesiRic = appSettingsCache.mesiRicontatto;
       const daRicontattare = mesiRic && (Date.now() - c.updatedAt) >= mesiRic * 30 * 24 * 3600 * 1000;
       li.innerHTML = `<span class="name">${escapeHtml(c.nome || 'Senza nome')}${daRicontattare ? '<span class="recontact-badge">Da ricontattare</span>' : ''}</span><span class="date">${fmtDate(c.updatedAt)}</span>`;
@@ -7069,6 +7062,8 @@
     if (magEntry) magEntry.className = 'notes-banner-item' + (viewingMagazzino ? ' active' : '');
     const serviziEntry = document.getElementById('serviziEntry');
     if (serviziEntry) serviziEntry.className = 'notes-banner-item' + (viewingServizi ? ' active' : '');
+    const anagEntry = document.getElementById('anagraficaEntry');
+    if (anagEntry) anagEntry.className = 'notes-banner-item' + (viewingAnagrafica ? ' active' : '');
     const searchEntry = document.getElementById('cercaAppEntry');
     if (searchEntry) searchEntry.className = 'notes-banner-item' + (viewingSearchApp ? ' active' : '');
     const blankEntry = document.getElementById('blankSheetEntry');
@@ -7143,6 +7138,7 @@
     viewingIspirazione = flagDaAttivare === 'ispirazione';
     viewingMagazzino = flagDaAttivare === 'magazzino';
     viewingServizi = flagDaAttivare === 'servizi';
+    viewingAnagrafica = flagDaAttivare === 'anagrafica';
     viewingAgenda = false;
     viewingSearchApp = false;
     viewingBlankSheet = false;
@@ -8089,6 +8085,19 @@
         </div>
       `;
       bindMagazzinoEvents();
+      return;
+    }
+
+    if (viewingAnagrafica) {
+      if (floatingSave) floatingSave.hidden = true;
+      panel.innerHTML = `
+        <div class="sheet-head">
+          <div class="name-field">
+            <div class="notes-title">${t('nav.anagrafica', 'Anagrafica clienti')}</div>
+          </div>
+        </div>
+        <div id="anagraficaBody"></div>`;
+      renderAnagrafica();
       return;
     }
 
@@ -10453,7 +10462,7 @@
     viewingNotes = false;
     viewingIspirazione = false;
     viewingMagazzino = false;
-    viewingServizi = false;
+    viewingServizi = false; viewingAnagrafica = false;
     viewingAgenda = false;
     viewingSearchApp = false;
     viewingBlankSheet = false;
@@ -10523,7 +10532,7 @@
     viewingNotes = true;
     viewingIspirazione = false;
     viewingMagazzino = false;
-    viewingServizi = false;
+    viewingServizi = false; viewingAnagrafica = false;
     viewingAgenda = false;
     viewingSearchApp = false;
     viewingBlankSheet = false;
@@ -10540,7 +10549,7 @@
   document.getElementById('ispirazioneEntry').addEventListener('click', () => {
     viewingIspirazione = true;
     viewingMagazzino = false;
-    viewingServizi = false;
+    viewingServizi = false; viewingAnagrafica = false;
     viewingAgenda = false;
     viewingNotes = false;
     viewingSearchApp = false;
@@ -10558,7 +10567,7 @@
   // Magazzino: stesso comportamento, apre come una scheda
   document.getElementById('magazzinoEntry').addEventListener('click', () => {
     viewingMagazzino = true;
-    viewingServizi = false;
+    viewingServizi = false; viewingAnagrafica = false;
     viewingNotes = false;
     viewingIspirazione = false;
     viewingAgenda = false;
@@ -10582,6 +10591,7 @@
   // Crea servizio: stesso comportamento, apre come una scheda
   document.getElementById('serviziEntry').addEventListener('click', () => {
     viewingServizi = true;
+    viewingAnagrafica = false;
     viewingMagazzino = false;
     viewingNotes = false;
     viewingIspirazione = false;
@@ -10601,7 +10611,7 @@
   document.querySelectorAll('[data-sezione-generica]').forEach(el => { el.style.display = SEZIONI_GENERICHE_VISIBILI ? '' : 'none'; });
   document.getElementById('consigliGenericiEntry').addEventListener('click', () => {
     viewingConsigliGenerici = true;
-    viewingServizi = false;
+    viewingServizi = false; viewingAnagrafica = false;
     viewingMagazzino = false;
     viewingNotes = false;
     viewingIspirazione = false;
@@ -10618,7 +10628,7 @@
   // Scheda generica: stesso comportamento di "Crea servizio" (si salva da sola)
   document.getElementById('schedaGenericaEntry').addEventListener('click', () => {
     viewingSchedaGenerica = true;
-    viewingServizi = false;
+    viewingServizi = false; viewingAnagrafica = false;
     viewingMagazzino = false;
     viewingNotes = false;
     viewingIspirazione = false;
@@ -10643,7 +10653,7 @@
     viewingNotes = false;
     viewingIspirazione = false;
     viewingMagazzino = false;
-    viewingServizi = false;
+    viewingServizi = false; viewingAnagrafica = false;
     viewingAgenda = false;
     viewingBlankSheet = false;
     viewingOstwald = false;
@@ -10664,7 +10674,7 @@
     viewingNotes = false;
     viewingIspirazione = false;
     viewingMagazzino = false;
-    viewingServizi = false;
+    viewingServizi = false; viewingAnagrafica = false;
     viewingAgenda = false;
     viewingSearchApp = false;
     viewingOstwald = false;
@@ -10682,7 +10692,7 @@
     viewingNotes = false;
     viewingIspirazione = false;
     viewingMagazzino = false;
-    viewingServizi = false;
+    viewingServizi = false; viewingAnagrafica = false;
     viewingAgenda = false;
     viewingSearchApp = false;
     viewingBlankSheet = false;
@@ -10703,7 +10713,7 @@
     viewingNotes = false;
     viewingIspirazione = false;
     viewingMagazzino = false;
-    viewingServizi = false;
+    viewingServizi = false; viewingAnagrafica = false;
     viewingAgenda = false;
     viewingSearchApp = false;
     viewingBlankSheet = false;
@@ -10720,7 +10730,7 @@
     viewingNotes = false;
     viewingIspirazione = false;
     viewingMagazzino = false;
-    viewingServizi = false;
+    viewingServizi = false; viewingAnagrafica = false;
     viewingAgenda = false;
     viewingSearchApp = false;
     viewingBlankSheet = false;
@@ -10746,7 +10756,7 @@
     viewingNotes = false;
     viewingIspirazione = false;
     viewingMagazzino = false;
-    viewingServizi = false;
+    viewingServizi = false; viewingAnagrafica = false;
     viewingAgenda = false;
     viewingSearchApp = false;
     viewingBlankSheet = false;
@@ -10784,7 +10794,7 @@
         viewingNotes = tecnicoViewSnapshot.viewingNotes;
         viewingIspirazione = tecnicoViewSnapshot.viewingIspirazione;
         viewingMagazzino = tecnicoViewSnapshot.viewingMagazzino;
-        viewingServizi = tecnicoViewSnapshot.viewingServizi;
+        viewingServizi = tecnicoViewSnapshot.viewingServizi; viewingAnagrafica = !!tecnicoViewSnapshot.viewingAnagrafica;
         viewingAgenda = tecnicoViewSnapshot.viewingAgenda;
         viewingSearchApp = tecnicoViewSnapshot.viewingSearchApp;
         viewingBlankSheet = tecnicoViewSnapshot.viewingBlankSheet;
@@ -10803,11 +10813,11 @@
   if (modeTricologoBtn) {
     modeTricologoBtn.addEventListener('click', () => {
       viewingTricologo = true;
-      tecnicoViewSnapshot = { viewingNotes, viewingIspirazione, viewingMagazzino, viewingServizi, viewingAgenda, viewingSearchApp, viewingBlankSheet, viewingOstwald, viewingCatalogoHp, viewingConsigliGenerici, viewingSchedaGenerica, viewingHome, activeId };
+      tecnicoViewSnapshot = { viewingNotes, viewingIspirazione, viewingMagazzino, viewingServizi, viewingAnagrafica, viewingAgenda, viewingSearchApp, viewingBlankSheet, viewingOstwald, viewingCatalogoHp, viewingConsigliGenerici, viewingSchedaGenerica, viewingHome, activeId };
       viewingNotes = false;
       viewingIspirazione = false;
       viewingMagazzino = false;
-      viewingServizi = false;
+      viewingServizi = false; viewingAnagrafica = false;
       viewingSearchApp = false;
       viewingBlankSheet = false;
       viewingOstwald = false;
@@ -11103,7 +11113,6 @@
     const frecce = k => anagOrd.key === k ? (anagOrd.dir === 1 ? ' ▲' : ' ▼') : '';
     const filtri = [['tutti', 'Tutte'], ['ricontattare', 'Da ricontattare'], ['senzaconsenso', 'Senza consenso']];
     return `
-      <h2>Anagrafica clienti</h2>
       <p class="hint">Tutti i contatti in un unico elenco. Clicca una riga per vedere e modificare i dati, scaricarli o eliminarli.</p>
       ${vuote.length ? `<div class="anag-avviso"><span>${vuote.length} ${vuote.length === 1 ? 'cliente compare' : 'clienti compaiono'} tra le schede tecniche ma non ${vuote.length === 1 ? 'ha' : 'hanno'} nessuna scheda compilata. Spostandole resteranno solo qui in Anagrafica; le schede già compilate non vengono toccate.</span> <button type="button" class="primary small" id="anagFixVuote">Sposta ${vuote.length === 1 ? 'la cliente' : 'le ' + vuote.length + ' clienti'} solo in Anagrafica</button></div>` : ''}
       ${rip.length ? `<div class="anag-avviso"><span>${rip.length} ${rip.length === 1 ? 'nome ha' : 'nomi hanno'} il cognome ripetuto (es. «${escapeHtml(rip[0].c.nome)}» diventerebbe «${escapeHtml(rip[0].nuovo)}»). Si cambia solo il nome: schede e foto restano.</span> <button type="button" class="primary small" id="anagFixNomi">Correggi ${rip.length === 1 ? 'il nome' : 'i ' + rip.length + ' nomi'}</button></div>` : ''}
@@ -11156,6 +11165,7 @@
   function renderAnagrafica() {
     const body = document.getElementById('anagraficaBody');
     if (!body) return;
+    if (anagModificata) { anagModificata = false; renderList(); } // l'elenco delle schede a sinistra si aggiorna subito
     const c = anagSel ? clients.find(x => x.id === anagSel) : null;
     body.innerHTML = c ? renderAnagraficaDettaglio(hydrate(c)) : anagImport ? renderAnagraficaImport() : renderAnagraficaLista();
     anagDelArmed = false;
@@ -11245,23 +11255,20 @@
   }
   function apriAnagrafica() {
     anagSel = null; anagTesto = ''; anagFiltro = 'tutti'; anagModificata = false; anagImport = null;
-    document.getElementById('anagraficaModal').hidden = false;
-    renderAnagrafica();
+    chiudiAltreSezioniEApri('anagrafica'); // come le altre sezioni (Magazzino, Servizi…): si apre nel pannello principale
     // l'ultima visita viene dall'Agenda: se non è ancora stata caricata, la leggo ora
     if (db && !(agendaCache.appuntamenti || []).length) {
       db.doc('app/agenda').get().then(doc => {
         agendaCache.appuntamenti = (doc.exists && doc.data() && doc.data().appuntamenti) || [];
-        if (!document.getElementById('anagraficaModal').hidden && !anagSel) renderAnagrafica();
+        if (viewingAnagrafica && !anagSel && !anagImport) renderAnagrafica();
       }).catch(() => {});
     }
   }
   function chiudiAnagrafica() {
-    document.getElementById('anagraficaModal').hidden = true;
-    if (anagModificata) { anagModificata = false; renderAll(); }
+    viewingAnagrafica = false;
+    anagModificata = false;
   }
-  document.getElementById('anagraficaEntry').addEventListener('click', () => { closeMobileMenu(); apriAnagrafica(); });
-  document.getElementById('anagraficaClose').addEventListener('click', chiudiAnagrafica);
-  document.getElementById('anagraficaModal').addEventListener('click', (e) => { if (e.target.id === 'anagraficaModal') chiudiAnagrafica(); });
+  document.getElementById('anagraficaEntry').addEventListener('click', apriAnagrafica);
 
   document.getElementById('agendaTurniModal').addEventListener('click', (e) => {
     if (e.target.id === 'agendaTurniModal') closeAgendaTurniModal();
