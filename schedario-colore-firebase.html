@@ -1829,7 +1829,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-26.139-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-10-26.140-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -3787,8 +3787,7 @@
   // I 12 fogli del Business Plan (uno per mese), con le formule originali di Excel/Numbers
   // "tradotte" in un piccolo motore di calcolo qui sotto, cosicche i totali restino vivi
   // (si aggiornano da soli) anche dopo le modifiche fatte qui dentro.
-  const BUSINESS_PLAN_DATA = {"sheets":[]};
-
+  const BUSINESS_PLAN_DATA = {"sheets":[]}; // i dati di partenza non sono più nel file pubblico
   function currentOperator() {
     try { return localStorage.getItem(LOGIN_REMEMBER_KEY) || null; } catch (e) { return null; }
   }
