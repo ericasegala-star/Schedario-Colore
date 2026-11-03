@@ -512,6 +512,19 @@
   }
   .line-block.time .line-block-head { background: var(--berry-soft); color: var(--berry); }
   .line-block.green .line-block-head { background: var(--leaf-soft); color: var(--leaf); }
+  .line-block.xl0 .line-block-head { background: var(--glicine-soft); color: var(--glicine); }
+  .line-block.xl1 .line-block-head { background: var(--copper-soft); color: var(--ink); }
+  .line-block.xl0 .dose-title { color: var(--glicine); }
+  .line-block.xl1 .dose-title { color: var(--ink); }
+  .line-block.xl0 .dose-table thead th { background: var(--glicine-soft); }
+  .line-block.xl1 .dose-table thead th { background: var(--copper-soft); }
+  .line-name-input { flex: 1; min-width: 0; background: transparent; border: 0; border-bottom: 1px dashed transparent; border-radius: 0; padding: 2px 0; font: inherit; color: inherit; }
+  .line-name-input::placeholder { color: inherit; opacity: 0.55; }
+  .line-name-input:hover, .line-name-input:focus { border-bottom-color: currentColor; outline: none; }
+  .line-block-head .line-del-btn { flex: none; }
+  .line-block-head:has(.line-name-input) { display: flex; align-items: center; gap: 8px; }
+  #addLineBtn { margin: 4px 0 6px; }
+  .linea-nome { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); }
   .line-block-body { padding: 16px; }
   .dose-group { margin-bottom: 14px; }
   .dose-group:last-child { margin-bottom: 0; }
@@ -1692,6 +1705,14 @@
     </div>
 
     <div class="settings-section">
+      <label style="font-size:17px;font-weight:700">Altre linee colore</label>
+      <p class="hint">Oltre a Time e Green Mix puoi aggiungere altre linee che usi in salone. Scrivi il nome e, se vuoi, le tabelle dei tempi di posa: compaiono nella scheda cliente con una casella da spuntare e il tempo da scrivere.</p>
+      <div id="settingsLineeList"></div>
+      <button type="button" class="ghost small" id="settingsLineaAdd" style="margin:6px 0 10px">+ Aggiungi linea colore</button>
+      <p class="hint">Come si scrive: una riga con il titolo della tabella, poi una riga per ogni colonna nel formato «etichetta | tempo suggerito». Una riga vuota separa una tabella dall'altra. Se scrivi solo delle righe semplici, ognuna diventa una casella.</p>
+    </div>
+
+    <div class="settings-section">
       <label for="settingsPaese">Paese e formati</label>
       <select id="settingsPaese">
         <option value="IT">Italia: euro €, data giorno/mese/anno, settimana dal lunedì</option>
@@ -1854,7 +1875,7 @@
 
 <script>
 (function () {
-  const APP_BUILD = "2026-10-31.147-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-11-03.148-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -5016,6 +5037,7 @@
       brandContact.hidden = !parts.length;
     }
     applyAccentColor(appSettingsCache.colore);
+    applyExtraLines();
     applicaDirezione();
     renderSettingsForm();
     renderList(); // i bollini "Da ricontattare" dipendono dalla soglia in mesi appena caricata/cambiata
@@ -5088,6 +5110,7 @@
     if (recInput && document.activeElement !== recInput) recInput.value = appSettingsCache.linkRecensioni || DEFAULT_LINK_RECENSIONI || '';
     const paeseSel = document.getElementById('settingsPaese');
     if (paeseSel) paeseSel.value = paeseCorrente();
+    try { renderSettingsLinee(false); } catch (e) {}
     const ricontattoInput = document.getElementById('settingsRicontatto');
     if (ricontattoInput && document.activeElement !== ricontattoInput) ricontattoInput.value = appSettingsCache.mesiRicontatto || 0;
   }
@@ -5281,7 +5304,8 @@
           telefono: aspettoData.telefono || null,
           mesiRicontatto: aspettoData.mesiRicontatto || null,
           paese: aspettoData.paese || null,
-          linkRecensioni: aspettoData.linkRecensioni || null
+          linkRecensioni: aspettoData.linkRecensioni || null,
+          lineeExtra: Array.isArray(aspettoData.lineeExtra) && aspettoData.lineeExtra.length ? aspettoData.lineeExtra : null
         };
         appBackupCache = { ultimoBackupAt: (backup.exists && backup.data().ultimoBackupAt) || null };
         applySettings();
@@ -5637,6 +5661,7 @@
       obiettivo: c.obiettivo,
       tempiTime: c.tempiTime, tempiGreen: c.tempiGreen,
       formulaTime: c.formulaTime, formulaGreen: c.formulaGreen,
+      lineeExtra: c.lineeExtra,
       postColoreSalone: c.postColoreSalone, consigliMantenimento: c.consigliMantenimento,
       modifiche: c.modifiche
     }));
@@ -5786,8 +5811,7 @@
   }
 
   function lineHasContent(data, lineKey) {
-    const tempi = (lineKey === 'time' ? data.tempiTime : data.tempiGreen) || {};
-    const formula = (lineKey === 'time' ? data.formulaTime : data.formulaGreen) || {};
+    const { tempi, formula } = lineSlotRead(data, lineKey);
     const anyTempo = Object.values(tempi).some(cell => cell && cell.on);
     const anyFormula = !!(formula.base || formula.mordenzatura || formula.correttore || formula.lunghezze || formula.tonalizzazione || formula.tecnica || formula.gloss);
     return anyTempo || anyFormula;
@@ -5809,12 +5833,12 @@
 
   function renderVersionLineBlock(data, lineKey) {
     const line = LINES[lineKey];
-    const tempi = (lineKey === 'time' ? data.tempiTime : data.tempiGreen) || {};
-    const formula = (lineKey === 'time' ? data.formulaTime : data.formulaGreen) || {};
+    if (!line) return '';
+    const { tempi, formula } = lineSlotRead(data, lineKey);
 
     const groupsHtml = line.groups.map(g => `
       <div class="dose-group">
-        <div class="dose-title">${trDose(g.title)}</div>
+        ${g.title ? `<div class="dose-title">${trDose(g.title)}</div>` : ''}
         <div class="dose-table-wrap">
           <table class="dose-table">
             <thead><tr>${g.cols.map(col => `<th>${trDose(col.label)}</th>`).join('')}</tr></thead>
@@ -5841,11 +5865,11 @@
     if (formula.tonalizzazione) row2b.push(`<div class="field"><label>${t('sc.tonalizzazione', "Tonalizzazione")}</label><div class="version-readonly-value">${escapeHtml(formula.tonalizzazione)}</div></div>`);
     if (row2b.length) fRows.push(`<div class="row2">${row2b.join('')}</div>`);
     addF(t('sc.tecnicaServizi', 'Tecnica e servizi'), formula.tecnica);
-    addF(t('sc.tonalizzazione', 'Tonalizzazione') + ' Forever Gloss', formula.gloss);
+    addF(line.extra ? 'Tonalizzazione finale' : t('sc.tonalizzazione', 'Tonalizzazione') + ' Forever Gloss', formula.gloss);
 
     return `
-      <div class="line-block ${lineKey}">
-        <div class="line-block-head">${line.label}</div>
+      <div class="line-block ${lineClass(lineKey)}">
+        <div class="line-block-head">${escapeHtml(line.label)}</div>
         <div class="line-block-body">
           ${groupsHtml}
           ${fRows.length ? `<div class="formula-grid">${fRows.join('')}</div>` : ''}
@@ -5871,7 +5895,7 @@
     addD(t('sc.obiettivo', 'Obiettivo'), data.obiettivo);
     if (diagRows.length) parts.push(`<fieldset><legend>${t('sc.diagnosi', "Diagnosi capello")}</legend>${diagRows.join('')}</fieldset>`);
 
-    const lineBlocksHtml = ['time', 'green']
+    const lineBlocksHtml = lineKeysAttive()
       .filter(key => lineHasContent(data, key))
       .map(key => renderVersionLineBlock(data, key))
       .join('');
@@ -5938,28 +5962,19 @@
     field('Livello lunghezze', c.livLunghezze);
     field('Livello punte', c.livPunte);
     field('Obiettivo', c.obiettivo);
-    if (lineHasContent(c, 'time')) {
+    lineKeysAttive().forEach(k => {
+      if (!lineHasContent(c, k)) return;
+      const f = lineSlotRead(c, k).formula;
       spacer();
-      h2('Linea Time');
-      field('Formula colore base', c.formulaTime.base);
-      field('Mordenzatura', c.formulaTime.mordenzatura);
-      field('Correttore/booster', c.formulaTime.correttore);
-      field('Lunghezze', c.formulaTime.lunghezze);
-      field('Tonalizzazione', c.formulaTime.tonalizzazione);
-      field('Tecnica e servizi', c.formulaTime.tecnica);
-      field('Tonalizzazione Forever Gloss', c.formulaTime.gloss);
-    }
-    if (lineHasContent(c, 'green')) {
-      spacer();
-      h2('Linea Green Mix');
-      field('Formula colore base', c.formulaGreen.base);
-      field('Mordenzatura', c.formulaGreen.mordenzatura);
-      field('Correttore/booster', c.formulaGreen.correttore);
-      field('Lunghezze', c.formulaGreen.lunghezze);
-      field('Tonalizzazione', c.formulaGreen.tonalizzazione);
-      field('Tecnica e servizi', c.formulaGreen.tecnica);
-      field('Tonalizzazione Forever Gloss', c.formulaGreen.gloss);
-    }
+      h2(lineLabelPdf(k));
+      field('Formula colore base', f.base);
+      field('Mordenzatura', f.mordenzatura);
+      field('Correttore/booster', f.correttore);
+      field('Lunghezze', f.lunghezze);
+      field('Tonalizzazione', f.tonalizzazione);
+      field('Tecnica e servizi', f.tecnica);
+      field(k === 'time' || k === 'green' ? 'Tonalizzazione Forever Gloss' : 'Tonalizzazione finale', f.gloss);
+    });
     if (c.postColoreSalone || c.consigliMantenimento) {
       spacer(); h2('Dopo il colore');
       if (c.postColoreSalone) field('Cosa abbiamo fatto in salone', c.postColoreSalone);
@@ -6008,6 +6023,52 @@
       ]
     }
   };
+
+  // ---- Altre linee colore (oltre a Time e Green Mix, che restano fisse) ----
+  // Configurate in Impostazioni (impostazioni/aspetto -> lineeExtra: [{id, nome, tabelle}]);
+  // i dati di ogni scheda stanno in c.lineeExtra[id] = { tempi, formula }.
+  const MAX_LINEE_EXTRA = 8;
+  function parseTabellePosa(txt) {
+    return String(txt || '').split(/\n\s*\n/).map((blocco, gi) => {
+      const righe = blocco.split('\n').map(r => r.trim()).filter(Boolean);
+      if (!righe.length) return null;
+      const conTitolo = righe.length >= 2 && !righe[0].includes('|') && righe.slice(1).some(r => r.includes('|'));
+      return { key: 'g' + gi, title: conTitolo ? righe[0] : '', cols: (conTitolo ? righe.slice(1) : righe).map((r, ci) => {
+        const p = r.split('|');
+        return { key: 'c' + ci, label: p[0].trim(), hint: (p[1] || '').trim() };
+      }) };
+    }).filter(Boolean);
+  }
+  function lineeExtraConfig() {
+    const l = appSettingsCache && appSettingsCache.lineeExtra;
+    return Array.isArray(l) ? l.filter(x => x && x.id).map(x => ({ id: String(x.id), nome: x.nome || '', tabelle: x.tabelle || '' })) : [];
+  }
+  function applyExtraLines() {
+    Object.keys(LINES).forEach(k => { if (k !== 'time' && k !== 'green') delete LINES[k]; });
+    lineeExtraConfig().forEach((x, i) => {
+      LINES[x.id] = { label: x.nome || ('Linea colore ' + (i + 3)), groups: parseTabellePosa(x.tabelle), extra: true, idx: i };
+    });
+  }
+  function lineKeysAttive() { return ['time', 'green'].concat(lineeExtraConfig().map(x => x.id)); }
+  function lineClass(key) { const l = LINES[key]; return l && l.extra ? 'xl' + (l.idx % 2) : key; }
+  // lettura senza modificare la scheda (per disegnare, stampare, confrontare)
+  function lineSlotRead(c, key) {
+    if (key === 'time') return { tempi: c.tempiTime || {}, formula: c.formulaTime || blankFormula() };
+    if (key === 'green') return { tempi: c.tempiGreen || {}, formula: c.formulaGreen || blankFormula() };
+    const o = (c.lineeExtra && c.lineeExtra[key]) || {};
+    return { tempi: o.tempi || {}, formula: Object.assign(blankFormula(), o.formula || {}) };
+  }
+  // per scrivere: crea gli spazi mancanti
+  function lineSlot(c, key) {
+    if (key === 'time') return { tempi: c.tempiTime, formula: c.formulaTime };
+    if (key === 'green') return { tempi: c.tempiGreen, formula: c.formulaGreen };
+    if (!c.lineeExtra) c.lineeExtra = {};
+    const o = c.lineeExtra[key] || (c.lineeExtra[key] = { tempi: {}, formula: blankFormula() });
+    if (!o.tempi) o.tempi = {};
+    if (!o.formula) o.formula = blankFormula();
+    return o;
+  }
+  function lineLabelPdf(key) { return key === 'time' ? 'Linea Time' : key === 'green' ? 'Linea Green Mix' : 'Linea ' + (LINES[key] ? LINES[key].label : ''); }
 
   const BIANCHI_OPTIONS = [
     { v: "10-15", l: "10%–15%" },
@@ -7376,7 +7437,7 @@
     push('Cosa abbiamo fatto in salone', c.postColoreSalone);
     push('Consigli mantenimento a casa', c.consigliMantenimento);
     push('Per la prossima volta', c.modifiche);
-    [['Time', c.formulaTime], ['Green Mix', c.formulaGreen]].forEach(([label, formula]) => {
+    lineKeysAttive().map(k => [LINES[k] ? LINES[k].label : '', lineSlotRead(c, k).formula]).forEach(([label, formula]) => {
       if (!formula) return;
       push(label + ' — formula base', formula.base);
       push(label + ' — mordenzatura', formula.mordenzatura);
@@ -7542,9 +7603,9 @@
 
   function renderLineBlock(c, lineKey, readOnly, compact) {
     const line = LINES[lineKey];
-    const tempi = lineKey === 'time' ? c.tempiTime : c.tempiGreen;
-    const formula = lineKey === 'time' ? c.formulaTime : c.formulaGreen;
-    const prefix = lineKey === 'time' ? 't' : 'g';
+    if (!line) return '';
+    const { tempi, formula } = lineSlotRead(c, lineKey);
+    const prefix = lineKey === 'time' ? 't' : lineKey === 'green' ? 'g' : lineKey;
     const dis = readOnly ? 'disabled' : '';
     const ro = readOnly ? 'readonly' : '';
     // Modalità compatta (solo sulla scheda vera, non sul modulo vuoto da stampare): nasconde i
@@ -7554,7 +7615,7 @@
 
     const groupsHtml = line.groups.map(g => `
       <div class="dose-group">
-        <div class="dose-title">${trDose(g.title)}</div>
+        ${g.title ? `<div class="dose-title">${trDose(g.title)}</div>` : ''}
         <div class="dose-table-wrap">
           <table class="dose-table">
             <thead><tr>${g.cols.map(col => `<th>${trDose(col.label)}</th>`).join('')}</tr></thead>
@@ -7575,8 +7636,8 @@
       </div>`).join('');
 
     return `
-      <div class="line-block ${lineKey}${lineHidden}">
-        <div class="line-block-head">${line.label}</div>
+      <div class="line-block ${lineClass(lineKey)}${lineHidden}">
+        <div class="line-block-head">${line.extra && !readOnly ? `<input type="text" class="line-name-input" data-line="${lineKey}" maxlength="40" placeholder="Linea colore" value="${escapeHtml(lineeExtraConfig().find(x => x.id === lineKey)?.nome || '')}"><button type="button" class="ghost small line-del-btn" data-line="${lineKey}" aria-label="Togli linea">Togli</button>` : escapeHtml(line.label)}</div>
         <div class="line-block-body">
           ${groupsHtml}
           <div class="formula-grid">
@@ -7614,7 +7675,7 @@
               <textarea id="f-${prefix}-tecnica" class="field-autosize" rows="1" ${readOnly ? '' : `placeholder="${t('sc.tecnicaPh', "Es. balayage, tocco di luce, trattamento…")}"`} ${ro}>${escapeHtml(formula.tecnica)}</textarea>
             </div>
             <div class="field${hc(formula.gloss)}">
-              <label>${t('sc.tonalizzazione', "Tonalizzazione")} Forever Gloss</label>
+              <label>${line.extra ? 'Tonalizzazione finale' : t('sc.tonalizzazione', "Tonalizzazione") + ' Forever Gloss'}</label>
               <input type="text" id="f-${prefix}-gloss" ${readOnly ? '' : `placeholder="${t('sc.glossPh', "Es. 1+1/2, posa 20 minuti")}"`} value="${escapeHtml(formula.gloss)}" ${ro}>
             </div>
           </div>
@@ -8523,8 +8584,7 @@
 
         <fieldset>
           <legend>${t('sc.tecnicaLinea', "Tecnica e servizi per linea colore")}</legend>
-          ${renderLineBlock(bc, 'time', true)}
-          ${renderLineBlock(bc, 'green', true)}
+          ${lineKeysAttive().map(k => renderLineBlock(bc, k, true)).join('')}
         </fieldset>
 
         <fieldset>
@@ -8678,18 +8738,18 @@
     const noteSectionHidden = compact && !c.note ? ' section-hidden' : '';
     const allergieSectionHidden = compact && !c.allergie ? ' section-hidden' : '';
     const diagnosiSectionHidden = compact && !(c.bianchiDavanti || c.bianchiDietro || c.livFondo || c.livLunghezze || c.livPunte || c.obiettivo) ? ' section-hidden' : '';
-    const tecnicaSectionHidden = compact && !lineHasContent(c, 'time') && !lineHasContent(c, 'green') ? ' section-hidden' : '';
+    const tecnicaSectionHidden = compact && !lineKeysAttive().some(k => lineHasContent(c, k)) ? ' section-hidden' : '';
     const postColoreSectionHidden = compact && !c.postColoreSalone && !c.consigliMantenimento ? ' section-hidden' : '';
     function lineHasHiddenFields(lineKey) {
       if (!lineHasContent(c, lineKey)) return true; // l'intera linea è nascosta: c'è sicuramente altro da mostrare
-      const formula = lineKey === 'time' ? c.formulaTime : c.formulaGreen;
+      const formula = lineSlotRead(c, lineKey).formula;
       return !formula.base || !formula.mordenzatura || !formula.correttore || !formula.lunghezze || !formula.tonalizzazione || !formula.tecnica || !formula.gloss;
     }
     const hasHiddenFields = compact && (
       !c.note || !c.allergie || !c.bianchiDavanti || !c.bianchiDietro ||
       !c.livFondo || !c.livLunghezze || !c.livPunte || !c.obiettivo || !c.modifiche ||
       !c.postColoreSalone || !c.consigliMantenimento ||
-      lineHasHiddenFields('time') || lineHasHiddenFields('green')
+      lineKeysAttive().some(k => lineHasHiddenFields(k))
     );
 
     panel.innerHTML = `
@@ -8771,8 +8831,8 @@
 
       <fieldset class="${tecnicaSectionHidden}">
         <legend>${t('sc.tecnicaLinea', "Tecnica e servizi per linea colore")}</legend>
-        ${renderLineBlock(c, 'time', false, compact)}
-        ${renderLineBlock(c, 'green', false, compact)}
+        ${lineKeysAttive().map(k => renderLineBlock(c, k, false, compact)).join('')}
+        ${lineeExtraConfig().length < MAX_LINEE_EXTRA ? '<button type="button" class="ghost small" id="addLineBtn">+ Aggiungi linea colore</button>' : ''}
       </fieldset>
 
       <fieldset>
@@ -10536,15 +10596,37 @@
       img.addEventListener('click', () => openImageModal(img.src, img.alt));
     });
 
-    ['t','g'].forEach(prefix => {
-      const target = prefix === 't' ? 'formulaTime' : 'formulaGreen';
-      on(`f-${prefix}-base`, 'input', e => { applyNFTransform(e.target); touch(cl => cl[target].base = e.target.value); });
-      on(`f-${prefix}-lunghezze`, 'input', e => { applyNFTransform(e.target); touch(cl => cl[target].lunghezze = e.target.value); });
-      on(`f-${prefix}-tonalizzazione`, 'input', e => { applyNFTransform(e.target); touch(cl => cl[target].tonalizzazione = e.target.value); });
-      on(`f-${prefix}-correttore`, 'input', e => touch(cl => cl[target].correttore = e.target.value));
-      on(`f-${prefix}-mordenzatura`, 'input', e => touch(cl => cl[target].mordenzatura = e.target.value));
-      on(`f-${prefix}-tecnica`, 'input', e => touch(cl => cl[target].tecnica = e.target.value));
-      on(`f-${prefix}-gloss`, 'input', e => touch(cl => cl[target].gloss = e.target.value));
+    lineKeysAttive().forEach(lk => {
+      const prefix = lk === 'time' ? 't' : lk === 'green' ? 'g' : lk;
+      const fm = cl => lineSlot(cl, lk).formula;
+      on(`f-${prefix}-base`, 'input', e => { applyNFTransform(e.target); touch(cl => fm(cl).base = e.target.value); });
+      on(`f-${prefix}-lunghezze`, 'input', e => { applyNFTransform(e.target); touch(cl => fm(cl).lunghezze = e.target.value); });
+      on(`f-${prefix}-tonalizzazione`, 'input', e => { applyNFTransform(e.target); touch(cl => fm(cl).tonalizzazione = e.target.value); });
+      on(`f-${prefix}-correttore`, 'input', e => touch(cl => fm(cl).correttore = e.target.value));
+      on(`f-${prefix}-mordenzatura`, 'input', e => touch(cl => fm(cl).mordenzatura = e.target.value));
+      on(`f-${prefix}-tecnica`, 'input', e => touch(cl => fm(cl).tecnica = e.target.value));
+      on(`f-${prefix}-gloss`, 'input', e => touch(cl => fm(cl).gloss = e.target.value));
+    });
+
+    document.querySelectorAll('.line-name-input').forEach(inp => {
+      inp.addEventListener('change', () => {
+        const id = inp.dataset.line, nome = inp.value.trim();
+        saveSettings({ lineeExtra: lineeExtraConfig().map(x => x.id === id ? Object.assign({}, x, { nome }) : x) });
+      });
+    });
+    document.querySelectorAll('.line-del-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!window.confirm('Togliere questa linea? Quello che hai già scritto nelle schede non verrà più mostrato.')) return;
+        const id = btn.dataset.line;
+        saveSettings({ lineeExtra: lineeExtraConfig().filter(x => x.id !== id) }).then(() => renderSheet());
+      });
+    });
+    on('addLineBtn', 'click', () => {
+      const lista = lineeExtraConfig().slice();
+      if (lista.length >= MAX_LINEE_EXTRA) return;
+      lista.push({ id: 'x' + Date.now().toString(36), nome: '', tabelle: '' });
+      sheetShowEmpty = true;
+      saveSettings({ lineeExtra: lista }).then(() => renderSheet());
     });
 
     document.querySelectorAll('.field-autosize').forEach(el => {
@@ -10571,16 +10653,17 @@
     document.querySelectorAll('.tempo-check').forEach(el => {
       el.addEventListener('change', e => {
         const key = e.target.dataset.key;
-        const target = e.target.dataset.line === 'time' ? 'tempiTime' : 'tempiGreen';
+        const lk = e.target.dataset.line;
         const checked = e.target.checked;
         touch(cl => {
-          cl[target][key] = cl[target][key] || { on: false, min: '' };
-          cl[target][key].on = checked;
+          const T = lineSlot(cl, lk).tempi;
+          T[key] = T[key] || { on: false, min: '' };
+          T[key].on = checked;
           // Selezionandone uno nuovo (nella stessa linea, Time o Green Mix), si deseleziona
           // qualunque altro tempo già scelto: può essere attivo un solo tempo per volta.
           if (checked) {
-            Object.keys(cl[target]).forEach(k => {
-              if (k !== key && cl[target][k]) cl[target][k].on = false;
+            Object.keys(T).forEach(k => {
+              if (k !== key && T[k]) T[k].on = false;
             });
           }
         });
@@ -10590,10 +10673,11 @@
     document.querySelectorAll('.tempo-min').forEach(el => {
       el.addEventListener('input', e => {
         const key = e.target.dataset.key;
-        const target = e.target.dataset.line === 'time' ? 'tempiTime' : 'tempiGreen';
+        const lk = e.target.dataset.line;
         touch(cl => {
-          cl[target][key] = cl[target][key] || { on: false, min: '' };
-          cl[target][key].min = e.target.value;
+          const T = lineSlot(cl, lk).tempi;
+          T[key] = T[key] || { on: false, min: '' };
+          T[key].min = e.target.value;
         });
       });
       // Aggiunge in automatico la parola "minuti", sia premendo Invio sia uscendo dal
@@ -10604,10 +10688,11 @@
         val = val + ' minuti';
         el.value = val;
         const key = el.dataset.key;
-        const target = el.dataset.line === 'time' ? 'tempiTime' : 'tempiGreen';
+        const lk = el.dataset.line;
         touch(cl => {
-          cl[target][key] = cl[target][key] || { on: false, min: '' };
-          cl[target][key].min = val;
+          const T = lineSlot(cl, lk).tempi;
+          T[key] = T[key] || { on: false, min: '' };
+          T[key].min = val;
         });
       }
       el.addEventListener('keydown', e => {
@@ -11399,7 +11484,7 @@
     const vuotoObj = o => !o || Object.values(o).every(vuoto);
     const testi = ['note', 'allergie', 'bianchiDavanti', 'bianchiDietro', 'livFondo', 'livLunghezze', 'livPunte', 'obiettivo', 'modifiche', 'postColoreSalone', 'consigliMantenimento'];
     if (!testi.every(k => vuoto(c[k]))) return false;
-    return vuotoObj(c.tempiTime) && vuotoObj(c.tempiGreen) && vuotoObj(c.formulaTime) && vuotoObj(c.formulaGreen) && !(c.foto || []).length;
+    return vuotoObj(c.tempiTime) && vuotoObj(c.tempiGreen) && vuotoObj(c.formulaTime) && vuotoObj(c.formulaGreen) && Object.values(c.lineeExtra || {}).every(o => o && vuotoObj(o.tempi) && vuotoObj(o.formula)) && !(c.foto || []).length;
   }
   function anagNomiRipetuti() {
     return clients.map(c => ({ c, nuovo: anagNomeSenzaRipetizione(c.nome) })).filter(x => x.nuovo && x.nuovo !== x.c.nome);
@@ -11634,6 +11719,51 @@
       try { firebase.auth().signOut().then(() => location.reload()).catch(() => location.reload()); } catch (e) { location.reload(); }
     });
   })();
+  var lineeRenderSig = '';
+  function renderSettingsLinee(forza) {
+    const box = document.getElementById('settingsLineeList');
+    if (!box) return;
+    const linee = lineeExtraConfig();
+    const sig = linee.map(x => x.id).join(',');
+    if (!forza && sig === lineeRenderSig) {
+      box.querySelectorAll('.linea-nome').forEach((el, i) => { if (document.activeElement !== el && linee[i]) el.value = linee[i].nome; });
+      box.querySelectorAll('.linea-tabelle').forEach((el, i) => { if (document.activeElement !== el && linee[i]) el.value = linee[i].tabelle; });
+      return;
+    }
+    lineeRenderSig = sig;
+    box.innerHTML = linee.map((x, i) => `
+      <div class="linea-item" data-id="${escapeHtml(x.id)}" style="border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px;background:var(--paper-raised)">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+          <input type="text" class="linea-nome" maxlength="40" placeholder="Nome della linea ${i + 3}" value="${escapeHtml(x.nome)}">
+          <button type="button" class="ghost small linea-del" aria-label="Togli linea">Togli</button>
+        </div>
+        <textarea class="linea-tabelle" rows="6" style="width:100%;box-sizing:border-box" placeholder="Tempi di posa (facoltativo)&#10;Ossigeno 1+1&#10;30 vol | 10 minuti&#10;40 vol | 15 minuti">${escapeHtml(x.tabelle)}</textarea>
+      </div>`).join('');
+  }
+  function leggiLineeDaImpostazioni() {
+    return [...document.querySelectorAll('#settingsLineeList .linea-item')].map(el => ({
+      id: el.dataset.id, nome: el.querySelector('.linea-nome').value.trim(), tabelle: el.querySelector('.linea-tabelle').value
+    }));
+  }
+  function salvaLinee(lista, forza) {
+    saveSettings({ lineeExtra: lista.length ? lista : null }).then(() => { if (forza) renderSettingsLinee(true); try { renderSheetMantenendoScroll(); } catch (e) {} });
+  }
+  document.getElementById('settingsLineeList').addEventListener('change', (e) => {
+    if (e.target.closest('.linea-item')) salvaLinee(leggiLineeDaImpostazioni(), false);
+  });
+  document.getElementById('settingsLineeList').addEventListener('click', (e) => {
+    const del = e.target.closest('.linea-del');
+    if (!del) return;
+    if (!window.confirm('Togliere questa linea? Quello che hai già scritto nelle schede non verrà più mostrato.')) return;
+    const id = del.closest('.linea-item').dataset.id;
+    salvaLinee(leggiLineeDaImpostazioni().filter(x => x.id !== id), true);
+  });
+  document.getElementById('settingsLineaAdd').addEventListener('click', () => {
+    const lista = leggiLineeDaImpostazioni();
+    if (lista.length >= MAX_LINEE_EXTRA) return;
+    lista.push({ id: 'x' + Date.now().toString(36), nome: '', tabelle: '' });
+    salvaLinee(lista, true);
+  });
   document.getElementById('settingsResetBtn').addEventListener('click', () => {
     saveSettings({ nome: null, logo: null, colore: null, font: null, indirizzo: null, telefono: null, mesiRicontatto: null, paese: null, linkRecensioni: null })
       .then(ok => { if (ok) notifyTop('Aspetto ripristinato.'); });
