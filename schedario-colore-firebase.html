@@ -1878,7 +1878,7 @@
 <script>
 (function () {
   const __T0 = performance.now(); const __marks = {};
-  const APP_BUILD = "2026-11-04.154-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-11-04.155-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -5170,10 +5170,11 @@
     // Ambienti senza il sistema di accesso completo (prove automatiche): come prima, anonimo.
     if (typeof authObj.onAuthStateChanged !== 'function') return authObj.signInAnonymously();
     return new Promise(resolve => {
-      const unsub = authObj.onAuthStateChanged(u => { unsub(); resolve(u); });
+      const unsub = authObj.onAuthStateChanged(u => { unsub(); __marks.A_utente = performance.now() - __T0; resolve(u); });
     }).then(u => {
       if (u && !u.isAnonymous) {
         return accountAutorizzato().then(buono => {
+          __marks.A_autorizz = performance.now() - __T0;
           if (buono) { window.__staffEmail = u.email || ''; return u; }
           return Promise.resolve(authObj.signOut()).catch(() => {}).then(() => mostraSchermataAccesso(authObj, messaggioNonAutorizzato(u)));
         });
