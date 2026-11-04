@@ -1728,6 +1728,8 @@
       <p class="hint">Cambia il modo di scrivere prezzi, date, giorni della settimana e numeri di telefono per WhatsApp.</p>
     </div>
 
+    <details id="settingsDiagnostica" style="margin:14px 0"><summary>Diagnostica</summary><div class="storage-usage" id="appDiagnosticsFull" style="margin-top:8px"></div></details>
+
     <div class="settings-actions">
       <button type="button" class="ghost small" id="settingsResetBtn" data-i18n="settings.reset">Ripristina aspetto predefinito</button>
       <button type="button" class="ghost small" id="settingsLogoutBtn" hidden>Esci dall'account</button>
@@ -1878,7 +1880,7 @@
 <script>
 (function () {
   const __T0 = performance.now(); const __marks = {};
-  const APP_BUILD = "2026-11-04.158-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-11-04.159-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -4025,9 +4027,12 @@
 
   function renderDiagnostics(extra) {
     const el = document.getElementById('appDiagnostics');
-    if (!el) return;
-    el.textContent = 'Diagnostica — versione: ' + APP_BUILD + ' · salvataggio: ' + (db ? 'attivo' : 'NON disponibile') +
-      ' · schede: ' + clients.length +
+    const full = document.getElementById('appDiagnosticsFull');
+    if (el) el.textContent = 'Versione: ' + APP_BUILD;
+    if (!full) return;
+    const tecniche = clients.filter(c => !c.soloAnagrafica).length;
+    full.textContent = 'Versione: ' + APP_BUILD + ' · salvataggio: ' + (db ? 'attivo' : 'NON disponibile') +
+      ' · Clienti in anagrafica ' + clients.length + ' di cui ' + tecniche + ' schede tecniche' +
       ' · ultimo backup: ' + (appBackupCache.ultimoBackupAt ? fmtDate(appBackupCache.ultimoBackupAt) : 'mai') +
       (__marks.pronto ? ' · avvio (s): ' + Object.keys(__marks).map(k => k + ' ' + (__marks[k] / 1000).toFixed(1)).join(', ') : '') +
       (extra ? ' · ' + extra : '');
