@@ -1878,7 +1878,7 @@
 <script>
 (function () {
   const __T0 = performance.now(); const __marks = {};
-  const APP_BUILD = "2026-11-04.153-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-11-04.154-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -5277,19 +5277,22 @@
     }).then(() => {
       if (!db) { showStorageError('Il salvataggio non è disponibile: controlla la configurazione Firebase in alto nel file. Ricarica la pagina dopo averla corretta.'); renderDiagnostics(); applySettings(); updateBackupReminderUI(); return; }
       // Le altre letture non dipendono dalle schede: partono subito, insieme (prima aspettavano una dopo l'altra).
+      const __tg = (nome, path) => { const t = performance.now(); return db.doc(path).get().then(r => { __marks['L_' + nome] = performance.now() - t; return r; }); };
+      __marks.avvioLetture = performance.now() - __T0;
       const altreLetture = Promise.all([
-          db.doc(appuntiDocPath('time')).get(),
-          db.doc(appuntiDocPath('green')).get(),
-          db.doc(appuntiDocPath('gloss')).get(),
-          db.doc('impostazioni/aspetto').get(),
-          db.doc('impostazioni/backup').get(),
-          db.doc('app/agenda').get(),
-          db.doc('app/agendaTurni').get(),
-          db.doc('app/assenze').get(),
-          db.doc('app/servizi').get()
+          __tg('time', appuntiDocPath('time')),
+          __tg('green', appuntiDocPath('green')),
+          __tg('gloss', appuntiDocPath('gloss')),
+          __tg('aspetto', 'impostazioni/aspetto'),
+          __tg('backup', 'impostazioni/backup'),
+          __tg('agenda', 'app/agenda'),
+          __tg('turni', 'app/agendaTurni'),
+          __tg('assenze', 'app/assenze'),
+          __tg('servizi', 'app/servizi')
         ]);
       altreLetture.catch(() => {});
-      return db.collection('clients').get().then(snap => snap.empty ? migrateLegacyLocalStorageIfNeeded().then(() => db.collection('clients').get()) : snap).then(snap => {
+      const __tc = performance.now();
+      return db.collection('clients').get().then(snap => { __marks.L_clienti = performance.now() - __tc; return snap; }).then(snap => snap.empty ? migrateLegacyLocalStorageIfNeeded().then(() => db.collection('clients').get()) : snap).then(snap => {
         clients = snap.docs.map(d => clientFromDbDoc(d.id, d.data()));
         clients.forEach(c => { lastWrittenUpdatedAt[c.id] = c.updatedAt || Date.now(); });
         __marks.schede = performance.now() - __T0;
