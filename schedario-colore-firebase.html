@@ -1878,7 +1878,7 @@
 <script>
 (function () {
   const __T0 = performance.now(); const __marks = {};
-  const APP_BUILD = "2026-11-04.157-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-11-04.158-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -4218,38 +4218,9 @@
   function appuntiDocPath(section) {
     return 'appunti/' + section;
   }
-  // In precedenza gli appunti erano separati per persona (appunti/{sezione}-Erica,
-  // appunti/{sezione}-Sara). Li si riporta in un unico posto condiviso, una volta, senza
-  // perdere nulla: si prendono quelli di "Erica" (dove di fatto finivano comunque, visto che
-  // ogni dispositivo si registrava come "Erica") più eventuali appunti scritti sotto "Sara".
   function migrateLegacyAppuntiIfNeeded(docs) {
-    const sections = ['time', 'green', 'gloss'];
-    // Si controllano i vecchi appunti separati solo se quelli condivisi risultano ancora vuoti:
-    // una volta migrati (o appena si scrive qualcosa nel posto condiviso), non si deve più
-    // tornare a leggerli, altrimenti un vecchio appunto "zombie" rimasto sotto "-Erica"
-    // continuerebbe a sovrascrivere quello che si scrive dopo nel posto condiviso.
-    const giaCondivisi = docs.some(d => d.exists && d.data() && d.data().list && d.data().list.length);
-    if (giaCondivisi) return Promise.resolve(docs);
-    // Controllo dei vecchi appunti: una volta per dispositivo, e mai più di 4 secondi (prima poteva bloccare l'avvio per 30 s).
-    const FLAG = 'schedario-colore:appuntiLegacyControllati';
-    try { if (localStorage.getItem(FLAG)) return Promise.resolve(docs); } catch (e) {}
-    const segna = () => { try { localStorage.setItem(FLAG, '1'); } catch (e) {} };
-    const attesa = new Promise(res => setTimeout(() => res('timeout'), 4000));
-    const lavoro = Promise.all(sections.flatMap(s => [db.doc('appunti/' + s + '-Erica').get(), db.doc('appunti/' + s + '-Sara').get()]))
-      .then(pairs => {
-        const writes = [];
-        const merged = sections.map((s, i) => {
-          const ericaDoc = pairs[i * 2], saraDoc = pairs[i * 2 + 1];
-          const ericaList = (ericaDoc.exists && ericaDoc.data() && ericaDoc.data().list) || [];
-          const saraList = (saraDoc.exists && saraDoc.data() && saraDoc.data().list) || [];
-          if (!ericaList.length && !saraList.length) return docs[i]; // niente da unire: resta quello già letto dal posto condiviso
-          const list = ericaList.concat(saraList.filter(sv => !ericaList.some(ev => ev.id === sv.id)));
-          writes.push(db.doc('appunti/' + s).set({ list }));
-          return { exists: true, data: () => ({ list }) };
-        });
-        return Promise.all(writes).then(() => merged);
-      }).catch(() => docs);
-    return Promise.race([lavoro, attesa]).then(r => { segna(); return r === 'timeout' ? docs : r; });
+    // Gli appunti sono del salone, chiunque li scriva: nessun controllo dei vecchi appunti per persona.
+    return Promise.resolve(docs);
   }
   function loadAppunti(section) { return appuntiCache[section] || []; }
   function saveAppunti(section, list) {
