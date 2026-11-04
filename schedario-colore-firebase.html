@@ -1878,7 +1878,7 @@
 <script>
 (function () {
   const __T0 = performance.now(); const __marks = {};
-  const APP_BUILD = "2026-11-04.151-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-11-04.152-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -4029,7 +4029,7 @@
     el.textContent = 'Diagnostica — versione: ' + APP_BUILD + ' · salvataggio: ' + (db ? 'attivo' : 'NON disponibile') +
       ' · schede: ' + clients.length +
       ' · ultimo backup: ' + (appBackupCache.ultimoBackupAt ? fmtDate(appBackupCache.ultimoBackupAt) : 'mai') +
-      (__marks.pronto ? ' · avvio: accesso ' + (__marks.accesso / 1000).toFixed(1) + 's, ' + 'schede' + ' ' + (__marks.schede / 1000).toFixed(1) + 's, ' + 'totale' + ' ' + (__marks.pronto / 1000).toFixed(1) + 's' : '') +
+      (__marks.pronto ? ' · avvio (s): ' + Object.keys(__marks).map(k => k + ' ' + (__marks[k] / 1000).toFixed(1)).join(', ') : '') +
       (extra ? ' · ' + extra : '');
   }
 
@@ -5290,8 +5290,9 @@
         clients = snap.docs.map(d => clientFromDbDoc(d.id, d.data()));
         clients.forEach(c => { lastWrittenUpdatedAt[c.id] = c.updatedAt || Date.now(); });
         __marks.schede = performance.now() - __T0;
-        return altreLetture;
+        return altreLetture.then(r => { __marks.letture = performance.now() - __T0; return r; });
       }).then(([aTime, aGreen, aGloss, aspetto, backup, agenda, turni, assenze, servizi]) => migrateLegacyAppuntiIfNeeded([aTime, aGreen, aGloss]).then(migrated => migrated.concat([aspetto, backup, agenda, turni, assenze, servizi]))).then(([aTime, aGreen, aGloss, aspetto, backup, agenda, turni, assenze, servizi]) => {
+        __marks.dati = performance.now() - __T0;
         ispirazioneCache = { libri: [] };
         appuntiCache = {
           time: normalizeAppuntiList(aTime.exists ? aTime.data().list : []),
@@ -5320,6 +5321,7 @@
         appBackupCache = { ultimoBackupAt: (backup.exists && backup.data().ultimoBackupAt) || null };
         applySettings();
         updateBackupReminderUI();
+        __marks.impostazioni = performance.now() - __T0;
         hideStorageError();
         renderDiagnostics();
         elaboraRichiesteOnlineInSospeso().then(() => pubblicaDisponibilitaOnline());
@@ -12262,9 +12264,11 @@
   Promise.all([bootstrapStorage(), splashTimer]).then(() => {
     // All'apertura dell'app si parte dalla schermata iniziale (frase del giorno), non dall'ultima
     // scheda toccata: altrimenti capita sempre di ritrovarsi davanti alla stessa cliente a caso.
+    __marks.splash = performance.now() - __T0;
     activeId = null;
     viewingHome = true;
     renderAll();
+    __marks.disegno = performance.now() - __T0;
     agendaScrollA830();
     if (appSplashEl) appSplashEl.hidden = true;
     __marks.pronto = performance.now() - __T0; try { renderDiagnostics(); } catch (e) {}
