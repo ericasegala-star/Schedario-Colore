@@ -1198,6 +1198,25 @@
   /* Bollino "da ricontattare" nell'elenco clienti: cliente senza una scheda aggiornata
      da più tempo di quanto scelto in Impostazioni. */
   .scheda-switch { margin-top: 6px; }
+  .launcher { display: flex; flex-direction: column; gap: 22px; }
+  .launcher-saluto { position: relative; }
+  .launcher-saluto .home-greeting { margin-bottom: 12px; }
+  .launcher-saluto-x { position: absolute; top: -4px; right: 0; width: 34px; height: 34px; border: 0; background: none; font-size: 26px; line-height: 1; color: var(--ink-soft); cursor: pointer; border-radius: 50%; z-index: 2; }
+  .launcher-saluto-x:hover { background: var(--berry-soft); color: var(--berry); }
+  .launcher-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .launcher-tile { position: relative; overflow: hidden; text-align: left; padding: 22px; min-height: 112px; display: flex; flex-direction: column; justify-content: center; gap: 4px;
+    border: 1px solid var(--line); border-radius: 14px; background: var(--paper); color: var(--berry); cursor: pointer; font: inherit; }
+  .launcher-tile:hover, .launcher-tile:focus-visible { background: var(--berry-soft); border-color: var(--berry); outline: none; }
+  .launcher-tile .lt-title { position: relative; z-index: 1; font-size: 26px; font-weight: 600; letter-spacing: 0.01em; }
+  .launcher-tile .lt-sub { position: relative; z-index: 1; font-size: 13px; color: var(--ink-soft); }
+  .launcher-tile svg { position: absolute; right: 6px; bottom: -8px; width: 130px; height: 130px; opacity: 0.16; pointer-events: none; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  .launcher .home-agenda { margin-top: 0; border-top: 0; padding-top: 0; }
+  .launcher-shared { border-top: 1px solid var(--line); padding-top: 16px; }
+  .launcher-shared-label { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 10px; }
+  .launcher-shared-btns { display: flex; gap: 12px; flex-wrap: wrap; }
+  .launcher-link { flex: 1 1 180px; padding: 14px 16px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; color: var(--berry); font: inherit; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; text-align: left; }
+  .launcher-link:hover { background: var(--berry-soft); border-color: var(--berry); }
+  @media (max-width: 560px) { .launcher-tile { padding: 16px; min-height: 96px; } .launcher-tile .lt-title { font-size: 21px; } .launcher-tile svg { width: 96px; height: 96px; } }
   .nome-wrap { position: relative; }
   .recontact-badge.canc-badge { background: #A8433C; color: #fff; border-color: #A8433C; }
   .recontact-badge {
@@ -1532,6 +1551,7 @@
       </div>
     </div>
     <div class="mode-switch" id="modeSwitch">
+      <button type="button" class="mode-switch-btn" id="modeHomeBtn" data-i18n="nav.home" data-it="Home">Home</button>
       <button type="button" class="mode-switch-btn active" id="modeTecnicoBtn" data-i18n="nav.tecnico">Tecnico</button>
       <button type="button" class="mode-switch-btn" id="modeTricologoBtn" data-i18n="nav.tricologo">Tricologo</button>
     </div>
@@ -1935,7 +1955,7 @@
 <script>
 (function () {
   const __T0 = performance.now(); const __marks = {};
-  const APP_BUILD = "2026-11-05.173-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-11-05.174-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -5725,6 +5745,7 @@
   let viewingOstwald = false; // true quando il pannello principale mostra "Ruota di Ostwald"
   let viewingCatalogoHp = false; // true quando il pannello principale mostra "Catalogo prodotti HP"
   let viewingHome = false; // true quando il pannello principale mostra la schermata iniziale (nessuna scheda aperta ancora)
+  let launcherAttivo = true; // schermata iniziale con i due tasti Tecnico/Tricologo: all\'apertura e col tasto Home
   // Richiesta di Erica (19/10): contenuti generici (non legati a Oway), per rendere l'app
   // adatta anche ad altri saloni — due voci di menu NUOVE e SEPARATE, che non toccano in
   // nessun modo "Consigli di utilizzo" o la scheda cliente esistenti.
@@ -8941,6 +8962,77 @@
   function sezionePaginaIntera() {
     return viewingNotes || viewingIspirazione || viewingMagazzino || viewingServizi || viewingAnagrafica || viewingSearchApp || viewingBlankSheet || viewingOstwald || viewingCatalogoHp || viewingConsigliGenerici || viewingSchedaGenerica || viewingTricologia;
   }
+  // ---- Schermata iniziale: Tecnico e Tricologo in alto, Agenda a tutta pagina, sezioni in comune sotto ----
+  function launcherMostrato() { return launcherAttivo && !viewingTricologo && viewingHome && !activeId; }
+  function vaiLauncher() {
+    tricoFlush(); salvaVersioneAttiva();
+    if (viewingTricologo && modeTecnicoBtn) modeTecnicoBtn.click();
+    launcherAttivo = true;
+    vaiAllAgenda();
+    aggiornaModeSwitch();
+  }
+  function salutoChiuso() { try { return localStorage.getItem('ericair_saluto_chiuso') === fmtDateISO(new Date()); } catch (e) { return !!salutoChiusoMem; } }
+  let salutoChiusoMem = false;
+  function conflittiOnlineHtml() {
+    if (!richiesteOnlineConflitto.length) return '';
+    return `<div class="home-online-conflitti">
+      <p class="home-online-conflitti-titolo">⚠️ ${richiesteOnlineConflitto.length} ${I("richieste di prenotazione online in conflitto o annullate — contatta la cliente per un altro orario:", "online booking requests in conflict or cancelled — contact the client for another time:")}</p>
+      <ul class="home-online-conflitti-lista">${richiesteOnlineConflitto.map(r => `
+        <li><span>${r.tipo === 'modifica' ? I("MODIFICA · ", "CHANGED · ") : (r.tipo === 'annulla' ? I("ANNULLATA DALLA CLIENTE · ", "CANCELLED BY THE CLIENT · ") : '')}${escapeHtml(r.nome || I("Senza nome", "Unnamed"))} · ${escapeHtml(r.telefono || I("senza telefono", "no phone"))} · ${escapeHtml(fmtDateISOBreve(r.data))} ${escapeHtml(r.ora || '')}</span>
+        <button type="button" class="ghost small home-online-conflitto-elimina" data-id="${r.id}">${I("Ho risolto, elimina", "Resolved, delete")}</button></li>`).join('')}</ul>
+    </div>`;
+  }
+  function renderLauncher(panel) {
+    aggiornaModeSwitch();
+    const todayLong = new Date().toLocaleDateString(localeFmt(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const todayCap = todayLong.charAt(0).toUpperCase() + todayLong.slice(1);
+    const salutoHtml = salutoChiuso() ? '' : `
+        <div class="launcher-saluto">
+          <button type="button" class="launcher-saluto-x" id="salutoChiudi" aria-label="${I("Chiudi", "Close")}" title="${I("Chiudi", "Close")}">×</button>
+        <div class="home-date-row">
+            <div class="home-date">${escapeHtml(todayCap)}</div>
+          </div>
+          <h2 class="home-greeting">Ciao Erica &amp; Sara!</h2>
+          <div class="home-quote-card">
+            <div class="home-quote-mark">“</div>
+            <p class="home-quote-text">${escapeHtml(quoteOfTheDay())}</p>
+          </div>
+        </div>`;
+    panel.innerHTML = `
+      <div class="launcher">
+        ${salutoHtml}
+        ${conflittiOnlineHtml()}
+        <div class="launcher-tiles">
+          <button type="button" class="launcher-tile" id="launchTecnico"><span class="lt-title">${I("Tecnico", "Stylist")}</span><span class="lt-sub">${I("Schede colore, formule, ispirazione", "Colour cards, formulas, inspiration")}</span></button>
+          <button type="button" class="launcher-tile" id="launchTricologo"><span class="lt-title">${I("Tricologo", "Trichologist")}</span><span class="lt-sub">${I("Cute e capelli, tricocamera", "Scalp and hair, trichoscope")}</span></button>
+        </div>
+        <div class="home-agenda launcher-agenda">
+          <div class="home-agenda-head"><div class="notes-title">Agenda</div></div>
+          ${agendaDateNavHtml()}
+          <div class="agenda-date-label">${fmtDateISOLong(agendaDataSelezionata)}</div>
+          <div id="agendaGridWrap">${renderAgendaGridHtml(agendaDataSelezionata)}</div>
+          <span class="save-status" id="agendaSaveStatus"></span>
+        </div>
+        <div class="launcher-shared">
+          <div class="launcher-shared-label">${I("In comune", "Shared")}</div>
+          <div class="launcher-shared-btns">
+            <button type="button" class="launcher-link" data-entry="magazzinoEntry">${I("Magazzino", "Inventory")}</button>
+            <button type="button" class="launcher-link" data-entry="anagraficaEntry">${I("Anagrafica clienti", "Client directory")}</button>
+            <button type="button" class="launcher-link" data-entry="cercaAppEntry">${I("Cerca nell'app", "Search the app")}</button>
+          </div>
+        </div>
+        ${typeof primiPassiHtml === 'function' ? primiPassiHtml() : ''}
+      </div>`;
+    document.getElementById('launchTecnico').addEventListener('click', () => modeTecnicoBtn.click());
+    document.getElementById('launchTricologo').addEventListener('click', () => modeTricologoBtn.click());
+    panel.querySelectorAll('[data-entry]').forEach(b => b.addEventListener('click', () => { const e = document.getElementById(b.dataset.entry); if (e) e.click(); }));
+    const sx = document.getElementById('salutoChiudi');
+    if (sx) sx.addEventListener('click', () => { salutoChiusoMem = true; try { localStorage.setItem('ericair_saluto_chiuso', fmtDateISO(new Date())); } catch (e) {} renderSheet(); });
+    if (typeof bindPrimiPassi === 'function') bindPrimiPassi();
+    document.querySelectorAll('.home-online-conflitto-elimina').forEach(btn => btn.addEventListener('click', () => eliminaRichiestaOnlineConflitto(btn.dataset.id)));
+    renderAgendaApptModal();
+    bindAgendaEvents();
+  }
   function tornaIndietro() {
     if (viewingTricologo) {
       tricoFlush(); activeTricoId = null; triPrintMode = null;
@@ -9005,14 +9097,17 @@
 
     const layoutEl = document.querySelector('.layout');
     const sidebarStackEl = document.querySelector('.sidebar-stack');
-    if (layoutEl) layoutEl.classList.toggle('layout-magazzino-full', sezionePaginaIntera());
-    if (sidebarStackEl) sidebarStackEl.style.display = (sezionePaginaIntera() && !isTouchDevice) ? 'none' : '';
+    if (layoutEl) layoutEl.classList.toggle('layout-magazzino-full', sezionePaginaIntera() || launcherMostrato());
+    { const nb = document.getElementById('newBtn'); if (nb) nb.style.display = launcherMostrato() ? 'none' : ''; const ms = document.getElementById('modeSwitch'); if (ms) ms.style.display = launcherMostrato() ? 'none' : ''; aggiornaModeSwitch(); } // nella schermata iniziale non c'è "+ Nuova scheda" né le voci Tecnico/Tricologo
+    if (sidebarStackEl) sidebarStackEl.style.display = ((sezionePaginaIntera() && !isTouchDevice) || launcherMostrato()) ? 'none' : '';
     const topAgendaBtnEl = document.getElementById('topAgendaBtn');
     if (topAgendaBtnEl) topAgendaBtnEl.hidden = !viewingMagazzino;
 
     // Tricologo apre subito sull'Agenda (Erica, 15/10: "deve aprire subito su agenda"), non su
     // Magazzino: stessa Agenda condivisa vista nella schermata iniziale del Tecnico, senza
     // elenco clienti né saluto del giorno (qui non servono).
+    if (launcherMostrato()) { renderLauncher(panel); return; }
+
     if (viewingTricologo && triPrintMode && !altraSezioneAperta()) {
       panel.innerHTML = '<div class="tri-noprint" style="display:flex;gap:10px;margin-bottom:14px"><button type="button" class="ghost" id="triPrintBack">' + I("← Indietro", "← Back") + '</button><button type="button" class="primary" id="triPrintGo">' + I("Stampa", "Print") + '</button></div><div class="tri-printdoc">' + triPrintMode.html + '</div>';
       document.getElementById('triPrintBack').addEventListener('click', () => { triPrintMode = null; renderSheet(); });
@@ -9467,10 +9562,6 @@
       const op = currentOperator();
       panel.innerHTML = `
         <div class="home-view">
-          <div class="home-date-row">
-            <div class="home-date">${escapeHtml(todayCap)}</div>
-          </div>
-          <h2 class="home-greeting">Ciao Erica &amp; Sara!</h2>
           ${richiesteOnlineConflitto.length ? `
           <div class="home-online-conflitti">
             <p class="home-online-conflitti-titolo">⚠️ ${richiesteOnlineConflitto.length} richiest${richiesteOnlineConflitto.length === 1 ? 'a' : 'e'} di prenotazione online in conflitto o annullate — se in conflitto l'orario scelto si è occupato nel frattempo, contatta la cliente per un altro orario:</p>
@@ -9482,10 +9573,6 @@
                 </li>`).join('')}
             </ul>
           </div>` : ''}
-          <div class="home-quote-card">
-            <div class="home-quote-mark">“</div>
-            <p class="home-quote-text">${escapeHtml(quoteOfTheDay())}</p>
-          </div>
           <p class="home-hint">Scegli una scheda dall'elenco a sinistra, oppure iniziane una nuova.</p>
           <button type="button" class="primary" id="homeNewBtn">+ Nuova scheda</button>
 
@@ -11945,11 +12032,14 @@
   const modeTecnicoBtn = document.getElementById('modeTecnicoBtn');
   const modeTricologoBtn = document.getElementById('modeTricologoBtn');
   function aggiornaModeSwitch() {
-    if (modeTecnicoBtn) modeTecnicoBtn.classList.toggle('active', !viewingTricologo);
+    if (modeTecnicoBtn) modeTecnicoBtn.classList.toggle('active', !viewingTricologo && !launcherMostrato());
+    { const hb = document.getElementById('modeHomeBtn'); if (hb) hb.classList.toggle('active', launcherMostrato()); }
     if (modeTricologoBtn) modeTricologoBtn.classList.toggle('active', viewingTricologo);
   }
+  { const hb = document.getElementById('modeHomeBtn'); if (hb) hb.addEventListener('click', vaiLauncher); }
   if (modeTecnicoBtn) {
     modeTecnicoBtn.addEventListener('click', () => {
+      launcherAttivo = false;
       tricoFlush(); activeTricoId = null; triPrintMode = null;
       viewingTricologo = false;
       if (tecnicoViewSnapshot) {
@@ -11976,6 +12066,7 @@
   }
   if (modeTricologoBtn) {
     modeTricologoBtn.addEventListener('click', () => {
+      launcherAttivo = false;
       activeTricoId = null; triPrintMode = null; searchTerm = ''; { const se = document.getElementById('search'); if (se) se.value = ''; }
       viewingTricologo = true;
       tecnicoViewSnapshot = { viewingNotes, viewingIspirazione, viewingMagazzino, viewingServizi, viewingAnagrafica, viewingAgenda, viewingSearchApp, viewingBlankSheet, viewingOstwald, viewingCatalogoHp, viewingConsigliGenerici, viewingSchedaGenerica, viewingHome, activeId };
