@@ -360,6 +360,8 @@
   .tri-cat { margin: 26px 0 10px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); border-bottom: 1px solid var(--line); padding-bottom: 6px; }
   .tri-medico { margin-top: 12px; }
   .col-note { background: var(--copper-soft); border-radius: 10px; padding: 10px 14px; font-size: 14px; margin-top: 10px; }
+  .sezione-indietro { margin-bottom: 14px; }
+  @media print { .sezione-indietro { display: none !important; } }
   .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
   .row2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
   @media (max-width: 620px) { .row3, .row2 { grid-template-columns: 1fr; } }
@@ -1725,6 +1727,18 @@
     </div>
 
     <div class="settings-section">
+      <label for="settingsOperatrici">Operatrici (separate da virgola)</label>
+      <input type="text" id="settingsOperatrici" placeholder="Per esempio: Anna, Marta" maxlength="120">
+      <p class="hint">Compaiono nell'agenda, nei turni, nelle assenze e nella prenotazione online. Imposta i nomi all'inizio: cambiarli dopo non aggiorna gli appuntamenti già salvati.</p>
+    </div>
+
+    <div class="settings-section">
+      <label for="settingsContatto">Contatto per dubbi e assistenza</label>
+      <input type="text" id="settingsContatto" maxlength="120" placeholder="Es. Nome Cognome · 333 1234567" autocomplete="off">
+      <p class="hint">Compare in fondo alle schede e nelle stampe. Se lo lasci vuoto non compare niente.</p>
+    </div>
+
+    <div class="settings-section">
       <label for="settingsRicontatto" data-i18n="settings.recontact.label">Segnala le clienti da ricontattare</label>
       <div class="settings-number-row">
         <input type="number" id="settingsRicontatto" min="0" max="36" step="1">
@@ -1843,7 +1857,7 @@
     <h2>Ferie e permessi</h2>
     <div class="settings-section">
       <label>Chi</label>
-      <select id="assenzaOperatore"><option value="Erica">Erica</option><option value="Sara">Sara</option></select>
+      <select id="assenzaOperatore"></select>
     </div>
     <div class="settings-section">
       <label>Tipo</label>
@@ -1907,7 +1921,7 @@
 <script>
 (function () {
   const __T0 = performance.now(); const __marks = {};
-  const APP_BUILD = "2026-11-05.164-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-11-05.165-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -3992,6 +4006,14 @@
   // orario. Erica c'è sempre nei giorni in cui il salone è aperto; i giorni/orari di Sara si
   // possono cambiare da "Turni di lavoro" (predefinito: solo sabato, 8:30-16:30). Gli orari sono
   // in minuti dalla mezzanotte.
+  // Operatrici del salone: l'elenco si sceglie da Impostazioni; finché non è impostato restano Erica e Sara.
+  const OPERATRICI_DEFAULT = ['Erica', 'Sara'];
+  const OPERATRICE_COLORI = ['var(--berry)', 'var(--glicine)', '#3E8E7E', '#C98B2B', '#5B7DB1', '#B5524A'];
+  function elencoOperatrici() {
+    const l = (typeof appSettingsCache !== 'undefined' && appSettingsCache && appSettingsCache.operatrici) || [];
+    return l.length ? l : OPERATRICI_DEFAULT;
+  }
+  function primaOperatrice() { return elencoOperatrici()[0]; }
   function defaultAgendaTurni() {
     return {
       Erica: { 2: [8 * 60 + 30, 15 * 60 + 30], 3: [8 * 60 + 30, 15 * 60 + 30], 4: [8 * 60 + 30, 19 * 60], 5: [8 * 60 + 30, 19 * 60], 6: [8 * 60, 18 * 60] },
@@ -4008,7 +4030,7 @@
   let agendaModificaId = null; // id dell'appuntamento in modifica (null = si sta creando un nuovo appuntamento)
   let agendaEditingId = null; // id dell'appuntamento aperto nel calendario a slot (null = tutti chiusi, solo targhette)
   // Aspetto dell'app (logo, nome, colore): condiviso tra tutte, si cambia da "Impostazioni".
-  let appSettingsCache = { linkRecensioni: null, nome: null, logo: null, colore: null, font: null, indirizzo: null, telefono: null, mesiRicontatto: null, paese: null };
+  let appSettingsCache = { linkRecensioni: null, nome: null, logo: null, colore: null, font: null, indirizzo: null, telefono: null, mesiRicontatto: null, paese: null, operatrici: null, contattoAssistenza: null };
   // Paese e formati (valuta, data, settimana, prefisso telefonico): si sceglie in Impostazioni.
   const PAESI = {
     IT: { locale: 'it-IT', valuta: '€', prefisso: '39', primoGiorno: 1 },
@@ -4493,7 +4515,7 @@
   }
   // Operatore di un appuntamento: quelli creati prima dei turni divisi non l'avevano (era solo
   // Erica a usare l'agenda), quindi senza il campo si assume Erica.
-  function appuntamentoOperatore(a) { return a.operatore || 'Erica'; }
+  function appuntamentoOperatore(a) { return a.operatore || primaOperatrice(); }
   // Nome del servizio da mostrare per un appuntamento: normalmente è a.servizio (scritto a mano o
   // copiato dal catalogo al momento della scelta). Per gli appuntamenti con una combo scelta PRIMA
   // che le combo senza nome si costruissero da sole (vedi nomeServizio), a.servizio era rimasto
@@ -4506,7 +4528,7 @@
   // Colore per distinguere a colpo d'occhio le due colonne (Erica/Sara) nei giorni in cui
   // lavorano entrambe: Erica resta sul colore del brand (personalizzabile in Impostazioni),
   // Sara su un viola già presente nella tavolozza dell'app, per non introdurne uno nuovo.
-  function operatoreColore(op) { return op === 'Sara' ? 'var(--glicine)' : 'var(--berry)'; }
+  function operatoreColore(op) { const i = elencoOperatrici().indexOf(op); return OPERATRICE_COLORI[(i < 0 ? 0 : i) % OPERATRICE_COLORI.length]; }
   function loadAgendaTurniFromDb() {
     if (!db) return;
     db.doc('app/agendaTurni').get().then(doc => {
@@ -4525,7 +4547,7 @@
     if (!dateISO) return [];
     const [y, m, d] = dateISO.split('-').map(Number);
     const day = new Date(y, m - 1, d).getDay();
-    return ['Erica', 'Sara'].filter(op => agendaTurniCache[op] && agendaTurniCache[op][day]);
+    return elencoOperatrici().filter(op => agendaTurniCache[op] && agendaTurniCache[op][day]);
   }
   function loadAssenzeFromDb() {
     if (!db) return;
@@ -4543,7 +4565,7 @@
   function creaAssenza(data) {
     const a = {
       id: uid(),
-      operatore: data.operatore || 'Erica',
+      operatore: data.operatore || primaOperatrice(),
       tipo: data.tipo === 'permesso' ? 'permesso' : 'ferie',
       dataInizio: data.dataInizio || agendaDataSelezionata,
       dataFine: data.dataFine || data.dataInizio || agendaDataSelezionata,
@@ -4575,7 +4597,7 @@
       id: uid(),
       data: data.data || agendaDataSelezionata,
       ora: data.ora || '',
-      operatore: data.operatore || currentOperator() || 'Erica',
+      operatore: data.operatore || currentOperator() || primaOperatrice(),
       tipo: data.tipo === 'lavoro' ? 'lavoro' : 'cliente',
       titolo: data.titolo || '',
       clienteId: data.clienteId || null,
@@ -5124,6 +5146,12 @@
     if (recInput && document.activeElement !== recInput) recInput.value = appSettingsCache.linkRecensioni || DEFAULT_LINK_RECENSIONI || '';
     const paeseSel = document.getElementById('settingsPaese');
     if (paeseSel) paeseSel.value = paeseCorrente();
+    const operatriciInput = document.getElementById('settingsOperatrici');
+    if (operatriciInput && document.activeElement !== operatriciInput) operatriciInput.value = (appSettingsCache.operatrici || []).join(', ');
+    const assenzaSel = document.getElementById('assenzaOperatore');
+    if (assenzaSel) { const cur = assenzaSel.value; assenzaSel.innerHTML = elencoOperatrici().map(o => '<option value="' + escapeHtml(o) + '">' + escapeHtml(o) + '</option>').join(''); if (cur) assenzaSel.value = cur; }
+    const contattoInput = document.getElementById('settingsContatto');
+    if (contattoInput && document.activeElement !== contattoInput) contattoInput.value = appSettingsCache.contattoAssistenza || '';
     try { renderSettingsLinee(false); } catch (e) {}
     const ricontattoInput = document.getElementById('settingsRicontatto');
     if (ricontattoInput && document.activeElement !== ricontattoInput) ricontattoInput.value = appSettingsCache.mesiRicontatto || 0;
@@ -5333,6 +5361,8 @@
           telefono: aspettoData.telefono || null,
           mesiRicontatto: aspettoData.mesiRicontatto || null,
           paese: aspettoData.paese || null,
+          operatrici: (aspettoData.operatrici && aspettoData.operatrici.length) ? aspettoData.operatrici : null,
+          contattoAssistenza: aspettoData.contattoAssistenza || null,
           linkRecensioni: aspettoData.linkRecensioni || null,
           lineeExtra: Array.isArray(aspettoData.lineeExtra) && aspettoData.lineeExtra.length ? aspettoData.lineeExtra : null
         };
@@ -7914,7 +7944,7 @@
     if (!dateISO) return [];
     const [y, m, d] = dateISO.split('-').map(Number);
     const day = new Date(y, m - 1, d).getDay();
-    const turniOp = agendaTurniCache[operatore || 'Erica'];
+    const turniOp = agendaTurniCache[operatore || primaOperatrice()];
     const range = (turniOp && turniOp[day]) || null;
     if (!range) return [];
     const slots = [];
@@ -7971,7 +8001,7 @@
     if (!dateISO) return false;
     const [y, m, d] = dateISO.split('-').map(Number);
     const day = new Date(y, m - 1, d).getDay();
-    const turniOp = agendaTurniCache[operatore || 'Erica'];
+    const turniOp = agendaTurniCache[operatore || primaOperatrice()];
     const range = turniOp && turniOp[day];
     if (!range) return false;
     const tMin = hhmmToMinuti(time);
@@ -8249,7 +8279,7 @@
   // l'altro.
   function renderAgendaGridHtml(dateISO) {
     const operatoriReali = agendaOperatoriDelGiorno(dateISO);
-    const operatori = operatoriReali.length ? operatoriReali : ['Erica'];
+    const operatori = operatoriReali.length ? operatoriReali : [primaOperatrice()];
     if (operatori.length === 1) {
       const op = operatori[0];
       return `<div class="agenda-grid">${renderAgendaColonnaSlotsHtml(dateISO, op, appuntamentiDelGiorno(dateISO, op))}</div>`;
@@ -8790,7 +8820,7 @@
 
   function triAvviso() { return I("Questa scheda raccoglie osservazioni, non è una diagnosi. Per dubbi di salute: sentire il medico.", "This card records observations; it is not a diagnosis. For any health concern: ask a doctor."); }
   // chi contattare: il campo scelto in Impostazioni, altrimenti nome e telefono del salone (come nella scheda tecnica)
-  function contattoTrico() { const c = CONTATTO_TECNICO_TRICOLOGIA; return c.nome + (c.telefono ? ' — ' + c.telefono : ''); }
+  function contattoTrico() { if (appSettingsCache.contattoAssistenza) return appSettingsCache.contattoAssistenza; const c = CONTATTO_TECNICO_TRICOLOGIA; return c.nome + (c.telefono ? ' — ' + c.telefono : ''); }
   function contattoPie() { return I("Per dubbi, domande o perplessità sulla cute e sui capelli: ", "For doubts, questions or concerns about scalp and hair: ") + escapeHtml(contattoTrico()); }
   // Piè di pagina delle schede (e del modulo vuoto): avviso fisso nella scheda tricologica + contatto scelto in Impostazioni (vuoto = niente)
   function aggiornaPie() {
@@ -8803,7 +8833,32 @@
     const d = document.createElement('p'); d.className = 'hint scheda-pie'; d.style.cssText = 'margin-top:18px;text-align:center'; d.innerHTML = parti.join('<br>');
     panel.appendChild(d);
   }
-  function renderSheet() { renderSheetInner(); aggiornaPie(); }
+  // Sezioni "a pagina intera" (come il Magazzino): niente elenco/menu a fianco, in alto il tasto "Indietro".
+  function sezionePaginaIntera() {
+    return viewingNotes || viewingIspirazione || viewingMagazzino || viewingServizi || viewingAnagrafica || viewingSearchApp || viewingBlankSheet || viewingOstwald || viewingCatalogoHp || viewingConsigliGenerici || viewingSchedaGenerica || viewingTricologia;
+  }
+  function tornaIndietro() {
+    if (viewingTricologo) {
+      tricoFlush(); activeTricoId = null; triPrintMode = null;
+      viewingNotes = viewingIspirazione = viewingMagazzino = viewingServizi = viewingAnagrafica = viewingSearchApp = viewingBlankSheet = viewingOstwald = viewingCatalogoHp = viewingConsigliGenerici = viewingSchedaGenerica = viewingTricologia = viewingHome = false;
+      viewingAgenda = true; // Tricologo riparte sempre dall'Agenda
+      closeMobileMenu(); renderAll(); agendaScrollA830();
+    } else {
+      vaiAllAgenda();
+    }
+  }
+  function aggiornaIndietro() {
+    const panel = document.getElementById('sheetPanel'); if (!panel) return;
+    const old = panel.querySelector('.sezione-indietro'); if (old) old.remove();
+    const schedaTec = !viewingTricologo && activeId && !altraSezioneAperta() && getClient(activeId);
+    const schedaTri = viewingTricologo && activeTricoId && !altraSezioneAperta() && !triPrintMode;
+    if (!sezionePaginaIntera() && !schedaTec && !schedaTri) return;
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'ghost small sezione-indietro'; b.textContent = I("← Indietro", "← Back");
+    b.addEventListener('click', tornaIndietro);
+    panel.insertBefore(b, panel.firstChild);
+  }
+  function renderSheet() { renderSheetInner(); aggiornaIndietro(); aggiornaPie(); }
   function renderSheetInner() {
     const panel = document.getElementById('sheetPanel');
     const floatingSave = document.getElementById('floatingSaveBtn');
@@ -8834,7 +8889,7 @@
     // "fixed" fuori dal flusso — nasconderne il contenitore lo nasconderebbe anche lui.
     const isTouchDevice = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
     const sidebarAsideEl = document.querySelector('.sidebar-stack .sidebar');
-    if (sidebarAsideEl) sidebarAsideEl.style.display = (viewingMagazzino && isTouchDevice) ? 'none' : '';
+    if (sidebarAsideEl) sidebarAsideEl.style.display = (sezionePaginaIntera() && isTouchDevice) ? 'none' : '';
     ['blankSheetEntry', 'notesEntry', 'ostwaldEntry', 'ispirazioneEntry', 'serviziEntry'].forEach(id => {
       const voce = document.getElementById(id);
       const wrapper = voce && voce.closest('.notes-banner');
@@ -8845,8 +8900,8 @@
 
     const layoutEl = document.querySelector('.layout');
     const sidebarStackEl = document.querySelector('.sidebar-stack');
-    if (layoutEl) layoutEl.classList.toggle('layout-magazzino-full', viewingMagazzino);
-    if (sidebarStackEl) sidebarStackEl.style.display = (viewingMagazzino && !isTouchDevice) ? 'none' : '';
+    if (layoutEl) layoutEl.classList.toggle('layout-magazzino-full', sezionePaginaIntera());
+    if (sidebarStackEl) sidebarStackEl.style.display = (sezionePaginaIntera() && !isTouchDevice) ? 'none' : '';
     const topAgendaBtnEl = document.getElementById('topAgendaBtn');
     if (topAgendaBtnEl) topAgendaBtnEl.hidden = !viewingMagazzino;
 
@@ -10458,7 +10513,7 @@
     return giorniSettimanaOrdine().map(day => `
       <div class="turni-day" data-day="${day}">
         <div class="turni-day-label">${nomeGiornoSettimana(day)}</div>
-        ${['Erica', 'Sara'].map(op => {
+        ${elencoOperatrici().map(op => {
           const range = agendaTurniCache[op] && agendaTurniCache[op][day];
           return `
           <div class="turni-op-row">
@@ -10483,7 +10538,7 @@
   }
   function closeAgendaTurniModal() { document.getElementById('agendaTurniModal').hidden = true; }
   function salvaAgendaTurniDaModal() {
-    const nuovo = { Erica: {}, Sara: {} };
+    const nuovo = {}; elencoOperatrici().forEach(o => { nuovo[o] = {}; });
     document.querySelectorAll('.turni-check').forEach(chk => {
       if (!chk.checked) return;
       const op = chk.dataset.op, day = Number(chk.dataset.day);
@@ -12353,6 +12408,11 @@
   document.getElementById('settingsPaese').addEventListener('change', (e) => {
     saveSettings({ paese: PAESI[e.target.value] && e.target.value !== 'IT' ? e.target.value : null }).then(() => { try { pubblicaDisponibilitaOnline(); renderSheetMantenendoScroll(); } catch (er) {} });
   });
+  document.getElementById('settingsOperatrici').addEventListener('change', (e) => {
+    const l = e.target.value.split(',').map(x => x.trim()).filter(Boolean).filter((x, i, a) => a.indexOf(x) === i).slice(0, 6);
+    saveSettings({ operatrici: l.length ? l : null }).then(() => { try { pubblicaDisponibilitaOnline(); renderSheetMantenendoScroll(); } catch (er) {} });
+  });
+  document.getElementById('settingsContatto').addEventListener('input', (e) => { saveSettings({ contattoAssistenza: e.target.value.trim() || null }); });
   document.getElementById('settingsRecensioni').addEventListener('input', (e) => {
     const v = e.target.value.trim();
     saveSettings({ linkRecensioni: v || null });
@@ -12418,7 +12478,7 @@
     salvaLinee(lista, true);
   });
   document.getElementById('settingsResetBtn').addEventListener('click', () => {
-    saveSettings({ nome: null, logo: null, colore: null, font: null, indirizzo: null, telefono: null, mesiRicontatto: null, paese: null, linkRecensioni: null })
+    saveSettings({ nome: null, logo: null, colore: null, font: null, indirizzo: null, telefono: null, mesiRicontatto: null, paese: null, operatrici: null, contattoAssistenza: null, linkRecensioni: null })
       .then(ok => { if (ok) notifyTop('Aspetto ripristinato.'); });
   });
   // Lingua (Erica, 19/10): scelta per dispositivo, salvata solo in locale (non su Firestore,
