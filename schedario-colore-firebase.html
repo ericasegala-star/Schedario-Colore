@@ -5868,9 +5868,9 @@
         </div>
       </div>
       <div class="agenda-settimana" id="agendaSettimana">
-        <button type="button" class="agenda-sett-freccia" id="agendaPrevDay" aria-label="Giorno precedente">‹</button>
+        <button type="button" class="agenda-sett-freccia" id="agendaPrevDay" aria-label="Settimana precedente">‹</button>
         <div class="agenda-settimana-giorni">${giorni.join('')}</div>
-        <button type="button" class="agenda-sett-freccia" id="agendaNextDay" aria-label="Giorno successivo">›</button>
+        <button type="button" class="agenda-sett-freccia" id="agendaNextDay" aria-label="Settimana successiva">›</button>
       </div>`;
   }
 
@@ -10412,9 +10412,9 @@
       agendaScrollA830();
     }
     const prevBtn = document.getElementById('agendaPrevDay');
-    if (prevBtn) prevBtn.addEventListener('click', () => spostaGiorno(-1));
+    if (prevBtn) prevBtn.addEventListener('click', () => spostaGiorno(-7)); // la freccia sposta la settimana, non il giorno
     const nextBtn = document.getElementById('agendaNextDay');
-    if (nextBtn) nextBtn.addEventListener('click', () => spostaGiorno(1));
+    if (nextBtn) nextBtn.addEventListener('click', () => spostaGiorno(7));
     document.querySelectorAll('.agenda-giorno').forEach(b => b.addEventListener('click', () => {
       agendaDataSelezionata = b.dataset.data;
       renderSheet();
