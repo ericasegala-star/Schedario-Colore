@@ -344,6 +344,22 @@
     .field-rich-overlay { display: none; }
     .field-rich textarea.field-rich-input, .field-rich input.field-rich-input { display: block; position: static; color: var(--ink) !important; }
   }
+  .col-sub { color: var(--ink-soft); margin: 4px 0 18px; }
+  .col-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-bottom: 18px; }
+  .col-card { border: 1px solid var(--line); border-radius: 12px; background: var(--paper-raised); padding: 16px 18px; }
+  .col-card.wide { grid-column: 1 / -1; }
+  .col-card h3 { margin: 0 0 4px; font-size: 17px; color: var(--berry); }
+  .col-card .col-lead { margin: 0 0 12px; color: var(--ink-soft); font-size: 14px; }
+  .col-card p, .col-card li { font-size: 14.5px; line-height: 1.5; }
+  .col-card ul { margin: 6px 0 0; padding-left: 20px; }
+  .col-fig { display: block; margin: 8px auto 10px; max-width: 100%; height: auto; }
+  .col-tbl { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 6px; }
+  .col-tbl th, .col-tbl td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .col-tbl th { font-size: 12.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-soft); }
+  .col-chip { display: inline-block; width: 14px; height: 14px; border-radius: 50%; vertical-align: -2px; margin-right: 6px; border: 1px solid rgba(0,0,0,.15); }
+  .tri-cat { margin: 26px 0 10px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+  .tri-medico { margin-top: 12px; }
+  .col-note { background: var(--copper-soft); border-radius: 10px; padding: 10px 14px; font-size: 14px; margin-top: 10px; }
   .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
   .row2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
   @media (max-width: 620px) { .row3, .row2 { grid-template-columns: 1fr; } }
@@ -1568,6 +1584,12 @@
           </div>
         </aside>
         <aside class="panel notes-banner">
+          <div class="notes-banner-item" id="tricologiaEntry">
+            <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6"/><path d="M15 15l5 5"/><path d="M8 11c1-2 3-2 4 0"/></svg></span>
+            <span class="name">Tricologia</span>
+          </div>
+        </aside>
+        <aside class="panel notes-banner">
           <div class="notes-banner-item" id="magazzinoEntry">
             <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5 12 3l9 4.5-9 4.5-9-4.5Z"/><path d="M3 7.5V16.5L12 21l9-4.5V7.5"/><path d="M12 12v9"/></svg></span>
             <span class="name" data-i18n="nav.magazzino">Magazzino</span>
@@ -1880,7 +1902,7 @@
 <script>
 (function () {
   const __T0 = performance.now(); const __marks = {};
-  const APP_BUILD = "2026-11-05.161-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-11-05.162-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -4074,8 +4096,8 @@
     list.forEach(c => {
       if (!c || !c.id) return;
       currentIds.add(c.id);
-      if ((lastWrittenUpdatedAt[c.id] || 0) < (c.updatedAt || 0)) {
-        lastWrittenUpdatedAt[c.id] = c.updatedAt || Date.now();
+      if ((lastWrittenUpdatedAt[c.id] || 0) < docStamp(c)) {
+        lastWrittenUpdatedAt[c.id] = docStamp(c) || Date.now();
         writes.push(db.doc('clients/' + c.id).set(clientToDbBody(c)));
       }
     });
@@ -4112,7 +4134,7 @@
       const c = clients.find(cl => cl.id === id);
       if (!c) return; // la scheda è stata cambiata o eliminata nel frattempo
       c.foto = snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
-      if (activeId === id) renderSheet();
+      if (activeId === id || activeTricoId === id) renderSheet();
     }).catch(() => { /* le foto non si sono caricate: la scheda resta visibile senza, per ora */ });
   }
   function saveClientFotoDoc(clientId, photoId, body) {
@@ -4136,6 +4158,7 @@
     fotoArray.forEach((f, i) => {
       const photoId = uid();
       const body = { dataUrl: f.dataUrl, name: f.name || '', commento: f.commento || '', createdAt: Date.now() + i };
+      if (f.tricho) { body.tricho = true; body.seduta = f.seduta || ''; body.fase = f.fase || ''; }
       f.id = photoId;
       saveClientFotoDoc(clientId, photoId, body);
     });
@@ -5278,7 +5301,7 @@
       const __tc = performance.now();
       return db.collection('clients').get().then(snap => { __marks.L_clienti = performance.now() - __tc; return snap; }).then(snap => snap.empty ? migrateLegacyLocalStorageIfNeeded().then(() => db.collection('clients').get()) : snap).then(snap => {
         clients = snap.docs.map(d => clientFromDbDoc(d.id, d.data()));
-        clients.forEach(c => { lastWrittenUpdatedAt[c.id] = c.updatedAt || Date.now(); });
+        clients.forEach(c => { lastWrittenUpdatedAt[c.id] = docStamp(c) || Date.now(); });
         __marks.schede = performance.now() - __T0;
         return altreLetture.then(r => { __marks.letture = performance.now() - __T0; return r; });
       }).then(([aTime, aGreen, aGloss, aspetto, backup, agenda, turni, assenze, servizi]) => migrateLegacyAppuntiIfNeeded([aTime, aGreen, aGloss]).then(migrated => migrated.concat([aspetto, backup, agenda, turni, assenze, servizi]))).then(([aTime, aGreen, aGloss, aspetto, backup, agenda, turni, assenze, servizi]) => {
@@ -5638,6 +5661,9 @@
   // tecnicoViewSnapshot quando si entra in Tricologo (che riparte sempre pulito, sul Magazzino),
   // e ripristinato quando si torna su Tecnico.
   let viewingTricologo = false;
+  let viewingTricologia = false; // pagina informativa Tricologia
+  let triPrintMode = null;
+  let activeTricoId = null; // scheda tricologica aperta (solo in modalità Tricologo)
   let tecnicoViewSnapshot = null;
   let searchAppTerm = "";
   let viewingBlankSheet = false; // true quando il pannello principale mostra "Scheda da stampare" (modulo vuoto)
@@ -5703,7 +5729,7 @@
     viewingBlankSheet = false;
     viewingOstwald = false;
     viewingCatalogoHp = false;
-    viewingConsigliGenerici = false;
+    viewingConsigliGenerici = false; viewingTricologia = false;
     viewingSchedaGenerica = false;
     viewingHome = false;
     renderAll();
@@ -7372,8 +7398,8 @@
     const ul = document.getElementById('clientList');
     const term = searchTerm.trim().toLowerCase();
     const filtered = clients
-      .filter(c => !c.soloAnagrafica && c.nome.toLowerCase().includes(term)) // chi è solo in Anagrafica non ha (ancora) una scheda tecnica
-      .sort((a, b) => b.updatedAt - a.updatedAt);
+      .filter(c => (viewingTricologo ? !!c.tricho : !c.soloAnagrafica) && c.nome.toLowerCase().includes(term)) // Tecnico: solo schede tecniche; Tricologo: solo schede tricologiche
+      .sort((a, b) => viewingTricologo ? (b.tricho.updatedAt - a.tricho.updatedAt) : (b.updatedAt - a.updatedAt));
 
     if (!filtered.length) {
       // Il tasto "+ Nuova scheda" compare solo cercando qualcosa che non c'è (non a campo
@@ -7383,17 +7409,17 @@
         (term ? '<button type="button" class="empty-list-newbtn" id="emptyListNewBtn">+ Nuova scheda per "' +
           escapeHtml(searchTerm.trim()) + '"</button>' : '') + '</li>';
       const btn = document.getElementById('emptyListNewBtn');
-      if (btn) btn.addEventListener('click', () => createNewClient(searchTerm.trim()));
+      if (btn) btn.addEventListener('click', () => viewingTricologo ? createNewTrico(searchTerm.trim()) : createNewClient(searchTerm.trim()));
       return;
     }
     ul.innerHTML = '';
     filtered.forEach(c => {
       const li = document.createElement('li');
-      li.className = (!viewingNotes && !viewingIspirazione && !viewingMagazzino && !viewingServizi && !viewingAnagrafica && !viewingAgenda && !viewingSearchApp && !viewingBlankSheet && !viewingOstwald && !viewingCatalogoHp && !viewingConsigliGenerici && !viewingSchedaGenerica && !viewingHome && c.id === activeId) ? 'active' : '';
+      li.className = (!viewingNotes && !viewingIspirazione && !viewingMagazzino && !viewingServizi && !viewingAnagrafica && !viewingAgenda && !viewingSearchApp && !viewingBlankSheet && !viewingOstwald && !viewingCatalogoHp && !viewingConsigliGenerici && !viewingSchedaGenerica && !viewingTricologia && !viewingHome && c.id === (viewingTricologo ? activeTricoId : activeId)) ? 'active' : '';
       const mesiRic = appSettingsCache.mesiRicontatto;
       const daRicontattare = mesiRic && (Date.now() - c.updatedAt) >= mesiRic * 30 * 24 * 3600 * 1000;
       li.innerHTML = `<span class="name">${escapeHtml(c.nome || 'Senza nome')}${daRicontattare ? '<span class="recontact-badge">Da ricontattare</span>' : ''}</span><span class="date">${fmtDate(c.updatedAt)}</span>`;
-      li.addEventListener('click', () => switchActive(c.id));
+      li.addEventListener('click', () => viewingTricologo ? switchTrico(c.id) : switchActive(c.id));
       ul.appendChild(li);
     });
   }
@@ -7419,6 +7445,8 @@
     if (catalogoHpEntry) catalogoHpEntry.className = 'notes-banner-item' + (viewingCatalogoHp ? ' active' : '');
     const consigliGenericiEntry = document.getElementById('consigliGenericiEntry');
     if (consigliGenericiEntry) consigliGenericiEntry.className = 'notes-banner-item' + (viewingConsigliGenerici ? ' active' : '');
+    const tricologiaEntry = document.getElementById('tricologiaEntry');
+    if (tricologiaEntry) tricologiaEntry.className = 'notes-banner-item' + (viewingTricologia ? ' active' : '');
     const schedaGenericaEntry = document.getElementById('schedaGenericaEntry');
     if (schedaGenericaEntry) schedaGenericaEntry.className = 'notes-banner-item' + (viewingSchedaGenerica ? ' active' : '');
   }
@@ -7491,6 +7519,7 @@
     viewingCatalogoHp = false;
     viewingConsigliGenerici = flagDaAttivare === 'consigliGenerici';
     viewingSchedaGenerica = flagDaAttivare === 'schedaGenerica';
+    viewingTricologia = flagDaAttivare === 'tricologia';
     viewingHome = false;
     closeMobileMenu();
     renderAll();
@@ -7500,6 +7529,7 @@
     categoria: 'Schede clienti',
     cerca(term) {
       const risultati = [];
+      if (viewingTricologo) return risultati; // le sezioni viaggiano separate
       clients.forEach(raw => {
         if (raw.soloAnagrafica) return;
         const c = hydrate(JSON.parse(JSON.stringify(raw)));
@@ -7508,6 +7538,23 @@
         if (nameMatches || fieldMatches.length) {
           risultati.push({ titolo: c.nome || 'Senza nome', matches: fieldMatches, apri: () => switchActive(c.id) });
         }
+      });
+      risultati.sort((a, b) => a.titolo.localeCompare(b.titolo));
+      return risultati;
+    },
+  });
+
+  registerSearchAppSource({
+    categoria: I("Schede tricologiche", "Trichology cards"),
+    cerca(term) {
+      const risultati = [];
+      if (!viewingTricologo) return risultati;
+      clients.forEach(c => {
+        if (!c.tricho) return;
+        const T = hydrateTricho(c.tricho);
+        const campi = [[I("Motivo", "Reason"), T.motivo], [I("Note", "Notes"), T.note], [I("Trattamento", "Treatment"), T.trattamento], [I("Prodotti", "Products"), T.prodottiConsigliati]]
+          .concat(T.sedute.map(x => [I("Controllo", "Check"), x.note])).filter(([, v]) => v && String(v).toLowerCase().includes(term));
+        if ((c.nome || '').toLowerCase().includes(term) || campi.length) risultati.push({ titolo: c.nome || I("Senza nome", "Unnamed"), matches: campi, apri: () => switchTrico(c.id) });
       });
       risultati.sort((a, b) => a.titolo.localeCompare(b.titolo));
       return risultati;
@@ -8208,7 +8255,530 @@
       if (nuovoGrid && scrollGridTop != null) nuovoGrid.scrollTop = scrollGridTop;
     });
   }
-  function renderSheet() {
+  // Fenice è solo in italiano: I(it, en) restituisce l'italiano (stessa scrittura dell'app neutra)
+  function I(it, en) { return it; }
+  function tricologiaHtml() {
+    // ciclo di vita del capello: tre fasi
+    const ciclo = `<svg class="col-fig" viewBox="0 0 520 120" width="520" role="img" aria-label="${I("Le tre fasi del ciclo del capello", "The three phases of the hair cycle")}">
+      <g font-size="13" fill="currentColor" text-anchor="middle">
+        <rect x="4" y="14" width="196" height="56" rx="10" fill="#e6efe1" stroke="#4c7a5e" stroke-width="1.5"/><text x="102" y="36" font-weight="700">${I("ANAGEN", "ANAGEN")}</text><text x="102" y="55" font-size="11.5">${I("crescita: la fase lunga (anni)", "growth: the long phase (years)")}</text>
+        <rect x="208" y="14" width="150" height="56" rx="10" fill="#f6ebbb" stroke="#bf9c58" stroke-width="1.5"/><text x="283" y="36" font-weight="700">${I("CATAGEN", "CATAGEN")}</text><text x="283" y="55" font-size="11.5">${I("pausa: poche settimane", "pause: a few weeks")}</text>
+        <rect x="366" y="14" width="150" height="56" rx="10" fill="#f1dcdc" stroke="#a5483f" stroke-width="1.5"/><text x="441" y="36" font-weight="700">${I("TELOGEN", "TELOGEN")}</text><text x="441" y="55" font-size="11.5">${I("riposo e caduta: mesi", "rest and shedding: months")}</text>
+        <text x="260" y="104" font-size="12" opacity=".75">${I("ogni capello ha il suo ritmo: non cadono tutti insieme", "each hair has its own rhythm: they do not all fall at once")}</text>
+      </g></svg>`;
+    // pelle e follicolo
+    const follicolo = `<svg class="col-fig" viewBox="0 0 430 190" width="430" role="img" aria-label="${I("Il capello nella pelle", "The hair in the skin")}">
+      <rect x="0" y="60" width="430" height="130" fill="#f3e3d6"/><rect x="0" y="60" width="430" height="14" fill="#e3c7b0"/>
+      <path d="M120 60 C118 90 112 120 122 150 C132 170 160 170 168 150 C176 124 160 90 150 60 Z" fill="#fff6ee" stroke="#9c7a41" stroke-width="2"/>
+      <path d="M135 0 L140 100" stroke="#5c4022" stroke-width="5" stroke-linecap="round"/>
+      <ellipse cx="144" cy="140" rx="15" ry="13" fill="#c98f6a"/>
+      <ellipse cx="188" cy="104" rx="16" ry="11" fill="#f6d98a" stroke="#bf9c58"/>
+      <path d="M172 104 C165 100 160 96 154 92" stroke="#bf9c58" stroke-width="2" fill="none"/>
+      <g font-size="12.5" fill="currentColor">
+        <text x="206" y="30">${I("fusto (la parte che si vede)", "shaft (the visible part)")}</text><line x1="204" y1="27" x2="146" y2="26" stroke="currentColor" opacity=".5"/>
+        <text x="208" y="108">${I("ghiandola del sebo", "sebaceous gland")}</text>
+        <text x="172" y="168">${I("bulbo: qui nasce il capello", "bulb: where the hair is made")}</text>
+        <text x="6" y="54" opacity=".8">${I("superficie della pelle", "skin surface")}</text>
+      </g></svg>`;
+    const li = (a, b) => `<li>${I(a, b)}</li>`;
+    return `
+      <div class="sheet-head"><div class="name-field">
+        <div class="notes-title">${I("Tricologia", "Trichology")}</div>
+        <div class="sub col-sub">${I("Nozioni di base su cute e capelli, per fare le domande giuste e sapere quando consigliare il medico.", "The basics about scalp and hair, to ask the right questions and know when to recommend a doctor.")}</div>
+      </div></div>
+      <div class="col-note" style="margin:0 0 18px"><b>${I("Importante.", "Important.")}</b> ${I("Queste pagine sono informazioni generali per il lavoro in salone. Non sono una diagnosi e non sostituiscono il parere di un medico: in caso di dubbio si consiglia sempre una visita.", "These pages are general information for salon work. They are not a diagnosis and do not replace a doctor’s opinion: when in doubt, always recommend a medical visit.")}</div>
+      <h2 class="tri-cat">${I("Conoscere cute e capello", "Know the scalp and hair")}</h2>
+      <div class="col-grid">
+        <section class="col-card">
+          <h3>${I("Cute e capello", "Scalp and hair")}</h3>
+          <p class="col-lead">${I("Il capello nasce dentro la pelle, in una piccola sacca chiamata follicolo.", "Hair is made inside the skin, in a small pocket called the follicle.")}</p>
+          ${follicolo}
+          <ul>
+            ${li("La parte che vediamo è il <b>fusto</b>, fatto di cheratina: non è vivo, per questo tagliarlo non fa male.", "The part we see is the <b>shaft</b>, made of keratin: it is not alive, which is why cutting it does not hurt.")}
+            ${li("La <b>ghiandola del sebo</b> lubrifica cute e capello: troppo sebo dà un aspetto unto, troppo poco dà secchezza.", "The <b>sebaceous gland</b> lubricates scalp and hair: too much sebum looks greasy, too little feels dry.")}
+            ${li("Perdere ogni giorno alcune decine di capelli è normale: sono quelli arrivati a fine ciclo.", "Losing a few dozen hairs a day is normal: they are the ones at the end of their cycle.")}
+          </ul>
+        </section>
+        <section class="col-card">
+          <h3>${I("Il ciclo del capello", "The hair cycle")}</h3>
+          <p class="col-lead">${I("Ogni capello passa da tre fasi — anagen, catagen e telogen — poi ricomincia.", "Every hair goes through three phases — anagen, catagen and telogen — then starts again.")}</p>
+          ${ciclo}
+          <ul>
+            ${li("<b>Anagen</b> (crescita): il capello si forma e si allunga. È la fase più lunga e riguarda la maggior parte dei capelli.", "<b>Anagen</b> (growth): the hair forms and lengthens. It is the longest phase and covers most hairs.")}
+            ${li("<b>Catagen</b> (pausa): una breve transizione in cui il follicolo si ritira e la crescita si ferma.", "<b>Catagen</b> (pause): a short transition in which the follicle shrinks back and growth stops.")}
+            ${li("<b>Telogen</b> (riposo): il capello è fermo e alla fine cade, lasciando posto a uno nuovo. Una piccola parte dei capelli è sempre in questa fase.", "<b>Telogen</b> (rest): the hair stands still and eventually falls, making room for a new one. A small share of hairs is always in this phase.")}
+            ${li("Dopo uno stress forte, una febbre o un parto, molti capelli possono passare insieme in <b>telogen</b> e cadere <b>qualche mese dopo</b>: spesso è temporaneo.", "After strong stress, a fever or childbirth, many hairs can enter <b>telogen</b> together and fall <b>a few months later</b>: it is often temporary.")}
+          </ul>
+          <div class="col-note tri-medico"><b>${I("Sentire il medico", "Ask a doctor")}</b>: ${I("se la caduta è molto più forte del solito o dura da più di qualche mese, la cliente può chiedere un parere al medico.", "if hair loss is much heavier than usual or lasts more than a few months, the client can ask a doctor for an opinion.")}</div>
+        </section>
+      </div>
+      <h2 class="tri-cat">${I("Osservare e ascoltare", "Observe and listen")}</h2>
+      <div class="col-grid">
+        <section class="col-card">
+          <h3>${I("Cosa osservare e cosa chiedere", "What to look at and what to ask")}</h3>
+          <p class="col-lead">${I("Una buona consulenza comincia ascoltando, poi guardando.", "A good consultation starts by listening, then looking.")}</p>
+          <table class="col-tbl"><thead><tr><th>${I("Guardo", "I look at")}</th><th>${I("Chiedo", "I ask")}</th></tr></thead><tbody>
+            <tr><td>${I("Cute unta, secca o normale", "Scalp: greasy, dry or normal")}</td><td>${I("Ogni quanto lava i capelli e con cosa?", "How often do you wash, and with what?")}</td></tr>
+            <tr><td>${I("Squame: piccole e bianche, o gialle e untuose", "Flakes: small and white, or yellow and greasy")}</td><td>${I("Da quanto tempo c’è il problema?", "How long has this been going on?")}</td></tr>
+            <tr><td>${I("Rossore, graffi, crosticine", "Redness, scratches, scabs")}</td><td>${I("Prurito o bruciore? A tutte le ore?", "Itching or burning? At all times?")}</td></tr>
+            <tr><td>${I("Densità: uguale ovunque o diradata in una zona", "Density: even everywhere or thinner in one area")}</td><td>${I("Cadono più capelli di prima? Da quando?", "Is more hair falling than before? Since when?")}</td></tr>
+            <tr><td>${I("Capelli più sottili o corti vicino alla radice", "Hairs thinner or shorter near the root")}</td><td>${I("Cambiamenti recenti: stress, dieta, parto, farmaci, prodotti nuovi?", "Recent changes: stress, diet, childbirth, medication, new products?")}</td></tr>
+          </tbody></table>
+          <div class="col-note">${I("Scrivi nella scheda solo ciò che la cliente ti dice o che vedi, senza etichette mediche.", "Write on the card only what the client tells you or what you see, without medical labels.")}</div>
+        </section>
+        <section class="col-card">
+          <h3>${I("Analisi con la microcamera", "Scalp analysis with a micro-camera")}</h3>
+          <p class="col-lead">${I("Fa vedere alla cliente ciò che dici: aumenta la fiducia e la consapevolezza.", "It shows the client what you are describing: it builds trust and awareness.")}</p>
+          <ul>
+            ${li("<b>Prima</b>: postazione tranquilla e riservata, lente pulita e igienizzata, capelli ben pettinati.", "<b>Before</b>: a quiet, private spot, a clean and sanitised lens, hair well combed.")}
+            ${li("<b>Durante</b>: osserva più zone (nuca, lati, sommità, attaccatura) e confrontale tra loro. Ingrandimento basso per la visione d’insieme, alto per il singolo capello.", "<b>During</b>: look at several areas (nape, sides, crown, hairline) and compare them. Low magnification for the overview, high for a single hair.")}
+            ${li("Guarda prima a secco; se serve, ripeti con un po’ d’acqua per vedere meglio la superficie.", "Look dry first; if needed, repeat with a little water to see the surface better.")}
+            ${li("<b>Dopo</b>: mostra le immagini con parole semplici, descrivi ciò che si vede (sebo, squame, capelli sottili) senza dare nomi di malattie.", "<b>After</b>: show the images in simple words, describe what you see (sebum, flakes, fine hair) without naming illnesses.")}
+            ${li("Salva le foto solo se la cliente è d’accordo, e dillo anche nel consenso.", "Save photos only if the client agrees, and say so in the consent.")}
+          </ul>
+          <div class="col-note tri-medico"><b>${I("Sentire il medico", "Ask a doctor")}</b>: ${I("se vedi qualcosa di insolito (lesioni, macchie, zone che sanguinano o non guariscono) non interpretarlo: consiglia con calma di sentire il medico.", "if you see anything unusual (lesions, spots, areas that bleed or do not heal), do not interpret it: calmly recommend asking a doctor.")}</div>
+        </section>
+      </div>
+      <h2 class="tri-cat">${I("Problemi più comuni", "Common problems")}</h2>
+      <div class="col-grid">
+        <section class="col-card">
+          <h3>${I("Perdita di capelli: i casi più comuni", "Hair loss: the most common cases")}</h3>
+          <p class="col-lead">${I("Distinguere come cade aiuta a capire cosa consigliare.", "Seeing how it falls helps you decide what to recommend.")}</p>
+          <table class="col-tbl"><thead><tr><th>${I("Come si presenta", "What it looks like")}</th><th>${I("Cosa può indicare", "What it may suggest")}</th></tr></thead><tbody>
+            <tr><td>${I("Caduta in tutta la testa, abbondante, dopo un evento", "Loss all over the head, heavy, after an event")}</td><td>${I("Spesso temporanea (stress, parto, dieta, febbre, cambio di farmaci). Si consiglia di sentire il medico.", "Often temporary (stress, childbirth, diet, fever, change of medication). Suggest talking to a doctor.")}</td></tr>
+            <tr><td>${I("Diradamento lento, capelli sempre più sottili, in zone precise", "Slow thinning, hairs getting finer, in typical areas")}</td><td>${I("Può essere familiare. Un medico può dire se e come intervenire.", "May run in the family. A doctor can say whether and how to act.")}</td></tr>
+            <tr><td>${I("Chiazza rotonda senza capelli, pelle liscia", "A round bare patch with smooth skin")}</td><td>${I("Va fatta vedere da un medico, senza aspettare.", "Should be seen by a doctor, without waiting.")}</td></tr>
+            <tr><td>${I("Capelli che si spezzano a metà lunghezza", "Hairs breaking along their length")}</td><td>${I("Di solito danno al fusto (trattamenti, calore, trazione): è un tema di cura, non di radice.", "Usually damage to the shaft (treatments, heat, pulling): a care issue, not a root issue.")}</td></tr>
+          </tbody></table>
+          <div class="col-note tri-medico"><b>${I("Sentire il medico", "Ask a doctor")}</b>: ${I("per capire la causa servono visita ed eventuali esami: in salone si consiglia di sentire il parere del medico, soprattutto se la caduta è improvvisa, a chiazze o continua.", "finding the cause takes a visit and possibly tests: in the salon, recommend asking a doctor, especially if the loss is sudden, patchy or ongoing.")}</div>
+        </section>
+        <section class="col-card">
+          <h3>${I("Cuoio capelluto: unto, forfora, prurito", "Scalp: grease, dandruff, itching")}</h3>
+          <p class="col-lead">${I("Molti disturbi si somigliano: in salone si osserva e si cura la pulizia, non si diagnostica.", "Many problems look alike: in the salon we observe and take care of cleansing; we do not diagnose.")}</p>
+          <ul>
+            ${li("<b>Cute unta</b>: lavaggi regolari con prodotti delicati; evitare di strofinare forte.", "<b>Greasy scalp</b>: regular washing with gentle products; avoid rubbing hard.")}
+            ${li("<b>Squame piccole e bianche</b> con poco o nessun rossore: spesso è forfora semplice; aiutano shampoo specifici e lavaggi regolari.", "<b>Small white flakes</b> with little or no redness: often simple dandruff; dedicated shampoos and regular washing help.")}
+            ${li("<b>Squame gialle e untuose</b> con rossore, o <b>placche spesse</b> e secche: possono avere una causa medica. Meglio consigliare una visita.", "<b>Yellow greasy flakes</b> with redness, or <b>thick dry patches</b>: they may have a medical cause. Better to recommend a visit.")}
+            ${li("<b>Prurito</b> forte o che dura: si chiede da quanto c’è, quali prodotti si sono usati e si evita di insistere con trattamenti.", "<b>Strong or lasting itching</b>: ask how long it has been there, which products were used, and avoid pushing treatments.")}
+          </ul>
+          <div class="col-note">${I("Se la cute è arrossata, ferita o screpolata, non si fanno colore, decolorazione o permanente: si aspetta il parere del medico.", "If the scalp is red, broken or cracked, do not do colour, bleaching or perms: wait for the doctor’s opinion.")}</div>
+          <div class="col-note tri-medico"><b>${I("Sentire il medico", "Ask a doctor")}</b>: ${I("se il disturbo non migliora con lavaggi regolari, peggiora o torna sempre, è bene sentire il parere del medico (o del dermatologo).", "if the problem does not improve with regular washing, gets worse or keeps coming back, it is best to ask a doctor (or a dermatologist).")}</div>
+        </section>
+      </div>
+      <h2 class="tri-cat">${I("Quando serve il medico e clienti delicate", "When a doctor is needed, and delicate clients")}</h2>
+      <div class="col-grid">
+        <section class="col-card">
+          <h3>${I("Quando mandare dal medico", "When to send to a doctor")}</h3>
+          <p class="col-lead">${I("Il parrucchiere è spesso il primo a notare un cambiamento: riconoscerlo è già un grande aiuto.", "The hairdresser is often the first to notice a change: spotting it is already a big help.")}</p>
+          <ul>
+            ${li("Caduta <b>improvvisa</b> o molto abbondante.", "<b>Sudden</b> or very heavy hair loss.")}
+            ${li("Zone senza capelli, rotonde o a chiazze.", "Bare areas, round or patchy.")}
+            ${li("Cute <b>dolente</b>, con crosticine, secrezioni o arrossamento esteso.", "<b>Painful</b> scalp, with scabs, discharge or widespread redness.")}
+            ${li("Perdita anche di ciglia o sopracciglia.", "Loss of eyelashes or eyebrows as well.")}
+            ${li("Nei, macchie o lesioni che cambiano forma o colore, o che non guariscono.", "Moles, spots or lesions that change shape or colour, or do not heal.")}
+            ${li("Capelli che la cliente si strappa di continuo, senza riuscire a smettere.", "Hair the client keeps pulling out without being able to stop.")}
+          </ul>
+          <div class="col-note">${I("Come dirlo: «Questa zona mi sembra da far vedere a un medico, così sei più tranquilla». Calma, parole semplici, nessuna parola difficile.", "How to say it: “This area looks like something to have a doctor check, so you can feel reassured.” Calm, simple words, no difficult terms.")}</div>
+        </section>
+        <section class="col-card">
+          <h3>${I("Clienti in cura o dopo un intervento", "Clients in treatment or after surgery")}</h3>
+          <p class="col-lead">${I("Chemioterapia, radioterapia o un trapianto di capelli: la cliente ha bisogno di cura e di rispetto.", "Chemotherapy, radiotherapy or a hair transplant: the client needs care and respect.")}</p>
+          <ul>
+            ${li("Ascolta prima di proporre: chiedi cosa desidera, senza fare domande sulla malattia se non ne parla lei.", "Listen before suggesting: ask what she wants, without questions about the illness unless she brings it up.")}
+            ${li("Offri uno spazio tranquillo e riservato. Parrucche, foulard e tagli corti si possono presentare con delicatezza.", "Offer a quiet, private space. Wigs, scarves and short cuts can be presented gently.")}
+            ${li("Spazzole molto morbide, acqua tiepida, prodotti delicati, niente trazioni.", "Very soft brushes, lukewarm water, gentle products, no pulling.")}
+            ${li("Colore, decolorazione e altri trattamenti chimici: solo dopo che il medico li ha autorizzati.", "Colour, bleaching and other chemical treatments: only after the doctor has approved them.")}
+            ${li("Dopo un trapianto: si seguono le istruzioni dell’équipe che ha operato; nella zona trattata non si fa nulla senza il suo via libera.", "After a transplant: follow the instructions of the team that operated; do nothing on the treated area without their go-ahead.")}
+          </ul>
+          <div class="col-note">${I("Frasi da evitare: «Vedrai che passa», «Almeno sei viva», «Non è poi così grave». Meglio: «Sono qui, dimmi come vuoi che ti aiuti».", "Phrases to avoid: “It will pass”, “At least you are alive”, “It is not that bad”. Better: “I am here, tell me how you want me to help.”")}</div>
+          <div class="col-note tri-medico"><b>${I("Sentire il medico", "Ask a doctor")}</b>: ${I("per ogni trattamento, prodotto o tecnica si chiede il parere del medico o dell’équipe che segue la cliente, e si rispettano i tempi che indicano.", "for any treatment, product or technique, ask the doctor or team following the client, and respect the timing they give.")}</div>
+        </section>
+      </div>
+      <h2 class="tri-cat">${I("Prodotti e benessere", "Products and wellbeing")}</h2>
+      <div class="col-grid">
+        <section class="col-card">
+          <h3>${I("Leggere l’etichetta (INCI)", "Reading the label (INCI)")}</h3>
+          <p class="col-lead">${I("L’elenco degli ingredienti è obbligatorio in tutta Europa e dice cosa c’è davvero nel flacone.", "The ingredient list is mandatory across Europe and tells you what is really in the bottle.")}</p>
+          <ul>
+            ${li("Gli ingredienti sono scritti in <b>ordine decrescente</b>: i primi sono i più presenti. Sotto l’1% l’ordine è libero.", "Ingredients are listed in <b>descending order</b>: the first are the most present. Below 1% the order is free.")}
+            ${li("Le piante sono indicate col nome <b>latino</b>, le sostanze chimiche col nome <b>inglese</b>, i coloranti con la sigla <b>CI</b> e un numero.", "Plants use their <b>Latin</b> name, chemicals their <b>English</b> name, colourants the <b>CI</b> code and a number.")}
+            ${li("L’acqua (<i>aqua</i>) è quasi sempre tra i primi. Conservanti e profumo stanno di solito in fondo.", "Water (<i>aqua</i>) is almost always among the first. Preservatives and fragrance are usually near the end.")}
+            ${li("Profumo e conservanti sono tra le cause più comuni di allergia: con una cute sensibile conviene controllarli.", "Fragrance and preservatives are among the most common causes of allergy: with a sensitive scalp it pays to check them.")}
+            ${li("«Naturale» non vuol dire «senza allergie» e «senza» una sostanza non vuol dire «migliore»: conta l’elenco intero.", "“Natural” does not mean “allergy-free” and “free from” one substance does not mean “better”: the whole list matters.")}
+          </ul>
+          <div class="col-note tri-medico"><b>${I("Sentire il medico", "Ask a doctor")}</b>: ${I("se la cliente ha avuto reazioni allergiche, o ne sospetta una, il parere del medico (o dell’allergologo) viene prima di qualsiasi consiglio sul prodotto.", "if the client has had allergic reactions, or suspects one, a doctor’s (or allergist’s) opinion comes before any advice on the product.")}</div>
+        </section>
+        <section class="col-card">
+          <h3>${I("Oli essenziali: uso prudente", "Essential oils: careful use")}</h3>
+          <p class="col-lead">${I("Sono concentrati vegetali molto potenti: si usano con rispetto.", "They are very powerful plant concentrates: use them with respect.")}</p>
+          <ul>
+            ${li("Mai <b>puri</b> sulla pelle: si diluiscono sempre in un olio vegetale. Le dosi le indica il produttore o un esperto, non si improvvisano.", "Never <b>pure</b> on the skin: always dilute in a carrier oil. Doses come from the producer or an expert, never guessed.")}
+            ${li("Non si bevono e non si usano vicino a occhi, naso e orecchie.", "Do not swallow them or use them near the eyes, nose or ears.")}
+            ${li("Attenzione a <b>gravidanza, allattamento, bambini, asma, epilessia, allergie</b> e farmaci in corso: si chiede prima al medico.", "Take care with <b>pregnancy, breastfeeding, children, asthma, epilepsy, allergies</b> and ongoing medication: ask a doctor first.")}
+            ${li("Alcuni, come gli agrumi, rendono la pelle più sensibile al sole.", "Some, such as citrus oils, make the skin more sensitive to the sun.")}
+            ${li("Si conservano in flaconi di vetro scuro, ben chiusi, al riparo da luce e calore. Gli agrumi e le conifere si alterano prima.", "Keep them in dark glass bottles, well closed, away from light and heat. Citrus and conifer oils spoil sooner.")}
+            ${li("Una piccola prova sulla pelle, prima dell’uso, evita brutte sorprese.", "A small skin test before use avoids nasty surprises.")}
+          </ul>
+          <div class="col-note tri-medico"><b>${I("Sentire il medico", "Ask a doctor")}</b>: ${I("in caso di gravidanza, allattamento, malattie, allergie o terapie in corso, si sente prima il parere del medico.", "in case of pregnancy, breastfeeding, illness, allergies or ongoing therapy, ask a doctor first.")}</div>
+        </section>
+        <section class="col-card">
+          <h3>${I("Alimentazione e capelli", "Food and hair")}</h3>
+          <p class="col-lead">${I("Il capello è fatto di proteine: quello che si mangia, nel tempo, si vede.", "Hair is made of protein: what we eat shows over time.")}</p>
+          <ul>
+            ${li("Una dieta varia, con proteine, verdura, frutta, legumi e grassi buoni, aiuta capelli e cute.", "A varied diet with protein, vegetables, fruit, pulses and good fats supports hair and scalp.")}
+            ${li("Diete molto drastiche o carenze (per esempio di ferro) possono far cadere i capelli.", "Very strict diets or deficiencies (for example iron) can cause hair loss.")}
+            ${li("Dormire bene e gestire lo stress contano più di quanto si pensi.", "Good sleep and managing stress matter more than people think.")}
+            ${li("Integratori: non si consigliano dosi né marche. Se la cliente ne parla, la si invita a sentire il medico o il farmacista.", "Supplements: do not recommend doses or brands. If the client brings them up, invite her to ask her doctor or pharmacist.")}
+          </ul>
+          <div class="col-note tri-medico"><b>${I("Sentire il medico", "Ask a doctor")}</b>: ${I("per diete particolari, carenze sospette o integratori, il parere del medico o del nutrizionista viene prima di qualsiasi consiglio.", "for special diets, suspected deficiencies or supplements, a doctor’s or nutritionist’s opinion comes before any advice.")}</div>
+        </section>
+      </div>`;
+  }
+  // =====================================================================================
+  // TRICOLOGO — schede clienti per la tricocamera ("Anomalie cute / capelli").
+  // Vivono nella stessa persona dell'Anagrafica (clients/<id>) dentro l'oggetto "tricho", ma
+  // non hanno niente a che vedere con la scheda tecnica: elenchi separati, campi separati,
+  // foto separate (campo "tricho:true" sulle foto). Nessuna diagnosi: la scheda raccoglie
+  // osservazioni e promemoria "sentire il medico".
+  // =====================================================================================
+  function docStamp(c) { return Math.max(c.updatedAt || 0, (c.tricho && c.tricho.updatedAt) || 0); }
+  function oggiISO() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function blankTricho() {
+    const ora = Date.now();
+    return { createdAt: ora, updatedAt: ora, dataVisita: oggiISO(), motivo: '',
+      salute: '', farmaci: '', allergie: '', gravidanza: '', fumo: '', stress: '', sonno: '', alimentazione: '',
+      lavaggi: '', prodotti: '', trattamenti: [], strumenti: [],
+      da: '', andamento: '', sintomi: [],
+      tipoCute: '', tipoCapello: '', osservazioni: [], zone: [], note: '',
+      trattamento: '', prodottiConsigliati: '', medico: false, medicoNote: '', prossimo: '',
+      consensoSalute: null, sedute: [] };
+  }
+  function hydrateTricho(t) {
+    const b = blankTricho();
+    Object.keys(b).forEach(k => { if (t[k] === undefined) t[k] = b[k]; });
+    ['trattamenti', 'strumenti', 'sintomi', 'osservazioni', 'zone', 'sedute'].forEach(k => { if (!Array.isArray(t[k])) t[k] = []; });
+    return t;
+  }
+  function tricoElenco() { return clients.filter(c => c.tricho); }
+  const TRI_OPZ = {
+    gravidanza: [['no', I("No", "No")], ['gravidanza', I("Gravidanza", "Pregnancy")], ['allattamento', I("Allattamento", "Breastfeeding")]],
+    fumo: [['no', I("No", "No")], ['si', I("Sì", "Yes")], ['ex', I("Ex", "Former")]],
+    livello: [['basso', I("Basso", "Low")], ['medio', I("Medio", "Medium")], ['alto', I("Alto", "High")]],
+    sonno: [['buono', I("Buono", "Good")], ['irregolare', I("Irregolare", "Irregular")], ['scarso', I("Scarso", "Poor")]],
+    andamento: [['stabile', I("Stabile", "Stable")], ['peggiora', I("In peggioramento", "Getting worse")], ['migliora', I("In miglioramento", "Improving")], ['periodi', I("A periodi", "Comes and goes")]],
+    cute: [['normale', I("Normale", "Normal")], ['grassa', I("Grassa", "Oily")], ['secca', I("Secca", "Dry")], ['mista', I("Mista", "Combination")], ['sensibile', I("Sensibile", "Sensitive")]],
+    capello: [['sottile', I("Sottile", "Fine")], ['medio', I("Medio", "Medium")], ['spesso', I("Spesso", "Thick")], ['liscio', I("Liscio", "Straight")], ['mosso', I("Mosso", "Wavy")], ['riccio', I("Riccio", "Curly")]],
+    trattamenti: [['colore', I("Colore", "Colour")], ['decolorazione', I("Decolorazione", "Bleach")], ['permanente', I("Permanente", "Perm")], ['stiratura', I("Stiratura / lisciante", "Straightening")], ['extension', I("Extension", "Extensions")]],
+    strumenti: [['phon', I("Phon", "Hair dryer")], ['piastra', I("Piastra", "Flat iron")], ['ferro', I("Ferro / arricciacapelli", "Curling iron")], ['aria', I("Asciugatura all'aria", "Air-dry")]],
+    sintomi: [['prurito', I("Prurito", "Itching")], ['bruciore', I("Bruciore", "Burning")], ['dolore', I("Dolore / tensione", "Pain / tightness")], ['desquamazione', I("Desquamazione", "Flaking")], ['arrossamento', I("Arrossamento", "Redness")], ['caduta', I("Caduta", "Shedding")], ['diradamento', I("Diradamento", "Thinning")], ['untuosita', I("Cute che si unge presto", "Scalp gets oily fast")], ['fragilita', I("Capelli fragili / che si spezzano", "Fragile / breaking hair")]],
+    osservazioni: [['squame-secche', I("Squame secche", "Dry flakes")], ['squame-untuose', I("Squame untuose", "Greasy flakes")], ['sebo', I("Sebo in eccesso", "Excess sebum")], ['arrossata', I("Cute arrossata", "Red scalp")], ['follicoli-ostruiti', I("Aperture follicolari ostruite", "Blocked follicle openings")], ['capelli-miniaturizzati', I("Capelli di diametro ridotto", "Reduced-diameter hairs")], ['peli-corti', I("Peli corti nuovi", "Short new hairs")], ['capelli-spezzati', I("Capelli spezzati", "Broken hairs")], ['vasi', I("Vasi evidenti", "Visible vessels")], ['aree-vuote', I("Aree con meno capelli", "Areas with fewer hairs")]],
+    zone: [['fronte', I("Fronte", "Front")], ['tempie', I("Tempie", "Temples")], ['vertice', I("Vertice", "Crown")], ['nuca', I("Nuca", "Nape")], ['laterali', I("Laterali", "Sides")], ['tutta', I("Tutta la testa", "Whole head")]]
+  };
+  const TRI_CSS = `
+  .tri-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tri-chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; cursor: pointer; font-size: 14px; background: var(--card, #fff); user-select: none; }
+  .tri-chip input { position: absolute; opacity: 0; pointer-events: none; }
+  .tri-chip.on { background: var(--berry); color: #fff; border-color: var(--berry); }
+  .tri-seduta { border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+  .tri-seduta-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+  .tri-pd { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 10px; }
+  @media (max-width: 620px) { .tri-pd { grid-template-columns: 1fr; } }
+  .tri-seduta textarea, .tri-foto-comment { font-family: inherit; width: 100%; }
+  .tri-pd h4 { margin: 0 0 6px; font-size: 14px; }
+  .tri-consenso { display: flex; gap: 10px; align-items: flex-start; }
+  .tri-printdoc { max-width: 800px; margin: 0 auto; font-family: Georgia, serif; font-size: 14px; }
+  .tri-printdoc h1 { font-size: 20px; } .tri-printdoc h2 { font-size: 15px; border-bottom: 1px solid #999; margin: 14px 0 6px; }
+  .tri-printdoc .p-row { display: flex; gap: 10px; margin: 4px 0; align-items: baseline; flex-wrap: wrap; } .tri-printdoc .p-l { min-width: 150px; font-weight: bold; } .tri-printdoc .p-v { flex: 1; border-bottom: 1px dotted #666; min-height: 16px; }
+  .tri-printdoc .p-box { display: inline-block; width: 12px; height: 12px; border: 1px solid #000; margin-right: 4px; vertical-align: -1px; } .tri-printdoc .p-box.on { background: #000; } .tri-printdoc .p-opt { display: inline-block; margin-right: 12px; }
+  .tri-printdoc .p-lines div { border-bottom: 1px solid #999; height: 22px; } .tri-printdoc .p-ph { display: flex; gap: 8px; margin: 4px 0; } .tri-printdoc .p-ph div { flex: 1; } .tri-printdoc .p-ph img { max-width: 100%; max-height: 170px; display: block; }
+  @media print {
+      .tri-noprint { display: none !important; }
+    body:has(.tri-printdoc) #backupReminderBanner, body:has(.tri-printdoc) .top, body:has(.tri-printdoc) .sidebar-stack, body:has(.tri-printdoc) #topStatus, body:has(.tri-printdoc) #storageUsage, body:has(.tri-printdoc) #appDiagnostics, body:has(.tri-printdoc) .menu-toggle { display: none !important; }
+    body:has(.tri-printdoc) .layout { display: block; }
+    .tri-printdoc { color: #000; background: #fff; font: 12px/1.4 Georgia, serif; padding: 0; }
+    .tri-printdoc h1 { font-size: 18px; margin: 0 0 4px; }
+    .tri-printdoc h2 { font-size: 13px; margin: 12px 0 4px; border-bottom: 1px solid #000; padding-bottom: 2px; }
+    .tri-printdoc .p-row { display: flex; gap: 10px; margin: 3px 0; align-items: baseline; }
+    .tri-printdoc .p-l { min-width: 150px; font-weight: bold; }
+    .tri-printdoc .p-v { flex: 1; border-bottom: 1px dotted #666; min-height: 15px; }
+    .tri-printdoc .p-box { display: inline-block; width: 11px; height: 11px; border: 1px solid #000; margin-right: 3px; vertical-align: -1px; }
+    .tri-printdoc .p-box.on { background: #000; }
+    .tri-printdoc .p-opt { display: inline-block; margin-right: 12px; }
+    .tri-printdoc .p-lines div { border-bottom: 1px solid #999; height: 20px; }
+    .tri-printdoc .p-ph { display: flex; gap: 8px; margin: 4px 0; }
+    .tri-printdoc .p-ph div { flex: 1; }
+    .tri-printdoc .p-ph img { max-width: 100%; max-height: 170px; display: block; }
+    .tri-printdoc .p-sed { break-inside: avoid; margin-bottom: 8px; }
+  }`;
+  (function () { const s = document.createElement('style'); s.textContent = TRI_CSS; document.head.appendChild(s); })();
+
+  function tricoFlush() { if (tricoSave._t) { clearTimeout(tricoSave._t); tricoSave._t = null; save(clients); } }
+  function tricoSave() {
+    clearTimeout(tricoSave._t);
+    tricoSave._t = setTimeout(() => { tricoSave._t = null; save(clients); const st = document.getElementById('saveStatus'); if (st) { st.textContent = I("Salvato.", "Saved."); setTimeout(() => { if (st) st.textContent = ''; }, 1500); } }, 300);
+  }
+  function switchTrico(id) {
+    tricoFlush();
+    if (activeId) { const prev = getClient(activeId); if (prev) { commitVersion(prev); } }
+    activeTricoId = id; triPrintMode = null;
+    viewingNotes = viewingIspirazione = viewingMagazzino = viewingServizi = viewingAnagrafica = viewingAgenda = viewingSearchApp = false;
+    viewingBlankSheet = viewingOstwald = viewingCatalogoHp = viewingConsigliGenerici = viewingTricologia = viewingSchedaGenerica = viewingHome = false;
+    renderAll();
+    if (id) loadClientFoto(id);
+  }
+  function createNewTrico(prefillName) {
+    tricoFlush();
+    const c = blankClient();
+    c.soloAnagrafica = true; // è nuova solo come scheda tricologica: non compare tra le schede tecniche
+    if (prefillName) c.nome = titleCaseName(prefillName);
+    c.tricho = blankTricho();
+    clients.push(c);
+    searchTerm = '';
+    const s = document.getElementById('search'); if (s) s.value = '';
+    const sc = document.getElementById('searchClear'); if (sc) sc.hidden = true;
+    save(clients);
+    switchTrico(c.id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const n = document.getElementById('tri-nome'); if (n) n.focus({ preventScroll: true });
+  }
+  function altraSezioneAperta() {
+    return viewingNotes || viewingIspirazione || viewingMagazzino || viewingServizi || viewingAnagrafica || viewingAgenda || viewingSearchApp || viewingBlankSheet || viewingOstwald || viewingCatalogoHp || viewingConsigliGenerici || viewingSchedaGenerica || viewingTricologia || viewingHome;
+  }
+  function tricoChips(campo, opz, valori, multi) {
+    return '<div class="tri-chips" data-tri-chips="' + campo + '" data-multi="' + (multi ? 1 : 0) + '">' + opz.map(([v, l]) => {
+      const on = multi ? valori.indexOf(v) >= 0 : valori === v;
+      return '<label class="tri-chip' + (on ? ' on' : '') + '"><input type="' + (multi ? 'checkbox' : 'radio') + '" name="tri-' + campo + '" value="' + v + '"' + (on ? ' checked' : '') + '>' + escapeHtml(l) + '</label>';
+    }).join('') + '</div>';
+  }
+  function tricoTxt(id, campo, val, ph, rows) {
+    return '<textarea id="' + id + '" data-tri="' + campo + '" class="field-autosize" rows="' + (rows || 1) + '" placeholder="' + escapeHtml(ph || '') + '">' + escapeHtml(val || '') + '</textarea>';
+  }
+  function tricoFotoGrid(c, sid, fase) {
+    const foto = (c.foto || []).filter(f => f.tricho && f.seduta === sid && f.fase === fase);
+    return '<div class="foto-grid">' + foto.map(f => `
+      <div class="foto-card"><div class="foto-thumb"><img src="${f.dataUrl}" data-id="${f.id}" class="tri-foto-open" alt="${escapeHtml(f.name || '')}"><button type="button" class="foto-remove tri-foto-remove" data-id="${f.id}" title="${I("Rimuovi foto", "Remove photo")}">×</button></div>
+      <input type="text" class="tri-foto-comment" data-id="${f.id}" placeholder="${I("Commento…", "Comment…")}" value="${escapeHtml(f.commento || '')}"></div>`).join('') + `
+      <label class="foto-add"><input type="file" class="tri-foto-input" data-seduta="${sid}" data-fase="${fase}" accept="image/*" multiple><span>${I("+ Aggiungi", "+ Add")}</span></label></div>`;
+  }
+  function renderTricoSheet(c) {
+    const panel = document.getElementById('sheetPanel');
+    const floatingSave = document.getElementById('floatingSaveBtn'); if (floatingSave) floatingSave.hidden = true;
+    const apptModal = document.getElementById('agendaApptModal'); if (apptModal) apptModal.hidden = true;
+    const T = hydrateTricho(c.tricho);
+    const R = (lbl, inner) => '<div class="field"><label class="label-legend-style">' + lbl + '</label>' + inner + '</div>';
+    const sedute = T.sedute.slice().sort((a, b) => (a.data || '').localeCompare(b.data || ''));
+    panel.innerHTML = `
+      <div class="sheet-head">
+        <div class="name-field">
+          <input type="text" id="tri-nome" placeholder="${I("Nome cliente", "Client name")}" value="${escapeHtml(c.nome)}">
+          <input type="tel" id="tri-tel" class="name-field-telefono" placeholder="${I("Telefono", "Phone")}" value="${escapeHtml(c.telefono || '')}">
+          <div class="meta">${I("Scheda tricologica · creata il ", "Trichology card · created on ")}${fmtDate(T.createdAt)}${I(" · aggiornata il ", " · updated on ")}${fmtDate(T.updatedAt)}</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="ghost small" id="triPrintBtn">${I("Stampa scheda", "Print card")}</button>
+          <button type="button" class="ghost small" id="triPrintBlankBtn">${I("Stampa modulo vuoto", "Print blank form")}</button>
+          <button type="button" class="danger ghost small" id="triDeleteBtn">${I("Elimina scheda", "Delete card")}</button>
+        </div>
+      </div>
+      <fieldset><legend>${I("Visita", "Visit")}</legend>
+        <div class="row2">${R(I("Data prima visita", "First visit date"), '<input type="date" data-tri="dataVisita" value="' + escapeHtml(T.dataVisita) + '">')}
+        ${R(I("Motivo della visita", "Reason for the visit"), tricoTxt('tri-motivo', 'motivo', T.motivo, I("Cosa ti porta qui, in poche parole…", "What brings you here, in a few words…")))}</div>
+      </fieldset>
+      <fieldset><legend>${I("Anamnesi generale", "General background")}</legend>
+        <p class="hint">${I("Informazioni riferite dalla cliente. Per qualunque dubbio di salute: sentire il parere del medico.", "Information reported by the client. For any health concern: ask a doctor.")}</p>
+        ${R(I("Problemi di salute noti", "Known health issues"), tricoTxt('tri-salute', 'salute', T.salute, I("Come riferiti dalla cliente…", "As reported by the client…")))}
+        ${R(I("Farmaci o integratori in corso", "Medication or supplements in use"), tricoTxt('tri-farmaci', 'farmaci', T.farmaci, ''))}
+        ${R(I("Allergie / intolleranze", "Allergies / intolerances"), tricoTxt('tri-allergie', 'allergie', T.allergie, ''))}
+        <div class="row3">
+          ${R(I("Gravidanza / allattamento", "Pregnancy / breastfeeding"), tricoChips('gravidanza', TRI_OPZ.gravidanza, T.gravidanza, false))}
+          ${R(I("Fumo", "Smoking"), tricoChips('fumo', TRI_OPZ.fumo, T.fumo, false))}
+          ${R(I("Alimentazione", "Diet"), tricoTxt('tri-alim', 'alimentazione', T.alimentazione, I("Es. varia, vegetariana…", "E.g. varied, vegetarian…")))}
+        </div>
+        <div class="row2">
+          ${R(I("Livello di stress", "Stress level"), tricoChips('stress', TRI_OPZ.livello, T.stress, false))}
+          ${R(I("Sonno", "Sleep"), tricoChips('sonno', TRI_OPZ.sonno, T.sonno, false))}
+        </div>
+      </fieldset>
+      <fieldset><legend>${I("Abitudini per i capelli", "Hair habits")}</legend>
+        <div class="row2">
+          ${R(I("Quante volte li lava", "Washes per week"), '<input type="text" data-tri="lavaggi" value="' + escapeHtml(T.lavaggi) + '" placeholder="' + I("Es. 3 a settimana", "E.g. 3 a week") + '">')}
+          ${R(I("Prodotti usati", "Products used"), tricoTxt('tri-prodotti', 'prodotti', T.prodotti, ''))}
+        </div>
+        ${R(I("Trattamenti chimici", "Chemical treatments"), tricoChips('trattamenti', TRI_OPZ.trattamenti, T.trattamenti, true))}
+        ${R(I("Asciugatura / styling", "Drying / styling"), tricoChips('strumenti', TRI_OPZ.strumenti, T.strumenti, true))}
+      </fieldset>
+      <fieldset><legend>${I("Il disturbo", "The concern")}</legend>
+        <div class="row2">
+          ${R(I("Da quanto tempo", "For how long"), '<input type="text" data-tri="da" value="' + escapeHtml(T.da) + '" placeholder="' + I("Es. circa 6 mesi", "E.g. about 6 months") + '">')}
+          ${R(I("Andamento", "Course"), tricoChips('andamento', TRI_OPZ.andamento, T.andamento, false))}
+        </div>
+        ${R(I("Cosa nota la cliente", "What the client notices"), tricoChips('sintomi', TRI_OPZ.sintomi, T.sintomi, true))}
+      </fieldset>
+      <fieldset><legend>${I("Osservazione con la tricocamera", "Trichoscope observation")}</legend>
+        <div class="row2">
+          ${R(I("Tipo di cute", "Scalp type"), tricoChips('tipoCute', TRI_OPZ.cute, T.tipoCute, false))}
+          ${R(I("Tipo di capello", "Hair type"), tricoChips('tipoCapello', TRI_OPZ.capello, T.tipoCapello, false))}
+        </div>
+        ${R(I("Cosa si osserva", "What is observed"), tricoChips('osservazioni', TRI_OPZ.osservazioni, T.osservazioni, true))}
+        ${R(I("Zone interessate", "Areas involved"), tricoChips('zone', TRI_OPZ.zone, T.zone, true))}
+        ${R(I("Note dell'osservazione", "Observation notes"), tricoTxt('tri-note', 'note', T.note, '', 2))}
+      </fieldset>
+      <fieldset><legend>${I("Foto prima / dopo", "Before / after photos")}</legend>
+        <p class="hint">${I("Una riga per ogni controllo: foto di prima e di dopo il trattamento. Si salvano da sole.", "One block per check: photos before and after treatment. They save automatically.")}</p>
+        ${sedute.map((s, i) => `
+          <div class="tri-seduta" data-seduta="${s.id}">
+            <div class="tri-seduta-head">
+              <strong>${I("Controllo ", "Check ")}${i + 1}</strong>
+              <input type="date" class="tri-sed-data" data-seduta="${s.id}" value="${escapeHtml(s.data || '')}">
+              <button type="button" class="ghost small tri-sed-del" data-seduta="${s.id}">${I("Elimina controllo", "Delete check")}</button>
+            </div>
+            <textarea class="tri-sed-note field-autosize" data-seduta="${s.id}" rows="1" placeholder="${I("Note del controllo…", "Notes for this check…")}">${escapeHtml(s.note || '')}</textarea>
+            <div class="tri-pd"><div><h4>${I("Prima", "Before")}</h4>${tricoFotoGrid(c, s.id, 'prima')}</div><div><h4>${I("Dopo", "After")}</h4>${tricoFotoGrid(c, s.id, 'dopo')}</div></div>
+          </div>`).join('')}
+        <button type="button" class="ghost" id="triAddSeduta">${I("+ Aggiungi controllo", "+ Add check")}</button>
+      </fieldset>
+      <fieldset><legend>${I("Consiglio e prossimi passi", "Advice and next steps")}</legend>
+        ${R(I("Trattamento proposto", "Proposed treatment"), tricoTxt('tri-trat', 'trattamento', T.trattamento, '', 2))}
+        ${R(I("Prodotti consigliati", "Recommended products"), tricoTxt('tri-prodcons', 'prodottiConsigliati', T.prodottiConsigliati, ''))}
+        <label class="tri-consenso"><input type="checkbox" id="tri-medico" ${T.medico ? 'checked' : ''}><span><strong>${I("Consigliato sentire il parere del medico", "Advised to ask a doctor")}</strong></span></label>
+        ${T.medico ? R(I("Motivo / nota", "Reason / note"), tricoTxt('tri-mednote', 'medicoNote', T.medicoNote, '')) : ''}
+        ${R(I("Prossimo controllo", "Next check"), '<input type="date" data-tri="prossimo" value="' + escapeHtml(T.prossimo) + '">')}
+      </fieldset>
+      <fieldset class="contatti-tecnico"><legend>${I("Contatti", "Contacts")}</legend>
+        <p class="hint hint-contatti">${contattoPie()}.</p>
+      </fieldset>
+      <fieldset><legend>${I("Consenso", "Consent")}</legend>
+        <label class="tri-consenso"><input type="checkbox" id="tri-consenso" ${T.consensoSalute ? 'checked' : ''}><span>${I("La cliente acconsente al trattamento dei dati sulla salute (cute, capelli, foto) per questa scheda.", "The client consents to processing of health data (scalp, hair, photos) for this card.")}${T.consensoSalute ? ' <strong>' + I("Registrato il ", "Recorded on ") + fmtDate(T.consensoSalute) + '</strong>' : ''}</span></label>
+      </fieldset>`;
+    // campi di testo e date
+    const touchT = (fn) => { fn(T); T.updatedAt = Date.now(); tricoSave(); };
+    panel.querySelectorAll('[data-tri]').forEach(el => el.addEventListener('input', () => touchT(t => { t[el.dataset.tri] = el.value; })));
+    panel.querySelectorAll('textarea.field-autosize').forEach(el => { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; el.addEventListener('input', () => { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }); });
+    const nome = document.getElementById('tri-nome');
+    nome.addEventListener('input', () => { const p = nome.selectionStart; const v = titleCaseName(nome.value); if (v !== nome.value) { nome.value = v; nome.setSelectionRange(p, p); } c.nome = nome.value; T.updatedAt = Date.now(); tricoSave(); renderList(); });
+    document.getElementById('tri-tel').addEventListener('input', e => { c.telefono = e.target.value; T.updatedAt = Date.now(); tricoSave(); });
+    // scelte (singole o multiple): un tocco sulla pillola la accende / spegne
+    panel.querySelectorAll('[data-tri-chips]').forEach(g => {
+      const campo = g.dataset.triChips, multi = g.dataset.multi === '1';
+      g.querySelectorAll('.tri-chip').forEach(l => l.addEventListener('click', ev => {
+        ev.preventDefault();
+        const inp = l.querySelector('input'), v = inp.value;
+        touchT(t => {
+          if (multi) { const s = new Set(t[campo]); s.has(v) ? s.delete(v) : s.add(v); t[campo] = Array.from(s); }
+          else t[campo] = (t[campo] === v) ? '' : v;
+        });
+        g.querySelectorAll('.tri-chip').forEach(x => { const i = x.querySelector('input'); const on = multi ? T[campo].indexOf(i.value) >= 0 : T[campo] === i.value; i.checked = on; x.classList.toggle('on', on); });
+      }));
+    });
+    document.getElementById('tri-medico').addEventListener('change', e => { touchT(t => { t.medico = e.target.checked; }); renderSheet(); });
+    document.getElementById('tri-consenso').addEventListener('change', e => { touchT(t => { t.consensoSalute = e.target.checked ? Date.now() : null; }); renderSheet(); });
+    // controlli e foto
+    document.getElementById('triAddSeduta').addEventListener('click', () => { touchT(t => { t.sedute.push({ id: uid(), data: oggiISO(), note: '' }); }); tricoFlush(); renderSheet(); });
+    panel.querySelectorAll('.tri-sed-data').forEach(el => el.addEventListener('change', () => { touchT(t => { const s = t.sedute.find(x => x.id === el.dataset.seduta); if (s) s.data = el.value; }); renderSheet(); }));
+    panel.querySelectorAll('.tri-sed-note').forEach(el => el.addEventListener('input', () => touchT(t => { const s = t.sedute.find(x => x.id === el.dataset.seduta); if (s) s.note = el.value; })));
+    panel.querySelectorAll('.tri-sed-del').forEach(b => b.addEventListener('click', () => {
+      if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = I("Sicura? Tocca di nuovo", "Sure? Tap again"); setTimeout(() => { if (b.isConnected) { b.dataset.armed = ''; b.textContent = I("Elimina controllo", "Delete check"); } }, 4000); return; }
+      const sid = b.dataset.seduta;
+      (c.foto || []).filter(f => f.tricho && f.seduta === sid).forEach(f => deleteClientFotoDoc(c.id, f.id));
+      c.foto = (c.foto || []).filter(f => !(f.tricho && f.seduta === sid));
+      touchT(t => { t.sedute = t.sedute.filter(x => x.id !== sid); }); tricoFlush(); renderSheet();
+    }));
+    panel.querySelectorAll('.tri-foto-input').forEach(inp => inp.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files || []);
+      for (const file of files) {
+        try {
+          const dataUrl = await resizeImage(file, 1000, 0.6);
+          const photoId = uid();
+          const body = { dataUrl, name: file.name, commento: '', createdAt: Date.now(), tricho: true, seduta: inp.dataset.seduta, fase: inp.dataset.fase };
+          c.foto.push(Object.assign({ id: photoId }, body));
+          saveClientFotoDoc(c.id, photoId, body);
+          T.updatedAt = Date.now(); tricoSave();
+        } catch (err) { notify(I("Non sono riuscita a caricare \"" + file.name + "\".", "Couldn’t load \"" + file.name + "\"."), true); }
+      }
+      renderSheet();
+    }));
+    panel.querySelectorAll('.tri-foto-comment').forEach(el => el.addEventListener('input', () => {
+      const f = (c.foto || []).find(x => x.id === el.dataset.id); if (f) f.commento = el.value;
+      updateClientFotoCommento(c.id, el.dataset.id, el.value);
+    }));
+    panel.querySelectorAll('.tri-foto-remove').forEach(b => b.addEventListener('click', () => {
+      c.foto = (c.foto || []).filter(f => f.id !== b.dataset.id); deleteClientFotoDoc(c.id, b.dataset.id); renderSheet();
+    }));
+    panel.querySelectorAll('.tri-foto-open').forEach(img => img.addEventListener('click', () => openImageModal(img.src, img.alt)));
+    // stampa
+    document.getElementById('triPrintBtn').addEventListener('click', () => stampaTrico(c, false));
+    document.getElementById('triPrintBlankBtn').addEventListener('click', () => stampaTrico(c, true));
+    // elimina: toglie solo la scheda tricologica (la persona resta in Anagrafica e le sue schede tecniche restano)
+    const del = document.getElementById('triDeleteBtn');
+    del.addEventListener('click', () => {
+      if (del.dataset.armed !== '1') { del.dataset.armed = '1'; del.textContent = I("Sicura? Tocca di nuovo", "Sure? Tap again"); setTimeout(() => { if (del.isConnected) { del.dataset.armed = ''; del.textContent = I("Elimina scheda", "Delete card"); } }, 4000); return; }
+      tricoFlush();
+      (c.foto || []).filter(f => f.tricho).forEach(f => deleteClientFotoDoc(c.id, f.id));
+      c.foto = (c.foto || []).filter(f => !f.tricho);
+      delete c.tricho;
+      c.updatedAt = Date.now();
+      // una persona nata solo come scheda tricologica, senza scheda tecnica né dati: non resta un guscio vuoto
+      activeTricoId = null; viewingAgenda = true;
+      save(clients).then(() => renderAll());
+      notifyTop(I("Scheda tricologica eliminata. La cliente resta in Anagrafica.", "Trichology card deleted. The client stays in the Client directory."));
+    });
+  }
+  // Stampa semplice: un foglio pulito (bianco e nero), compilato oppure vuoto da riempire a penna.
+  function stampaTrico(c, vuota) {
+    const T = hydrateTricho(c.tricho || blankTricho());
+    const val = v => vuota ? '' : escapeHtml(v || '');
+    const row = (l, v) => '<div class="p-row"><span class="p-l">' + l + '</span><span class="p-v">' + val(v) + '</span></div>';
+    const opts = (lista, sel) => lista.map(([v, l]) => '<span class="p-opt"><span class="p-box' + (!vuota && (Array.isArray(sel) ? sel.indexOf(v) >= 0 : sel === v) ? ' on' : '') + '"></span>' + escapeHtml(l) + '</span>').join('');
+    const orow = (l, lista, sel) => '<div class="p-row"><span class="p-l">' + l + '</span><span>' + opts(lista, sel) + '</span></div>';
+    const lines = (l, v, n) => '<div class="p-row"><span class="p-l">' + l + '</span></div>' + (vuota || !v ? '<div class="p-lines">' + '<div></div>'.repeat(n || 2) + '</div>' : '<div style="white-space:pre-wrap;border-bottom:1px solid #999;padding-bottom:2px">' + escapeHtml(v) + '</div>');
+    const dd = s => s ? s.split('-').reverse().join('/') : '';
+    const sedute = vuota ? [{ id: 'x1', data: '', note: '' }, { id: 'x2', data: '', note: '' }] : T.sedute.slice().sort((a, b) => (a.data || '').localeCompare(b.data || ''));
+    let h = '<h1>' + I("Scheda anamnesi · Anomalie cute / capelli", "History card · Scalp / hair concerns") + '</h1>';
+    h += row(I("Nome", "Name"), c.nome) + row(I("Telefono", "Phone"), c.telefono) + row(I("Data prima visita", "First visit"), dd(T.dataVisita)) + row(I("Motivo della visita", "Reason for visit"), T.motivo);
+    h += '<h2>' + I("Anamnesi generale", "General background") + '</h2>';
+    h += row(I("Problemi di salute noti", "Known health issues"), T.salute) + row(I("Farmaci / integratori", "Medication / supplements"), T.farmaci) + row(I("Allergie / intolleranze", "Allergies / intolerances"), T.allergie);
+    h += orow(I("Gravidanza / allattamento", "Pregnancy / breastfeeding"), TRI_OPZ.gravidanza, T.gravidanza) + orow(I("Fumo", "Smoking"), TRI_OPZ.fumo, T.fumo) + row(I("Alimentazione", "Diet"), T.alimentazione);
+    h += orow(I("Stress", "Stress"), TRI_OPZ.livello, T.stress) + orow(I("Sonno", "Sleep"), TRI_OPZ.sonno, T.sonno);
+    h += '<h2>' + I("Abitudini per i capelli", "Hair habits") + '</h2>';
+    h += row(I("Lavaggi", "Washes"), T.lavaggi) + row(I("Prodotti usati", "Products used"), T.prodotti) + orow(I("Trattamenti chimici", "Chemical treatments"), TRI_OPZ.trattamenti, T.trattamenti) + orow(I("Asciugatura / styling", "Drying / styling"), TRI_OPZ.strumenti, T.strumenti);
+    h += '<h2>' + I("Il disturbo", "The concern") + '</h2>';
+    h += row(I("Da quanto tempo", "For how long"), T.da) + orow(I("Andamento", "Course"), TRI_OPZ.andamento, T.andamento) + orow(I("Cosa nota", "Notices"), TRI_OPZ.sintomi, T.sintomi);
+    h += '<h2>' + I("Osservazione con la tricocamera", "Trichoscope observation") + '</h2>';
+    h += orow(I("Tipo di cute", "Scalp type"), TRI_OPZ.cute, T.tipoCute) + orow(I("Tipo di capello", "Hair type"), TRI_OPZ.capello, T.tipoCapello) + orow(I("Cosa si osserva", "Observed"), TRI_OPZ.osservazioni, T.osservazioni) + orow(I("Zone", "Areas"), TRI_OPZ.zone, T.zone) + lines(I("Note", "Notes"), T.note, 2);
+    h += '<h2>' + (vuota ? I("Controlli", "Checks") : I("Controlli e foto prima / dopo", "Checks and before / after photos")) + '</h2>';
+    sedute.forEach((s, i) => {
+      h += '<div class="p-sed">' + row(I("Controllo ", "Check ") + (i + 1) + I(" · data", " · date"), dd(s.data)) + lines(I("Note", "Notes"), s.note, 2);
+      const ph = fase => vuota ? '' : (c.foto || []).filter(f => f.tricho && f.seduta === s.id && f.fase === fase).map(f => '<img src="' + f.dataUrl + '" alt="">').join('');
+      if (!vuota) { h += '<div class="p-ph"><div><strong>' + I("Prima", "Before") + '</strong><br>' + ph('prima') + (vuota ? '<div style="height:120px;border:1px solid #999"></div>' : '') + '</div><div><strong>' + I("Dopo", "After") + '</strong><br>' + ph('dopo') + (vuota ? '<div style="height:120px;border:1px solid #999"></div>' : '') + '</div></div></div>'; }
+    });
+    h += '<h2>' + I("Consiglio e prossimi passi", "Advice and next steps") + '</h2>';
+    h += lines(I("Trattamento proposto", "Proposed treatment"), T.trattamento, 2) + row(I("Prodotti consigliati", "Recommended products"), T.prodottiConsigliati);
+    h += '<div class="p-row"><span class="p-l">' + I("Sentire il medico", "Ask a doctor") + '</span><span class="p-opt"><span class="p-box' + (!vuota && T.medico ? ' on' : '') + '"></span>' + I("Consigliato", "Advised") + '</span><span class="p-v">' + val(T.medicoNote) + '</span></div>';
+    h += row(I("Prossimo controllo", "Next check"), dd(T.prossimo));
+    h += '<h2>' + I("Consenso", "Consent") + '</h2><div class="p-row"><span class="p-opt"><span class="p-box' + (!vuota && T.consensoSalute ? ' on' : '') + '"></span>' + I("Acconsento al trattamento dei dati sulla salute (cute, capelli, foto) per questa scheda.", "I consent to processing of health data (scalp, hair, photos) for this card.") + '</span></div>' + row(I("Data e firma", "Date and signature"), '');
+    h += '<h2>' + I("Contatti", "Contacts") + '</h2><p>' + contattoPie() + '.</p><p style="margin-top:10px;font-size:11px">' + escapeHtml(triAvviso()) + '</p>';
+    triPrintMode = { html: h, id: c.id };
+    renderSheet();
+    window.scrollTo({ top: 0 });
+  }
+
+  function triAvviso() { return I("Questa scheda raccoglie osservazioni, non è una diagnosi. Per dubbi di salute: sentire il medico.", "This card records observations; it is not a diagnosis. For any health concern: ask a doctor."); }
+  // chi contattare: il campo scelto in Impostazioni, altrimenti nome e telefono del salone (come nella scheda tecnica)
+  function contattoTrico() { const c = CONTATTO_TECNICO_TRICOLOGIA; return c.nome + (c.telefono ? ' — ' + c.telefono : ''); }
+  function contattoPie() { return I("Per dubbi, domande o perplessità sulla cute e sui capelli: ", "For doubts, questions or concerns about scalp and hair: ") + escapeHtml(contattoTrico()); }
+  // Piè di pagina delle schede (e del modulo vuoto): avviso fisso nella scheda tricologica + contatto scelto in Impostazioni (vuoto = niente)
+  function aggiornaPie() {
+    const panel = document.getElementById('sheetPanel'); if (!panel) return;
+    const old = panel.querySelector('.scheda-pie'); if (old) old.remove();
+    const tri = viewingTricologo && (triPrintMode || (activeTricoId && !altraSezioneAperta()));
+    if (triPrintMode && tri) return; // l'anteprima di stampa ha già il suo piè di pagina
+    if (!tri) return;
+    const parti = [escapeHtml(triAvviso())];
+    const d = document.createElement('p'); d.className = 'hint scheda-pie'; d.style.cssText = 'margin-top:18px;text-align:center'; d.innerHTML = parti.join('<br>');
+    panel.appendChild(d);
+  }
+  function renderSheet() { renderSheetInner(); aggiornaPie(); }
+  function renderSheetInner() {
     const panel = document.getElementById('sheetPanel');
     const floatingSave = document.getElementById('floatingSaveBtn');
     if (floatingSave) floatingSave.hidden = true; // riappare solo per una vera scheda cliente, più sotto
@@ -8238,12 +8808,14 @@
     // "fixed" fuori dal flusso — nasconderne il contenitore lo nasconderebbe anche lui.
     const isTouchDevice = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
     const sidebarAsideEl = document.querySelector('.sidebar-stack .sidebar');
-    if (sidebarAsideEl) sidebarAsideEl.style.display = (viewingTricologo || (viewingMagazzino && isTouchDevice)) ? 'none' : '';
-    ['blankSheetEntry', 'notesEntry', 'ostwaldEntry', 'ispirazioneEntry', 'serviziEntry', 'anagraficaEntry'].forEach(id => {
+    if (sidebarAsideEl) sidebarAsideEl.style.display = (viewingMagazzino && isTouchDevice) ? 'none' : '';
+    ['blankSheetEntry', 'notesEntry', 'ostwaldEntry', 'ispirazioneEntry', 'serviziEntry'].forEach(id => {
       const voce = document.getElementById(id);
       const wrapper = voce && voce.closest('.notes-banner');
       if (wrapper) wrapper.style.display = viewingTricologo ? 'none' : '';
     });
+    // La voce Tricologia serve solo nella modalità Tricologo: in Tecnico non compare.
+    { const voceTri = document.getElementById('tricologiaEntry'); const wrapTri = voceTri && voceTri.closest('.notes-banner'); if (wrapTri) wrapTri.style.display = viewingTricologo ? '' : 'none'; }
 
     const layoutEl = document.querySelector('.layout');
     const sidebarStackEl = document.querySelector('.sidebar-stack');
@@ -8255,6 +8827,18 @@
     // Tricologo apre subito sull'Agenda (Erica, 15/10: "deve aprire subito su agenda"), non su
     // Magazzino: stessa Agenda condivisa vista nella schermata iniziale del Tecnico, senza
     // elenco clienti né saluto del giorno (qui non servono).
+    if (viewingTricologo && triPrintMode && !altraSezioneAperta()) {
+      panel.innerHTML = '<div class="tri-noprint" style="display:flex;gap:10px;margin-bottom:14px"><button type="button" class="ghost" id="triPrintBack">' + I("← Indietro", "← Back") + '</button><button type="button" class="primary" id="triPrintGo">' + I("Stampa", "Print") + '</button></div><div class="tri-printdoc">' + triPrintMode.html + '</div>';
+      document.getElementById('triPrintBack').addEventListener('click', () => { triPrintMode = null; renderSheet(); });
+      document.getElementById('triPrintGo').addEventListener('click', () => window.print());
+      return;
+    }
+    if (viewingTricologo && activeTricoId && !altraSezioneAperta()) {
+      const ct = getClient(activeTricoId);
+      if (ct && ct.tricho) { renderTricoSheet(ct); return; }
+      activeTricoId = null;
+    }
+
     if (viewingAgenda) {
       panel.innerHTML = `
         <div class="home-agenda">
@@ -8511,6 +9095,12 @@
         </div>
       `;
       bindSchedeGenericheEvents();
+      return;
+    }
+
+    if (viewingTricologia) {
+      if (floatingSave) floatingSave.hidden = true;
+      panel.innerHTML = tricologiaHtml();
       return;
     }
 
@@ -8778,7 +9368,7 @@
           <input type="tel" id="f-telefono" class="name-field-telefono" placeholder="${t('sc.telefonoPh', "Telefono (per WhatsApp)")}" value="${escapeHtml(c.telefono)}">
           <div class="meta">${t('sc.meta', "Creata il {c} · aggiornata il {u}").replace('{c}', fmtDate(c.createdAt)).replace('{u}', fmtDate(c.updatedAt))}</div>
         </div>
-        <button class="danger ghost small" id="deleteBtn">${t('sc.eliminaScheda', "Elimina scheda")}</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="ghost small" id="techBlankBtn">Stampa modulo vuoto</button><button class="danger ghost small" id="deleteBtn">${t('sc.eliminaScheda', "Elimina scheda")}</button></div>
       </div>
       ${hasHiddenFields ? `<button type="button" class="sheet-show-empty-toggle" id="sheetShowEmptyBtn">${t('sc.mostraNonCompilati', "Mostra anche i campi non compilati")}</button>` : ''}
 
@@ -8904,7 +9494,7 @@
         <div class="field">
           <label class="label-legend-style">${t('sc.fotoPrimaDopo', "Foto prima / dopo")}</label>
           <div class="foto-grid" id="fotoGrid">
-            ${c.foto.map(f => `
+            ${c.foto.filter(f => !f.tricho).map(f => `
               <div class="foto-card">
                 <div class="foto-thumb">
                   <img src="${f.dataUrl}" data-id="${f.id}" class="foto-open" alt="${escapeHtml(f.name)}">
@@ -10850,7 +11440,7 @@
     viewingBlankSheet = false;
     viewingOstwald = false;
     viewingCatalogoHp = false;
-    viewingConsigliGenerici = false;
+    viewingConsigliGenerici = false; viewingTricologia = false;
     viewingSchedaGenerica = false;
     viewingHome = false;
     searchTerm = "";
@@ -10871,7 +11461,7 @@
     }
   }
 
-  document.getElementById('newBtn').addEventListener('click', () => createNewClient());
+  document.getElementById('newBtn').addEventListener('click', () => viewingTricologo ? createNewTrico() : createNewClient());
 
   const searchInput = document.getElementById('search');
   const searchClearBtn = document.getElementById('searchClear');
@@ -10920,7 +11510,7 @@
     viewingBlankSheet = false;
     viewingOstwald = false;
     viewingCatalogoHp = false;
-    viewingConsigliGenerici = false;
+    viewingConsigliGenerici = false; viewingTricologia = false;
     viewingSchedaGenerica = false;
     viewingHome = false;
     closeMobileMenu();
@@ -10938,7 +11528,7 @@
     viewingBlankSheet = false;
     viewingOstwald = false;
     viewingCatalogoHp = false;
-    viewingConsigliGenerici = false;
+    viewingConsigliGenerici = false; viewingTricologia = false;
     viewingSchedaGenerica = false;
     viewingHome = false;
     closeMobileMenu();
@@ -10957,7 +11547,7 @@
     viewingBlankSheet = false;
     viewingOstwald = false;
     viewingCatalogoHp = false;
-    viewingConsigliGenerici = false;
+    viewingConsigliGenerici = false; viewingTricologia = false;
     viewingSchedaGenerica = false;
     viewingHome = false;
     magazzinoSearchTerm = "";
@@ -10981,7 +11571,7 @@
     viewingBlankSheet = false;
     viewingOstwald = false;
     viewingCatalogoHp = false;
-    viewingConsigliGenerici = false;
+    viewingConsigliGenerici = false; viewingTricologia = false;
     viewingSchedaGenerica = false;
     viewingHome = false;
     closeMobileMenu();
@@ -10992,7 +11582,7 @@
   // Consigli generici: contenuto fisso, come "Disco di Newton" — nessun caricamento da db.
   document.querySelectorAll('[data-sezione-generica]').forEach(el => { el.style.display = SEZIONI_GENERICHE_VISIBILI ? '' : 'none'; });
   document.getElementById('consigliGenericiEntry').addEventListener('click', () => {
-    viewingConsigliGenerici = true;
+    viewingConsigliGenerici = true; viewingTricologia = false;
     viewingServizi = false; viewingAnagrafica = false;
     viewingMagazzino = false;
     viewingNotes = false;
@@ -11018,7 +11608,7 @@
     viewingBlankSheet = false;
     viewingOstwald = false;
     viewingCatalogoHp = false;
-    viewingConsigliGenerici = false;
+    viewingConsigliGenerici = false; viewingTricologia = false;
     viewingHome = false;
     closeMobileMenu();
     renderAll();
@@ -11030,6 +11620,8 @@
   // quindi se non erano ancora mai state aperte in questa sessione la ricerca su di loro
   // risultava vuota: ora si caricano anche qui, così "Cerca nell'app" li trova sempre, anche
   // senza averle visitate prima (Erica, 15/10).
+  document.getElementById('tricologiaEntry').addEventListener('click', () => { chiudiAltreSezioniEApri('tricologia'); });
+
   document.getElementById('cercaAppEntry').addEventListener('click', () => {
     viewingSearchApp = true;
     viewingNotes = false;
@@ -11040,7 +11632,7 @@
     viewingBlankSheet = false;
     viewingOstwald = false;
     viewingCatalogoHp = false;
-    viewingConsigliGenerici = false;
+    viewingConsigliGenerici = false; viewingTricologia = false;
     viewingSchedaGenerica = false;
     viewingHome = false;
     closeMobileMenu();
@@ -11061,7 +11653,7 @@
     viewingSearchApp = false;
     viewingOstwald = false;
     viewingCatalogoHp = false;
-    viewingConsigliGenerici = false;
+    viewingConsigliGenerici = false; viewingTricologia = false;
     viewingSchedaGenerica = false;
     viewingHome = false;
     closeMobileMenu();
@@ -11079,7 +11671,7 @@
     viewingSearchApp = false;
     viewingBlankSheet = false;
     viewingCatalogoHp = false;
-    viewingConsigliGenerici = false;
+    viewingConsigliGenerici = false; viewingTricologia = false;
     viewingSchedaGenerica = false;
     viewingHome = false;
     closeMobileMenu();
@@ -11090,7 +11682,7 @@
   // stesso comportamento delle altre voci fisse del menu.
   document.getElementById('catalogoHpEntry').addEventListener('click', () => {
     viewingCatalogoHp = true;
-    viewingConsigliGenerici = false;
+    viewingConsigliGenerici = false; viewingTricologia = false;
     viewingSchedaGenerica = false;
     viewingNotes = false;
     viewingIspirazione = false;
@@ -11118,7 +11710,7 @@
     viewingBlankSheet = false;
     viewingOstwald = false;
     viewingCatalogoHp = false;
-    viewingConsigliGenerici = false;
+    viewingConsigliGenerici = false; viewingTricologia = false;
     viewingSchedaGenerica = false;
     viewingHome = true;
     closeMobileMenu();
@@ -11144,7 +11736,7 @@
     viewingBlankSheet = false;
     viewingOstwald = false;
     viewingCatalogoHp = false;
-    viewingConsigliGenerici = false;
+    viewingConsigliGenerici = false; viewingTricologia = false;
     viewingSchedaGenerica = false;
     viewingHome = true;
     closeMobileMenu();
@@ -11171,6 +11763,7 @@
   }
   if (modeTecnicoBtn) {
     modeTecnicoBtn.addEventListener('click', () => {
+      tricoFlush(); activeTricoId = null; triPrintMode = null;
       viewingTricologo = false;
       if (tecnicoViewSnapshot) {
         viewingNotes = tecnicoViewSnapshot.viewingNotes;
@@ -11183,17 +11776,20 @@
         viewingOstwald = tecnicoViewSnapshot.viewingOstwald;
         viewingCatalogoHp = tecnicoViewSnapshot.viewingCatalogoHp;
         viewingConsigliGenerici = tecnicoViewSnapshot.viewingConsigliGenerici;
+        viewingTricologia = false;
         viewingSchedaGenerica = tecnicoViewSnapshot.viewingSchedaGenerica;
         viewingHome = tecnicoViewSnapshot.viewingHome;
         activeId = tecnicoViewSnapshot.activeId;
         tecnicoViewSnapshot = null;
       }
+      if (!altraSezioneAperta() && !(activeId && getClient(activeId))) viewingHome = true; // niente di aperto: si torna alla schermata iniziale, con l'Agenda
       aggiornaModeSwitch();
       renderAll();
     });
   }
   if (modeTricologoBtn) {
     modeTricologoBtn.addEventListener('click', () => {
+      activeTricoId = null; triPrintMode = null; searchTerm = ''; { const se = document.getElementById('search'); if (se) se.value = ''; }
       viewingTricologo = true;
       tecnicoViewSnapshot = { viewingNotes, viewingIspirazione, viewingMagazzino, viewingServizi, viewingAnagrafica, viewingAgenda, viewingSearchApp, viewingBlankSheet, viewingOstwald, viewingCatalogoHp, viewingConsigliGenerici, viewingSchedaGenerica, viewingHome, activeId };
       viewingNotes = false;
@@ -11204,7 +11800,7 @@
       viewingBlankSheet = false;
       viewingOstwald = false;
       viewingCatalogoHp = false;
-      viewingConsigliGenerici = false;
+      viewingConsigliGenerici = false; viewingTricologia = false;
       viewingSchedaGenerica = false;
       viewingHome = false;
       viewingAgenda = true; // Tricologia riparte sempre sull'Agenda
@@ -11503,7 +12099,7 @@
     const vuotoObj = o => !o || Object.values(o).every(vuoto);
     const testi = ['note', 'allergie', 'bianchiDavanti', 'bianchiDietro', 'livFondo', 'livLunghezze', 'livPunte', 'obiettivo', 'modifiche', 'postColoreSalone', 'consigliMantenimento'];
     if (!testi.every(k => vuoto(c[k]))) return false;
-    return vuotoObj(c.tempiTime) && vuotoObj(c.tempiGreen) && vuotoObj(c.formulaTime) && vuotoObj(c.formulaGreen) && Object.values(c.lineeExtra || {}).every(o => o && vuotoObj(o.tempi) && vuotoObj(o.formula)) && !(c.foto || []).length;
+    return vuotoObj(c.tempiTime) && vuotoObj(c.tempiGreen) && vuotoObj(c.formulaTime) && vuotoObj(c.formulaGreen) && Object.values(c.lineeExtra || {}).every(o => o && vuotoObj(o.tempi) && vuotoObj(o.formula)) && !(c.foto || []).filter(f => !f.tricho).length;
   }
   function anagNomiRipetuti() {
     return clients.map(c => ({ c, nuovo: anagNomeSenzaRipetizione(c.nome) })).filter(x => x.nuovo && x.nuovo !== x.c.nome);
@@ -11553,7 +12149,8 @@
       <label class="anag-consenso"><input type="checkbox" id="anagConsenso" ${c.consensoAt ? 'checked' : ''}><span>Consenso al trattamento dei dati (privacy): <strong>${consensoTxt}</strong></span></label>
       <p class="hint">Prima registrazione: ${anagData(c.createdAt)} · Ultima visita: ${anagUltimaVisita(c) ? anagDataISO(anagUltimaVisita(c)) : '—'}</p>
       <div class="anag-azioni">
-        <button type="button" class="primary" id="anagApri">${c.soloAnagrafica ? 'Crea la scheda tecnica' : 'Apri la scheda'}</button>
+        <button type="button" class="primary" id="anagApri">${c.soloAnagrafica ? 'Crea la scheda tecnica' : 'Apri la scheda tecnica'}</button>
+        <button type="button" class="primary" id="anagApriTri">${c.tricho ? 'Apri la scheda tricologica' : 'Crea la scheda tricologica'}</button>
         ${wa ? '<a class="ghost small import-label" id="anagWa" href="' + escapeHtml(anagLinkWhatsapp(c, true)) + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:var(--radius);padding:9px 14px;">Scrivi su WhatsApp</a>' : ''}
         ${!c.soloAnagrafica && anagSchedaVuota(c) ? '<button type="button" class="ghost" id="anagTogli">Togli dalle schede tecniche</button>' : ''}
         ${anagLinkRecensione(c) ? '<a class="ghost small import-label" id="anagRecensione" href="' + escapeHtml(anagLinkRecensione(c)) + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:var(--radius);padding:9px 14px;">★ Chiedi recensione</a>' : ''}
@@ -11585,7 +12182,18 @@
         if (e.target.checked) { cc.consensoAt = Date.now(); cc.consensoVia = 'salone'; } else { cc.consensoAt = null; cc.consensoVia = ''; }
         anagSalvaCampi(cc); renderAnagrafica();
       });
-      on_('anagApri', 'click', () => { if (cc.soloAnagrafica) { cc.soloAnagrafica = false; cc.updatedAt = Date.now(); save(clients); } chiudiAnagrafica(); switchActive(cc.id); });
+      on_('anagApri', 'click', () => {
+        if (cc.soloAnagrafica) { cc.soloAnagrafica = false; cc.updatedAt = Date.now(); save(clients); }
+        chiudiAnagrafica();
+        if (viewingTricologo && modeTecnicoBtn) modeTecnicoBtn.click(); // la scheda tecnica sta nella modalità Tecnico
+        switchActive(cc.id);
+      });
+      on_('anagApriTri', 'click', () => {
+        if (!cc.tricho) { cc.tricho = blankTricho(); save(clients); }
+        chiudiAnagrafica();
+        if (!viewingTricologo && modeTricologoBtn) modeTricologoBtn.click(); // la scheda tricologica sta nella modalità Tricologo
+        switchTrico(cc.id);
+      });
       on_('anagTogli', 'click', () => {
         cc.soloAnagrafica = true; lastWrittenUpdatedAt[cc.id] = 0;
         if (activeId === cc.id) { const prima = clients.find(x => !x.soloAnagrafica); activeId = prima ? prima.id : null; }
@@ -11879,6 +12487,7 @@
     renderSheet();
   }
   document.getElementById('sheetPanel').addEventListener('click', (e) => {
+    if (e.target.closest('#techBlankBtn')) { document.getElementById('blankSheetEntry').click(); return; }
     const printBlankBtn = e.target.closest('#printBlankBtn');
     if (printBlankBtn) {
       // Stampa direttamente quello che si vede a schermo (window.print), non più un PDF
