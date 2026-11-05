@@ -1196,6 +1196,7 @@
 
   /* Bollino "da ricontattare" nell'elenco clienti: cliente senza una scheda aggiornata
      da più tempo di quanto scelto in Impostazioni. */
+  .recontact-badge.canc-badge { background: #A8433C; color: #fff; border-color: #A8433C; }
   .recontact-badge {
     display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 10px;
     background: var(--berry); color: #fff; font-size: 10.5px; font-weight: 600;
@@ -1765,9 +1766,18 @@
       <label for="settingsRicontatto" data-i18n="settings.recontact.label">Segnala le clienti da ricontattare</label>
       <div class="settings-number-row">
         <input type="number" id="settingsRicontatto" min="0" max="36" step="1">
-        <span data-i18n="settings.recontact.suffix">mesi senza una scheda aggiornata (0 = disattivato)</span>
+        <span data-i18n="settings.recontact.suffix">mesi senza appuntamento né scheda aggiornata (0 = disattivato)</span>
       </div>
       <p class="hint" data-i18n="settings.recontact.hint">Chi non ha una scheda compilata o salvata da più di così tanto tempo riceve un bollino "Da ricontattare" nell'elenco a sinistra.</p>
+    </div>
+
+    <div class="settings-section">
+      <label for="settingsCancellazione" data-i18n="settings.canc.label" data-it="Segnala le clienti da cancellare dall'anagrafica">Flag clients to remove from the directory</label>
+      <div class="settings-number-row">
+        <input type="number" id="settingsCancellazione" min="0" max="120" step="1">
+        <span data-i18n="settings.canc.suffix" data-it="mesi senza che si presenti (0 = disattivato)">months without a visit (0 = off)</span>
+      </div>
+      <p class="hint" data-i18n="settings.canc.hint" data-it="In Anagrafica compare il bollino &quot;Da cancellare&quot; e il filtro per vederle tutte. Non si cancella niente da solo: decidi tu, cliente per cliente.">In the client directory a "To delete" tag and a filter appear. Nothing is deleted automatically: you decide, client by client.</p>
     </div>
 
     <details id="settingsDiagnostica" style="margin:14px 0"><summary>Diagnostica</summary><div class="storage-usage" id="appDiagnosticsFull" style="margin-top:8px"></div></details>
@@ -1974,6 +1984,9 @@
       'settings.recontact.label': 'Flag clients to follow up with',
       'settings.recontact.suffix': 'months without an updated record (0 = off)',
       'settings.recontact.hint': 'Anyone without a record filled in or saved for longer than this gets a "Follow up" tag in the list on the left.',
+      'settings.canc.label': 'Flag clients to remove from the directory',
+      'settings.canc.suffix': 'months without a visit (0 = off)',
+      'settings.canc.hint': 'In the client directory a "To delete" tag and a filter appear. Nothing is deleted automatically: you decide, client by client.',
       'settings.reset': 'Restore default appearance', 'ui.close': 'Close',
       'mag.titolo': 'Inventory', 'mag.selectAll': 'Select all', 'mag.prodotto': 'Product',
       'mag.tipo': 'Type', 'mag.marcaFornitore': 'Brand/supplier', 'mag.prezzo': 'Price €',
@@ -4031,7 +4044,7 @@
   let agendaModificaId = null; // id dell'appuntamento in modifica (null = si sta creando un nuovo appuntamento)
   let agendaEditingId = null; // id dell'appuntamento aperto nel calendario a slot (null = tutti chiusi, solo targhette)
   // Aspetto dell'app (logo, nome, colore): condiviso tra tutte, si cambia da "Impostazioni".
-  let appSettingsCache = { linkRecensioni: null, nome: null, logo: null, colore: null, font: null, indirizzo: null, telefono: null, mesiRicontatto: null, paese: null, operatrici: null, contattoAssistenza: null };
+  let appSettingsCache = { linkRecensioni: null, nome: null, logo: null, colore: null, font: null, indirizzo: null, telefono: null, mesiRicontatto: null, mesiCancellazione: null, paese: null, operatrici: null, contattoAssistenza: null };
   // Paese e formati (valuta, data, settimana, prefisso telefonico): si sceglie in Impostazioni.
   const PAESI = {
     IT: { locale: 'it-IT', valuta: '€', prefisso: '39', primoGiorno: 1 },
@@ -5156,6 +5169,8 @@
     try { renderSettingsLinee(false); } catch (e) {}
     const ricontattoInput = document.getElementById('settingsRicontatto');
     if (ricontattoInput && document.activeElement !== ricontattoInput) ricontattoInput.value = appSettingsCache.mesiRicontatto || 0;
+    const cancInput = document.getElementById('settingsCancellazione');
+    if (cancInput && document.activeElement !== cancInput) cancInput.value = appSettingsCache.mesiCancellazione || 0;
   }
 
   function openSettingsModal() {
@@ -5361,6 +5376,7 @@
           indirizzo: aspettoData.indirizzo || null,
           telefono: aspettoData.telefono || null,
           mesiRicontatto: aspettoData.mesiRicontatto || null,
+          mesiCancellazione: aspettoData.mesiCancellazione || null,
           paese: aspettoData.paese || null,
           operatrici: (aspettoData.operatrici && aspettoData.operatrici.length) ? aspettoData.operatrici : null,
           contattoAssistenza: aspettoData.contattoAssistenza || null,
@@ -7499,8 +7515,7 @@
     filtered.forEach(c => {
       const li = document.createElement('li');
       li.className = (!viewingNotes && !viewingIspirazione && !viewingMagazzino && !viewingServizi && !viewingAnagrafica && !viewingAgenda && !viewingSearchApp && !viewingBlankSheet && !viewingOstwald && !viewingCatalogoHp && !viewingConsigliGenerici && !viewingSchedaGenerica && !viewingTricologia && !viewingHome && c.id === (viewingTricologo ? activeTricoId : activeId)) ? 'active' : '';
-      const mesiRic = appSettingsCache.mesiRicontatto;
-      const daRicontattare = mesiRic && (Date.now() - c.updatedAt) >= mesiRic * 30 * 24 * 3600 * 1000;
+      const daRicontattare = anagDaRicontattare(c);
       li.innerHTML = `<span class="name">${escapeHtml(c.nome || 'Senza nome')}${daRicontattare ? '<span class="recontact-badge">Da ricontattare</span>' : ''}</span><span class="date">${fmtDate(c.updatedAt)}</span>`;
       li.addEventListener('click', () => viewingTricologo ? switchTrico(c.id) : switchActive(c.id));
       ul.appendChild(li);
@@ -11982,13 +11997,23 @@
     (agendaCache.appuntamenti || []).forEach(a => { if (a.clienteId === c.id && a.tipo !== 'lavoro' && a.data <= oggi && a.data > m) m = a.data; });
     return m;
   }
-  function anagDaRicontattare(c) {
-    const mesi = appSettingsCache.mesiRicontatto;
-    return !!(mesi && (Date.now() - (c.updatedAt || 0)) >= mesi * 30 * 24 * 3600 * 1000);
+  // Ultima "vita" di una cliente: l'ultima scheda salvata oppure l'appuntamento più recente
+  // (anche futuro) in agenda. Serve per "da ricontattare" e "da cancellare".
+  function ultimaAttivitaCliente(c) {
+    let m = Math.max(c.updatedAt || 0, c.tricho && c.tricho.updatedAt || 0, c.createdAt || 0);
+    (agendaCache.appuntamenti || []).forEach(a => {
+      if (a.clienteId !== c.id || a.tipo === 'lavoro' || !a.data) return;
+      const t = new Date(a.data + 'T00:00:00').getTime();
+      if (t > m) m = t;
+    });
+    return m;
   }
+  function senzaAttivitaDa(c, mesi) { return !!(mesi && (Date.now() - ultimaAttivitaCliente(c)) >= mesi * 30 * 24 * 3600 * 1000); }
+  function anagDaRicontattare(c) { return senzaAttivitaDa(c, appSettingsCache.mesiRicontatto); }
+  function anagDaCancellare(c) { return senzaAttivitaDa(c, appSettingsCache.mesiCancellazione); }
   function anagRiga(c) {
     return { c, nome: (c.nome || '').trim(), telefono: c.telefono || '', email: c.email || '', creato: c.createdAt || 0,
-      ultima: anagUltimaVisita(c), consenso: c.consensoAt || 0, ric: anagDaRicontattare(c) };
+      ultima: anagUltimaVisita(c), consenso: c.consensoAt || 0, ric: anagDaRicontattare(c), canc: anagDaCancellare(c) };
   }
   function anagRighe() {
     const q = anagTesto.trim().toLowerCase();
@@ -11996,6 +12021,7 @@
     let righe = clients.map(c => anagRiga(hydrate(c)));
     if (q) righe = righe.filter(r => r.nome.toLowerCase().includes(q) || r.email.toLowerCase().includes(q) || (qDigit && r.telefono.replace(/\D/g, '').includes(qDigit)));
     if (anagFiltro === 'ricontattare') righe = righe.filter(r => r.ric);
+    if (anagFiltro === 'dacancellare') righe = righe.filter(r => r.canc);
     if (anagFiltro === 'senzaconsenso') righe = righe.filter(r => !r.consenso);
     const k = anagOrd.key, dir = anagOrd.dir;
     righe.sort((a, b) => {
@@ -12212,7 +12238,7 @@
     const vuote = clients.filter(anagSenzaScheda);
     const cols = [['nome', 'Nome'], ['telefono', 'Telefono'], ['email', 'Email'], ['creato', 'Prima registrazione'], ['ultima', 'Ultima visita'], ['consenso', 'Consenso privacy']];
     const frecce = k => anagOrd.key === k ? (anagOrd.dir === 1 ? ' ▲' : ' ▼') : '';
-    const filtri = [['tutti', 'Tutte'], ['ricontattare', 'Da ricontattare'], ['senzaconsenso', 'Senza consenso']];
+    const filtri = [['tutti', 'Tutte'], ['ricontattare', 'Da ricontattare'], ['senzaconsenso', 'Senza consenso']].concat(appSettingsCache.mesiCancellazione ? [['dacancellare', 'Da cancellare']] : []);
     return `
       <p class="hint">Tutti i contatti in un unico elenco. Clicca una riga per vedere e modificare i dati, scaricarli o eliminarli.</p>
       ${vuote.length ? `<div class="anag-avviso"><span>${vuote.length} ${vuote.length === 1 ? 'cliente compare' : 'clienti compaiono'} tra le schede tecniche ma non ${vuote.length === 1 ? 'ha' : 'hanno'} nessuna scheda compilata. Spostandole resteranno solo qui in Anagrafica; le schede già compilate non vengono toccate.</span> <button type="button" class="primary small" id="anagFixVuote">Sposta ${vuote.length === 1 ? 'la cliente' : 'le ' + vuote.length + ' clienti'} solo in Anagrafica</button></div>` : ''}
@@ -12228,7 +12254,7 @@
       <p class="anag-conta">${righe.length} ${righe.length === 1 ? 'cliente' : 'clienti'}</p>
       <div class="anag-tabella-wrap"><table class="anag-tabella"><thead><tr>${cols.map(([k, l]) => `<th data-anag-ord="${k}">${l}${frecce(k)}</th>`).join('')}<th></th></tr></thead><tbody>
         ${righe.length ? righe.map(r => `<tr data-anag-id="${escapeHtml(r.c.id)}">
-          <td>${escapeHtml(r.nome || 'Senza nome')}${r.ric ? '<span class="recontact-badge">Da ricontattare</span>' : ''}</td>
+          <td>${escapeHtml(r.nome || 'Senza nome')}${r.ric ? '<span class="recontact-badge">Da ricontattare</span>' : ''}${r.canc ? '<span class="recontact-badge canc-badge">Da cancellare</span>' : ''}</td>
           <td data-label="Telefono">${escapeHtml(r.telefono)}</td><td data-label="Email">${escapeHtml(r.email)}</td>
           <td data-label="Prima registrazione">${anagData(r.creato)}</td><td data-label="Ultima visita">${r.ultima ? anagDataISO(r.ultima) : '—'}</td>
           <td data-label="Consenso privacy">${r.consenso ? '<span class="anag-si">✓ ' + anagData(r.consenso) + '</span>' : '<span class="anag-no">—</span>'}</td>
@@ -12438,6 +12464,13 @@
     const v = e.target.value.trim();
     saveSettings({ linkRecensioni: v || null });
   });
+  document.getElementById('settingsCancellazione').addEventListener('input', (e) => {
+    let n = parseInt(e.target.value, 10);
+    if (!Number.isFinite(n) || n < 0) n = 0;
+    if (n > 120) n = 120;
+    saveSettings({ mesiCancellazione: n || null });
+    if (viewingAnagrafica) renderAnagrafica();
+  });
   document.getElementById('settingsRicontatto').addEventListener('input', (e) => {
     let n = parseInt(e.target.value, 10);
     if (!Number.isFinite(n) || n < 0) n = 0;
@@ -12499,7 +12532,7 @@
     salvaLinee(lista, true);
   });
   document.getElementById('settingsResetBtn').addEventListener('click', () => {
-    saveSettings({ nome: null, logo: null, colore: null, font: null, indirizzo: null, telefono: null, mesiRicontatto: null, paese: null, operatrici: null, contattoAssistenza: null, linkRecensioni: null })
+    saveSettings({ nome: null, logo: null, colore: null, font: null, indirizzo: null, telefono: null, mesiRicontatto: null, mesiCancellazione: null, paese: null, operatrici: null, contattoAssistenza: null, linkRecensioni: null })
       .then(ok => { if (ok) notifyTop('Aspetto ripristinato.'); });
   });
   // Lingua (Erica, 19/10): scelta per dispositivo, salvata solo in locale (non su Firestore,
