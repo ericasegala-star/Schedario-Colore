@@ -1108,6 +1108,7 @@
   #anagRecensione { color: var(--berry); font-weight: 600; text-decoration: none; }
   .anag-wa, #anagWa { color: var(--berry); font-weight: 600; text-decoration: none; }
   .settings-section { margin-bottom: 22px; }
+  #settingsModal .settings-card { width: min(680px, 100%); }
   .settings-section > label {
     display: block; margin-bottom: 8px; font-weight: 600; font-size: 13.5px; color: var(--ink-soft);
     text-transform: uppercase; letter-spacing: 0.03em;
@@ -1698,6 +1699,34 @@
     </div>
 
     <div class="settings-section">
+      <label for="settingsPaese">Paese e formati</label>
+      <select id="settingsPaese">
+        <option value="IT">Italia: euro €, data giorno/mese/anno, settimana dal lunedì</option>
+        <option value="US">Stati Uniti: dollari $, data mese/giorno/anno, settimana dalla domenica</option>
+        <option value="EG">Egitto: sterlina EGP, data giorno/mese/anno, settimana dal sabato</option>
+        <option value="DE">Germania: euro €, data giorno.mese.anno, settimana dal lunedì</option>
+        <option value="FI">Finlandia: euro €, data giorno.mese.anno, settimana dal lunedì</option>
+        <option value="HR">Croazia: euro €, data giorno.mese.anno, settimana dal lunedì</option>
+        <option value="UA">Ucraina: grivna ₴, data giorno.mese.anno, settimana dal lunedì</option>
+      </select>
+      <p class="hint">Cambia il modo di scrivere prezzi, date, giorni della settimana e numeri di telefono per WhatsApp.</p>
+    </div>
+
+    <div class="settings-section">
+      <label for="settingsOperatrici">Operatrici (separate da virgola)</label>
+      <input type="text" id="settingsOperatrici" placeholder="Per esempio: Anna, Marta" maxlength="120">
+      <p class="hint">Compaiono nell'agenda, nei turni, nelle assenze e nella prenotazione online. Imposta i nomi all'inizio: cambiarli dopo non aggiorna gli appuntamenti già salvati.</p>
+    </div>
+
+    <div class="settings-section">
+      <label style="font-size:17px;font-weight:700">Altre linee colore</label>
+      <p class="hint">Oltre a Time e Green Mix puoi aggiungere altre linee che usi in salone. Scrivi il nome e, se vuoi, le tabelle dei tempi di posa: compaiono nella scheda cliente con una casella da spuntare e il tempo da scrivere.</p>
+      <div id="settingsLineeList"></div>
+      <button type="button" class="ghost small" id="settingsLineaAdd" style="margin:6px 0 10px">+ Aggiungi linea colore</button>
+      <p class="hint">Come si scrive: una riga con il titolo della tabella, poi una riga per ogni colonna nel formato «etichetta | tempo suggerito». Una riga vuota separa una tabella dall'altra. Se scrivi solo delle righe semplici, ognuna diventa una casella.</p>
+    </div>
+
+    <div class="settings-section">
       <label data-i18n="settings.color.label">Colore principale</label>
       <div class="settings-swatches" id="settingsSwatches"></div>
       <div class="settings-custom-color">
@@ -1727,12 +1756,6 @@
     </div>
 
     <div class="settings-section">
-      <label for="settingsOperatrici">Operatrici (separate da virgola)</label>
-      <input type="text" id="settingsOperatrici" placeholder="Per esempio: Anna, Marta" maxlength="120">
-      <p class="hint">Compaiono nell'agenda, nei turni, nelle assenze e nella prenotazione online. Imposta i nomi all'inizio: cambiarli dopo non aggiorna gli appuntamenti già salvati.</p>
-    </div>
-
-    <div class="settings-section">
       <label for="settingsContatto">Contatto per dubbi e assistenza</label>
       <input type="text" id="settingsContatto" maxlength="120" placeholder="Es. Nome Cognome · 333 1234567" autocomplete="off">
       <p class="hint">Compare in fondo alle schede e nelle stampe. Se lo lasci vuoto non compare niente.</p>
@@ -1745,28 +1768,6 @@
         <span data-i18n="settings.recontact.suffix">mesi senza una scheda aggiornata (0 = disattivato)</span>
       </div>
       <p class="hint" data-i18n="settings.recontact.hint">Chi non ha una scheda compilata o salvata da più di così tanto tempo riceve un bollino "Da ricontattare" nell'elenco a sinistra.</p>
-    </div>
-
-    <div class="settings-section">
-      <label style="font-size:17px;font-weight:700">Altre linee colore</label>
-      <p class="hint">Oltre a Time e Green Mix puoi aggiungere altre linee che usi in salone. Scrivi il nome e, se vuoi, le tabelle dei tempi di posa: compaiono nella scheda cliente con una casella da spuntare e il tempo da scrivere.</p>
-      <div id="settingsLineeList"></div>
-      <button type="button" class="ghost small" id="settingsLineaAdd" style="margin:6px 0 10px">+ Aggiungi linea colore</button>
-      <p class="hint">Come si scrive: una riga con il titolo della tabella, poi una riga per ogni colonna nel formato «etichetta | tempo suggerito». Una riga vuota separa una tabella dall'altra. Se scrivi solo delle righe semplici, ognuna diventa una casella.</p>
-    </div>
-
-    <div class="settings-section">
-      <label for="settingsPaese">Paese e formati</label>
-      <select id="settingsPaese">
-        <option value="IT">Italia: euro €, data giorno/mese/anno, settimana dal lunedì</option>
-        <option value="US">Stati Uniti: dollari $, data mese/giorno/anno, settimana dalla domenica</option>
-        <option value="EG">Egitto: sterlina EGP, data giorno/mese/anno, settimana dal sabato</option>
-        <option value="DE">Germania: euro €, data giorno.mese.anno, settimana dal lunedì</option>
-        <option value="FI">Finlandia: euro €, data giorno.mese.anno, settimana dal lunedì</option>
-        <option value="HR">Croazia: euro €, data giorno.mese.anno, settimana dal lunedì</option>
-        <option value="UA">Ucraina: grivna ₴, data giorno.mese.anno, settimana dal lunedì</option>
-      </select>
-      <p class="hint">Cambia il modo di scrivere prezzi, date, giorni della settimana e numeri di telefono per WhatsApp.</p>
     </div>
 
     <details id="settingsDiagnostica" style="margin:14px 0"><summary>Diagnostica</summary><div class="storage-usage" id="appDiagnosticsFull" style="margin-top:8px"></div></details>
@@ -1921,7 +1922,7 @@
 <script>
 (function () {
   const __T0 = performance.now(); const __marks = {};
-  const APP_BUILD = "2026-11-05.165-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-11-05.166-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
