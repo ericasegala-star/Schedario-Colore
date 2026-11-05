@@ -1196,6 +1196,7 @@
 
   /* Bollino "da ricontattare" nell'elenco clienti: cliente senza una scheda aggiornata
      da più tempo di quanto scelto in Impostazioni. */
+  .scheda-switch { margin-top: 6px; }
   .recontact-badge.canc-badge { background: #A8433C; color: #fff; border-color: #A8433C; }
   .recontact-badge {
     display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 10px;
@@ -8672,6 +8673,7 @@
           <input type="text" id="tri-nome" placeholder="${I("Nome cliente", "Client name")}" value="${escapeHtml(c.nome)}">
           <input type="tel" id="tri-tel" class="name-field-telefono" placeholder="${I("Telefono", "Phone")}" value="${escapeHtml(c.telefono || '')}">
           <div class="meta">${I("Scheda tricologica · creata il ", "Trichology card · created on ")}${fmtDate(T.createdAt)}${I(" · aggiornata il ", " · updated on ")}${fmtDate(T.updatedAt)}</div>
+          ${!c.soloAnagrafica ? `<button type="button" class="ghost small scheda-switch" id="schedaVaTec">${I("Vai alla scheda tecnica →", "Go to technical card →")}</button>` : ''}
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button type="button" class="ghost small" id="triPrintBtn">${I("Stampa scheda", "Print card")}</button>
@@ -8756,6 +8758,11 @@
     panel.querySelectorAll('textarea.field-autosize').forEach(el => { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; el.addEventListener('input', () => { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }); });
     const nome = document.getElementById('tri-nome');
     nome.addEventListener('input', () => { const p = nome.selectionStart; const v = titleCaseName(nome.value); if (v !== nome.value) { nome.value = v; nome.setSelectionRange(p, p); } c.nome = nome.value; T.updatedAt = Date.now(); tricoSave(); renderList(); });
+    { const b = document.getElementById('schedaVaTec'); if (b) b.addEventListener('click', () => {
+        tricoFlush();
+        if (viewingTricologo && modeTecnicoBtn) modeTecnicoBtn.click();
+        switchActive(c.id);
+      }); }
     document.getElementById('tri-tel').addEventListener('input', e => { c.telefono = e.target.value; T.updatedAt = Date.now(); tricoSave(); });
     // scelte (singole o multiple): un tocco sulla pillola la accende / spegne
     panel.querySelectorAll('[data-tri-chips]').forEach(g => {
@@ -9493,6 +9500,7 @@
           <input type="text" id="f-nome" placeholder="${t('sc.nomeCliente', "Nome cliente")}" value="${escapeHtml(c.nome)}">
           <input type="tel" id="f-telefono" class="name-field-telefono" placeholder="${t('sc.telefonoPh', "Telefono (per WhatsApp)")}" value="${escapeHtml(c.telefono)}">
           <div class="meta">${t('sc.meta', "Creata il {c} · aggiornata il {u}").replace('{c}', fmtDate(c.createdAt)).replace('{u}', fmtDate(c.updatedAt))}</div>
+          ${c.tricho ? `<button type="button" class="ghost small scheda-switch" id="schedaVaTri">${I("Vai alla scheda tricologica →", "Go to trichology card →")}</button>` : ''}
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="ghost small" id="techBlankBtn">Stampa modulo vuoto</button><button class="danger ghost small" id="deleteBtn">${t('sc.eliminaScheda', "Elimina scheda")}</button></div>
       </div>
@@ -11277,6 +11285,11 @@
       }
       touch(cl => cl.nome = input.value);
     });
+    { const b = document.getElementById('schedaVaTri'); if (b) b.addEventListener('click', () => {
+        salvaVersioneAttiva();
+        if (!viewingTricologo && modeTricologoBtn) modeTricologoBtn.click();
+        switchTrico(c.id);
+      }); }
     on('f-telefono', 'input', e => touch(cl => cl.telefono = e.target.value));
     on('f-note', 'input', e => touch(cl => cl.note = e.target.value));
     on('f-allergie', 'input', e => touch(cl => cl.allergie = e.target.value));
