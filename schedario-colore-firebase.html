@@ -2025,7 +2025,7 @@
 <script>
 (function () {
   const __T0 = performance.now(); const __marks = {};
-  const APP_BUILD = "2026-11-06.182-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-11-06.183-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -4896,7 +4896,8 @@
     db.doc('app/disponibilitaPubblica').set({
       generatoAt: Date.now(),
       paese: paeseCorrente(),
-      turni: agendaTurniCache,
+      // solo le operatrici dell'elenco attuale (Impostazioni): i nomi vecchi non devono comparire online
+      turni: Object.fromEntries(elencoOperatrici().filter(op => agendaTurniCache[op]).map(op => [op, agendaTurniCache[op]])),
       servizi: serviziOnline,
       occupati: occupati,
       assenze: assenzePubbliche
