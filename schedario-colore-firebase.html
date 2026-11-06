@@ -272,7 +272,7 @@
     display: flex; justify-content: space-between; align-items: flex-start;
     gap: 12px; margin-bottom: 22px; flex-wrap: wrap;
   }
-  .name-field { flex: 1; min-width: 0; }
+  .name-field { flex: 1 1 240px; min-width: 0; } /* sotto i 240px disponibili va a capo: su telefono il nome non si strizza accanto ai tasti */
   .name-field input {
     font-family: 'Fraunces', serif; font-weight: 600; font-size: 22px;
     border: none; border-bottom: 2px solid var(--line); background: transparent;
@@ -2025,7 +2025,7 @@
 <script>
 (function () {
   const __T0 = performance.now(); const __marks = {};
-  const APP_BUILD = "2026-11-06.183-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-11-06.184-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
