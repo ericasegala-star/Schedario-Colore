@@ -533,7 +533,7 @@
     box.hidden = false;
   }
 
-  const NOME_OPERATORE = { Erica: 'Erica', Sara: 'Sara' };
+  const NOME_OPERATORE = new Proxy({}, { get: (t, k) => k }); // i nomi delle operatrici arrivano già pronti dalle impostazioni dell'app
   // Prenotazione già fatta da questa persona (letta dal link personale o dal browser) e modalità
   // "modifica": in quel caso il vecchio orario risulta di nuovo libero per lei.
   let mia = null;
@@ -571,7 +571,7 @@
   let servizioScelto = null;
   let operatoreScelto = null;
   let slotScelto = null;
-  // Prenotazioni "appena fatte" da altre persone, non ancora riprese dall'app vera (Erica/Sara
+  // Prenotazioni "appena fatte" da altre persone, non ancora riprese dall'app vera (le operatrici
   // devono riaprirla perché diventino appuntamenti definitivi): si bloccano comunque subito qui,
   // così due persone non possono scegliere lo stesso orario nel frattempo.
   let provvisori = [];
@@ -770,7 +770,7 @@
           return Promise.reject(new Error('slot-appena-preso'));
         }
         // Blocco subito l'orario per chi sta guardando in questo momento, poi registro la
-        // richiesta vera: Erica/Sara la trasformeranno in appuntamento riaprendo l'app.
+        // richiesta vera: le operatrici la trasformeranno in appuntamento riaprendo l'app.
         return db.collection('occupatiProvvisori').add({ data: data, ora: slot, operatore: operatore, durataMin: durataOcc(servizio), createdAt: Date.now() });
       }).then(() => {
         const token = modifica ? mia.k : nuovoToken();
