@@ -1583,6 +1583,26 @@
     .biz-viewer-head h2 { font-size: 17px; }
     .biz-cell { min-width: 56px; }
   }
+  .lg-in { box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); }
+  .lg-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .lg-altro { padding: 8px 18px; border: 1.5px solid var(--berry); border-radius: 999px; background: var(--paper); color: var(--berry); font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+  .lg-chip { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); font-size: 15px; cursor: pointer; }
+  .lg-chip input { width: 20px; height: 20px; margin: 0; }
+  .lg-nota { font-size: 13px; color: var(--ink-soft); margin: 4px 0; }
+  .lg-tab { margin: 10px 0 14px; }
+  .lg-t { width: 100%; border-collapse: collapse; margin: 6px 0 8px; }
+  .lg-t th { background: var(--berry-soft); font-size: 12px; text-align: left; padding: 6px 8px; border: 1px solid var(--line); }
+  .lg-t td { border: 1px solid var(--line); padding: 4px; }
+  .lg-t input[type=text], .lg-t select { width: 100%; min-width: 0; font-size: 16px; padding: 6px; }
+  .lg-t-c { text-align: center; } .lg-t-c input { width: 20px; height: 20px; }
+  .lg-t th:nth-child(1) { width: 78px; } .lg-t th:nth-child(3) { width: 78px; } .lg-t th:nth-child(4) { width: 22%; }
+  .lg-passo-solo { font-weight: 700; margin: 12px 0 8px; font-size: 16px; }
+  .lg-f { display: flex; flex-direction: column; font-size: 12px; color: var(--ink-soft, #6b5e57); flex: 1 1 140px; }
+  .lg-f input { font-size: 16px; margin-top: 2px; color: var(--ink, inherit); }
+  .lg-min-tit { font-weight: 600; font-size: 14px; margin: 6px 0; color: var(--berry); }
+  .lg-manuale { margin-top: 14px; }
+  .lg-manuale summary { cursor: pointer; font-size: 13px; color: var(--ink-soft); }
+  .lg-dopo input { order: 2; }
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -1817,7 +1837,7 @@
       <p class="hint">Oltre a Time e Green Mix puoi aggiungere altre linee che usi in salone. Scrivi il nome e, se vuoi, le tabelle dei tempi di posa: compaiono nella scheda cliente con una casella da spuntare e il tempo da scrivere.</p>
       <div id="settingsLineeList"></div>
       <button type="button" class="ghost small" id="settingsLineaAdd" style="margin:6px 0 10px">+ Aggiungi linea colore</button>
-      <p class="hint">Come si scrive: una riga con il titolo della tabella, poi una riga per ogni colonna nel formato «etichetta | tempo suggerito». Una riga vuota separa una tabella dall'altra. Se scrivi solo delle righe semplici, ognuna diventa una casella.</p>
+      <p class="hint">Per ogni linea spunti la diluizione e compili la tabella: nella scheda cliente compaiono le colonne con il tempo che scrivi. Per qualcosa di diverso, usa «Altre righe scritte a mano» dentro la linea.</p>
     </div>
 
     <div class="settings-section">
@@ -2025,7 +2045,7 @@
 <script>
 (function () {
   const __T0 = performance.now(); const __marks = {};
-  const APP_BUILD = "2026-11-06.184-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-11-10.185-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -6317,7 +6337,7 @@
   }
   function lineeExtraConfig() {
     const l = appSettingsCache && appSettingsCache.lineeExtra;
-    return Array.isArray(l) ? l.filter(x => x && x.id).map(x => ({ id: String(x.id), nome: x.nome || '', tabelle: x.tabelle || '' })) : [];
+    return Array.isArray(l) ? l.filter(x => x && x.id).map(x => ({ id: String(x.id), nome: x.nome || '', tabelle: x.tabelle || '', cfg: x.cfg || null, manuale: x.cfg ? (x.manuale || '') : (x.tabelle || '') })) : [];
   }
   function applyExtraLines() {
     Object.keys(LINES).forEach(k => { if (k !== 'time' && k !== 'green') delete LINES[k]; });
@@ -12995,15 +13015,77 @@
       try { firebase.auth().signOut().then(() => location.reload()).catch(() => location.reload()); } catch (e) { location.reload(); }
     });
   })();
+  // ---- Tempi di posa guidati: si spunta la diluizione, poi una tabella (volume, schiaritura, copertura, minuti) ----
+  const OSS_BASE = ['1+1', '1+1,5', '1+2'], VOL_BASE = ['10', '20', '30', '40'];
+  function pulisciCampoTabella(v) { return String(v || '').replace(/[|\n\r]+/g, ' ').trim(); }
+  function cfgNorm(c) {
+    c = c || {};
+    return { oss: Array.isArray(c.oss) ? c.oss.slice() : [], tab: Object.assign({}, c.tab || {}) };
+  }
+  function etichettaRigaTabella(v, sch, cop) {
+    return v + ' vol — ' + sch + (/^no /i.test(sch) ? '' : ' schiaritura') + (cop ? ' + copertura' : '');
+  }
+  function cfgToText(c) {
+    c = cfgNorm(c);
+    return OSS_BASE.filter(o => c.oss.indexOf(o) >= 0).map(o => {
+      const rows = [];
+      (c.tab[o] || []).forEach(r => {
+        let m = pulisciCampoTabella(r.min);
+        if (m && /^[\d\s.,\-–\/]+$/.test(m)) m += ' minuti';
+        const sc = pulisciCampoTabella(r.sch);
+        if (m) rows.push((sc ? etichettaRigaTabella(r.vol || '30', sc, !!r.cop) : (r.vol || '30') + ' vol') + ' | ' + m);
+      });
+      return rows.length ? 'Ossigeno ' + o + '\n' + rows.join('\n') : '';
+    }).filter(Boolean).join('\n\n');
+  }
+  function tabelleCombinate(cfg, manuale) { return [cfgToText(cfg), String(manuale || '').trim()].filter(Boolean).join('\n\n'); }
+  function tabHtml(c, o) {
+    let rr = c.tab[o] && c.tab[o].length ? c.tab[o] : [{ vol: '30' }];
+    const rows = rr.map(r => `<tr><td><select class="lg-t-vol lg-in">${VOL_BASE.map(v => `<option value="${v}"${(r.vol || '30') === v ? ' selected' : ''}>${v}</option>`).join('')}</select></td>
+      <td><input type="text" class="lg-t-sch lg-in" maxlength="40" value="${escapeHtml(r.sch || '')}"></td>
+      <td class="lg-t-c"><input type="checkbox" class="lg-t-cop"${r.cop ? ' checked' : ''}></td>
+      <td><input type="text" class="lg-t-min lg-in" maxlength="30" value="${escapeHtml(r.min || '')}"></td></tr>`).join('');
+    return `<div class="lg-tab" data-o="${escapeHtml(o)}"><div class="lg-min-tit">Ossigeno ${escapeHtml(o)}</div>
+      <table class="lg-t"><thead><tr><th>Volume</th><th>Schiaritura</th><th>+ copertura</th><th>Minuti</th></tr></thead><tbody>${rows}</tbody></table>
+      <div class="lg-chips"><button type="button" class="lg-altro lg-t-piu">Aggiungi riga</button>${rr.length > 1 ? '<button type="button" class="lg-altro lg-t-meno">Togli</button>' : ''}</div></div>`;
+  }
+  function guidaHtml(x) {
+    const c = cfgNorm(x.cfg);
+    const chips = OSS_BASE.map(v => `<label class="lg-chip lg-dopo">${escapeHtml(v)} <input type="checkbox" class="lg-sel" data-v="${escapeHtml(v)}"${c.oss.indexOf(v) >= 0 ? ' checked' : ''}></label>`).join('');
+    return `<div class="lg-guida"><div class="lg-passo-solo">Quale diluizione usi?</div><div class="lg-chips">${chips}</div>
+      ${OSS_BASE.filter(v => c.oss.indexOf(v) >= 0).map(v => tabHtml(c, v)).join('')}</div>`;
+  }
+  function leggiCfgDaDom(item) {
+    const c = { oss: [], tab: Object.assign({}, item._tab || {}) };
+    item.querySelectorAll('.lg-sel').forEach(el => { if (el.checked) c.oss.push(el.dataset.v); });
+    item.querySelectorAll('.lg-tab').forEach(b => {
+      c.tab[b.dataset.o] = [...b.querySelectorAll('tbody tr')].map(tr => ({ vol: tr.querySelector('.lg-t-vol').value, sch: tr.querySelector('.lg-t-sch').value.trim(), cop: tr.querySelector('.lg-t-cop').checked, min: tr.querySelector('.lg-t-min').value.trim() }));
+    });
+    item._tab = c.tab;
+    return c;
+  }
+  function tempiEditorHtml(x) {
+    return `<div class="linea-guida">${guidaHtml(x)}</div>
+      <details class="lg-manuale"${x.manuale ? ' open' : ''}><summary>Altre righe scritte a mano (facoltativo)</summary>
+        <textarea class="linea-tabelle" rows="5" style="width:100%;box-sizing:border-box;margin-top:6px" placeholder="Titolo della tabella&#10;etichetta | tempo">${escapeHtml(x.manuale || '')}</textarea>
+        <p class="hint">Una riga con il titolo, poi una riga per ogni colonna nel formato «etichetta | tempo». Una riga vuota separa una tabella dall'altra.</p>
+      </details>`;
+  }
   var lineeRenderSig = '';
   function renderSettingsLinee(forza) {
     const box = document.getElementById('settingsLineeList');
     if (!box) return;
     const linee = lineeExtraConfig();
     const sig = linee.map(x => x.id).join(',');
+    if (!forza && sig === lineeRenderSig && box.contains(document.activeElement)) return;
     if (!forza && sig === lineeRenderSig) {
       box.querySelectorAll('.linea-nome').forEach((el, i) => { if (document.activeElement !== el && linee[i]) el.value = linee[i].nome; });
-      box.querySelectorAll('.linea-tabelle').forEach((el, i) => { if (document.activeElement !== el && linee[i]) el.value = linee[i].tabelle; });
+      box.querySelectorAll('.linea-item').forEach((el, i) => {
+        const x = linee[i];
+        if (!x || el.contains(document.activeElement)) return;
+        const ta = el.querySelector('.linea-tabelle');
+        if (tabelleCombinate(leggiCfgDaDom(el), ta ? ta.value : '') !== x.tabelle) { el._tab = null; el.querySelector('.linea-tempi').innerHTML = tempiEditorHtml(x); el._tab = cfgNorm(x.cfg).tab; }
+      });
       return;
     }
     lineeRenderSig = sig;
@@ -13013,21 +13095,36 @@
           <input type="text" class="linea-nome" maxlength="40" placeholder="Nome della linea ${i + 3}" value="${escapeHtml(x.nome)}">
           <button type="button" class="ghost small linea-del" aria-label="Togli linea">Togli</button>
         </div>
-        <textarea class="linea-tabelle" rows="6" style="width:100%;box-sizing:border-box" placeholder="Tempi di posa (facoltativo)&#10;Ossigeno 1+1&#10;30 vol | 10 minuti&#10;40 vol | 15 minuti">${escapeHtml(x.tabelle)}</textarea>
+        <div class="linea-tempi">${tempiEditorHtml(x)}</div>
       </div>`).join('');
+    box.querySelectorAll('.linea-item').forEach((el, i) => { el._tab = cfgNorm(linee[i].cfg).tab; });
   }
   function leggiLineeDaImpostazioni() {
-    return [...document.querySelectorAll('#settingsLineeList .linea-item')].map(el => ({
-      id: el.dataset.id, nome: el.querySelector('.linea-nome').value.trim(), tabelle: el.querySelector('.linea-tabelle').value
-    }));
+    return [...document.querySelectorAll('#settingsLineeList .linea-item')].map(el => {
+      const cfg = leggiCfgDaDom(el), ta = el.querySelector('.linea-tabelle'), manuale = ta ? ta.value : '';
+      return { id: el.dataset.id, nome: el.querySelector('.linea-nome').value.trim(), cfg, manuale, tabelle: tabelleCombinate(cfg, manuale) };
+    });
   }
   function salvaLinee(lista, forza) {
     saveSettings({ lineeExtra: lista.length ? lista : null }).then(() => { if (forza) renderSettingsLinee(true); try { renderSheetMantenendoScroll(); } catch (e) {} });
   }
   document.getElementById('settingsLineeList').addEventListener('change', (e) => {
-    if (e.target.closest('.linea-item')) salvaLinee(leggiLineeDaImpostazioni(), false);
+    const item = e.target.closest('.linea-item');
+    if (!item) return;
+    if (e.target.closest('.lg-sel')) item.querySelector('.linea-guida').innerHTML = guidaHtml({ cfg: leggiCfgDaDom(item) });
+    salvaLinee(leggiLineeDaImpostazioni(), false);
   });
   document.getElementById('settingsLineeList').addEventListener('click', (e) => {
+    const item = e.target.closest('.linea-item');
+    const tpm = e.target.closest('.lg-t-piu, .lg-t-meno');
+    if (item && tpm) {
+      const c = leggiCfgDaDom(item), o = tpm.closest('.lg-tab').dataset.o, arr = c.tab[o];
+      if (tpm.classList.contains('lg-t-piu')) arr.push({ vol: arr.length ? arr[arr.length - 1].vol : '30' }); else if (arr.length > 1) arr.pop();
+      item._tab = c.tab;
+      item.querySelector('.linea-guida').innerHTML = guidaHtml({ cfg: c });
+      salvaLinee(leggiLineeDaImpostazioni(), false);
+      return;
+    }
     const del = e.target.closest('.linea-del');
     if (!del) return;
     if (!window.confirm('Togliere questa linea? Quello che hai già scritto nelle schede non verrà più mostrato.')) return;
@@ -13037,7 +13134,7 @@
   document.getElementById('settingsLineaAdd').addEventListener('click', () => {
     const lista = leggiLineeDaImpostazioni();
     if (lista.length >= MAX_LINEE_EXTRA) return;
-    lista.push({ id: 'x' + Date.now().toString(36), nome: '', tabelle: '' });
+    lista.push({ id: 'x' + Date.now().toString(36), nome: '', tabelle: '', cfg: { oss: [], tab: {} }, manuale: '' });
     salvaLinee(lista, true);
   });
   document.getElementById('settingsResetBtn').addEventListener('click', () => {
