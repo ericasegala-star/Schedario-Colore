@@ -1283,6 +1283,25 @@
   .launcher-tile .lt-title { position: relative; z-index: 1; font-size: 26px; font-weight: 600; letter-spacing: 0.01em; }
   .launcher-tile .lt-sub { position: relative; z-index: 1; font-size: 13px; color: var(--ink-soft); }
   .launcher-tile svg { position: absolute; right: 6px; bottom: -8px; width: 130px; height: 130px; opacity: 0.16; pointer-events: none; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  /* Tasti Tecnico / Tricologo della Home: effetto "liquid glass" (vetro trasparente con luce sul bordo) */
+  .launcher-tiles.has-glass { position: relative; isolation: isolate; padding: 6px 0; }
+  .launcher-tiles.has-glass::before, .launcher-tiles.has-glass::after { content: ""; position: absolute; z-index: -1; width: 44%; height: 118%; top: -9%; border-radius: 50%; filter: blur(26px); opacity: 0.5; pointer-events: none; }
+  .launcher-tiles.has-glass::before { left: 2%; background: radial-gradient(circle at 40% 40%, var(--tc0), transparent 70%); }
+  .launcher-tiles.has-glass::after { right: 2%; background: radial-gradient(circle at 60% 50%, var(--tc5), transparent 70%); }
+  .launcher-tile.glass.tinta { border: 1px solid rgba(255,255,255,0.65); border-radius: 22px; min-height: 124px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.18) 45%, rgba(255,255,255,0.32) 100%), linear-gradient(135deg, color-mix(in srgb, var(--tc) 26%, transparent), color-mix(in srgb, var(--tc) 8%, transparent));
+    -webkit-backdrop-filter: blur(16px) saturate(1.8); backdrop-filter: blur(16px) saturate(1.8);
+    box-shadow: inset 0 1.5px 0 rgba(255,255,255,0.95), inset 0 -1.5px 0 rgba(255,255,255,0.35), inset 1.5px 0 0 rgba(255,255,255,0.45), 0 10px 28px -10px color-mix(in srgb, var(--tc) 55%, transparent), 0 2px 6px rgba(0,0,0,0.06);
+    transition: transform .18s ease, box-shadow .18s ease; }
+  .launcher-tile.glass::before { content: ""; position: absolute; left: 6%; right: 6%; top: 0; height: 38%; border-radius: 0 0 50% 50% / 0 0 100% 100%; background: linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0)); pointer-events: none; }
+  .launcher-tile.glass.tinta:hover, .launcher-tile.glass.tinta:focus-visible { filter: none; border-color: rgba(255,255,255,0.95); transform: translateY(-2px); }
+  .launcher-tile.glass:active { transform: scale(0.98); }
+  .launcher-tile.glass .lt-title { text-shadow: 0 1px 0 rgba(255,255,255,0.6); }
+  .launcher-tile.glass svg { opacity: 0.3; }
+  :root[data-theme="dark"] .launcher-tile.glass.tinta { border-color: rgba(255,255,255,0.22); background: linear-gradient(135deg, rgba(255,255,255,0.16), rgba(255,255,255,0.04) 50%, rgba(255,255,255,0.1)), linear-gradient(135deg, color-mix(in srgb, var(--tc) 30%, transparent), color-mix(in srgb, var(--tc) 10%, transparent)); box-shadow: inset 0 1.5px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(255,255,255,0.1), 0 10px 28px -10px rgba(0,0,0,0.6); }
+  :root[data-theme="dark"] .launcher-tile.glass::before { background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0)); }
+  :root[data-theme="dark"] .launcher-tile.glass .lt-title { text-shadow: none; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .launcher-tile.glass.tinta { border-color: rgba(255,255,255,0.22); background: linear-gradient(135deg, rgba(255,255,255,0.16), rgba(255,255,255,0.04) 50%, rgba(255,255,255,0.1)), linear-gradient(135deg, color-mix(in srgb, var(--tc) 30%, transparent), color-mix(in srgb, var(--tc) 10%, transparent)); box-shadow: inset 0 1.5px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(255,255,255,0.1), 0 10px 28px -10px rgba(0,0,0,0.6); } :root:not([data-theme="light"]) .launcher-tile.glass::before { background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0)); } :root:not([data-theme="light"]) .launcher-tile.glass .lt-title { text-shadow: none; } }
   .launcher .home-agenda { margin-top: 0; border-top: 0; padding-top: 0; }
   .landing-titolo { font-family: Georgia, serif; font-size: 26px; font-weight: 600; color: var(--ink); }
   .landing-tiles { grid-template-columns: repeat(3, 1fr); }
@@ -2070,7 +2089,7 @@
 <script>
 (function () {
   const __T0 = performance.now(); const __marks = {};
-  const APP_BUILD = "2026-11-10.186-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
+  const APP_BUILD = "2026-11-11.187-firebase"; // numero di versione, mostrato in basso: serve a verificare che si stia usando l'ultima versione pubblicata
   const STORAGE_KEY = "schedario-colore:clienti"; // usata solo per leggere, una volta sola, eventuali dati rimasti da una versione precedente
 
   // --- Schermata "Chi sei?" -----------------------------------------------------
@@ -9257,9 +9276,9 @@
       <div class="launcher">
         ${salutoHtml}
         ${conflittiOnlineHtml()}
-        <div class="launcher-tiles">
-          <button type="button" class="launcher-tile tinta" style="--tc:var(--tc0);--tb:var(--tb0);--tbd:var(--tbd0)" id="launchTecnico"><span class="lt-title">${I("Tecnico", "Stylist")}</span><span class="lt-sub">${I("Schede colore, formule, ispirazione", "Colour cards, formulas, inspiration")}</span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6.5" r="2.6"/><circle cx="6" cy="17.5" r="2.6"/><path d="M8 8l12 9.5M8 16L20 6.5"/></svg></button>
-          <button type="button" class="launcher-tile tinta" style="--tc:var(--tc5);--tb:var(--tb5);--tbd:var(--tbd5)" id="launchTricologo"><span class="lt-title">${I("Tricologo", "Trichologist")}</span><span class="lt-sub">${I("Cute e capelli, tricocamera", "Scalp and hair, trichoscope")}</span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="M15 15l5.5 5.5"/><path d="M7 11c1-2.4 3-2.4 4 0M8 8c.8-1.4 2.2-1.4 3 0"/></svg></button>
+        <div class="launcher-tiles has-glass">
+          <button type="button" class="launcher-tile glass tinta" style="--tc:var(--tc0);--tb:var(--tb0);--tbd:var(--tbd0)" id="launchTecnico"><span class="lt-title">${I("Tecnico", "Stylist")}</span><span class="lt-sub">${I("Schede colore, formule, ispirazione", "Colour cards, formulas, inspiration")}</span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6.5" r="2.6"/><circle cx="6" cy="17.5" r="2.6"/><path d="M8 8l12 9.5M8 16L20 6.5"/></svg></button>
+          <button type="button" class="launcher-tile glass tinta" style="--tc:var(--tc5);--tb:var(--tb5);--tbd:var(--tbd5)" id="launchTricologo"><span class="lt-title">${I("Tricologo", "Trichologist")}</span><span class="lt-sub">${I("Cute e capelli, tricocamera", "Scalp and hair, trichoscope")}</span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="M15 15l5.5 5.5"/><path d="M7 11c1-2.4 3-2.4 4 0M8 8c.8-1.4 2.2-1.4 3 0"/></svg></button>
         </div>
         <div class="home-agenda launcher-agenda">
           <div class="home-agenda-head"><div class="notes-title">Agenda</div></div>
