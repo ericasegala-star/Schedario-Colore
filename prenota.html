@@ -164,6 +164,7 @@
     <p class="hint">Se per qualche motivo quell'orario non fosse più disponibile, ti contattiamo noi al numero che hai scritto.</p>
     <a id="linkModifica" class="link-modifica" href="#"></a>
     <p class="hint">Hai bisogno di cambiare giorno, orario o servizio? Salva questo link tra i preferiti: con quello puoi modificare la prenotazione quando vuoi.</p>
+    <button type="button" class="secondary" id="btnAltra" style="margin-top: 14px;">Prenota un altro appuntamento</button>
   </div>
 
   <div class="contatti" id="contatti" hidden></div>
@@ -192,6 +193,7 @@
     'Grazie di avercelo detto. Quando vuoi puoi prenotarne un altro.': 'Thanks for letting us know. You can book another one whenever you like.',
     'Lascia una recensione su Google': 'Leave us a review on Google',
     'Prenota di nuovo': 'Book again',
+    'Prenota un altro appuntamento': 'Book another appointment',
     'Stai modificando la tua prenotazione: cambia servizio, giorno o orario e conferma.': 'You are changing your booking: change the service, day or time and confirm.',
     "Lascia com'è": 'Keep it as it is',
     'Servizio': 'Service', 'Con chi': 'With whom', 'Quando': 'When', 'Orario': 'Time', 'I tuoi dati': 'Your details',
@@ -226,6 +228,7 @@
     'Grazie di avercelo detto. Quando vuoi puoi prenotarne un altro.': 'Дякуємо, що повідомили. Ви можете записатися знову, коли забажаєте.',
     'Lascia una recensione su Google': 'Залиште відгук у Google',
     'Prenota di nuovo': 'Записатися знову',
+    'Prenota un altro appuntamento': 'Записатися ще раз',
     'Stai modificando la tua prenotazione: cambia servizio, giorno o orario e conferma.': 'Ви змінюєте свій запис: оберіть іншу послугу, день чи час і підтвердьте.',
     "Lascia com'è": 'Залишити як є',
     'Servizio': 'Послуга', 'Con chi': 'До кого', 'Quando': 'Коли', 'Orario': 'Час', 'I tuoi dati': 'Ваші дані',
@@ -264,6 +267,7 @@
       'Grazie di avercelo detto. Quando vuoi puoi prenotarne un altro.': 'Hvala što ste nam javili. Kad želite, možete rezervirati novi.',
       'Lascia una recensione su Google': 'Ostavite recenziju na Googleu',
       'Prenota di nuovo': 'Rezerviraj ponovno',
+      'Prenota un altro appuntamento': 'Rezerviraj još jedan termin',
       'Stai modificando la tua prenotazione: cambia servizio, giorno o orario e conferma.': 'Mijenjate svoju rezervaciju: promijenite uslugu, dan ili vrijeme i potvrdite.',
       'Lascia com\'è': 'Ostavi kako jest',
       'Servizio': 'Usluga',
@@ -320,6 +324,7 @@
       'Grazie di avercelo detto. Quando vuoi puoi prenotarne un altro.': 'Kiitos, kun kerroit meille. Voit varata uuden ajan milloin haluat.',
       'Lascia una recensione su Google': 'Jätä arvostelu Googlessa',
       'Prenota di nuovo': 'Varaa uudelleen',
+      'Prenota un altro appuntamento': 'Varaa toinen aika',
       'Stai modificando la tua prenotazione: cambia servizio, giorno o orario e conferma.': 'Muokkaat varaustasi: vaihda palvelu, päivä tai aika ja vahvista.',
       'Lascia com\'è': 'Jätä ennalleen',
       'Servizio': 'Palvelu',
@@ -376,6 +381,7 @@
       'Grazie di avercelo detto. Quando vuoi puoi prenotarne un altro.': 'Danke, dass Sie uns Bescheid gesagt haben. Sie können jederzeit einen neuen Termin buchen.',
       'Lascia una recensione su Google': 'Hinterlassen Sie eine Bewertung bei Google',
       'Prenota di nuovo': 'Erneut buchen',
+      'Prenota un altro appuntamento': 'Weiteren Termin buchen',
       'Stai modificando la tua prenotazione: cambia servizio, giorno o orario e conferma.': 'Sie ändern Ihre Buchung: Wählen Sie Leistung, Tag oder Uhrzeit neu und bestätigen Sie.',
       'Lascia com\'è': 'Unverändert lassen',
       'Servizio': 'Leistung',
@@ -432,6 +438,7 @@
       'Grazie di avercelo detto. Quando vuoi puoi prenotarne un altro.': 'شكرًا لإخبارنا. يمكنك حجز موعد آخر وقتما تشاء.',
       'Lascia una recensione su Google': 'اترك تقييمًا على Google',
       'Prenota di nuovo': 'احجز مرة أخرى',
+      'Prenota un altro appuntamento': 'احجز موعدًا آخر',
       'Stai modificando la tua prenotazione: cambia servizio, giorno o orario e conferma.': 'أنت تعدّل حجزك: غيّر الخدمة أو اليوم أو الوقت ثم أكّد.',
       'Lascia com\'è': 'اتركه كما هو',
       'Servizio': 'الخدمة',
@@ -891,7 +898,10 @@
       try { m = JSON.parse(localStorage.getItem(CHIAVE_MIA) || 'null'); } catch (e) { m = null; }
     }
     if (!miaValida(m)) return;
-    mia = m; salvaMia(); mostraTua();
+    mia = m; salvaMia();
+    let nuova = false;
+    try { nuova = sessionStorage.getItem('prenotaNuova') === '1'; sessionStorage.removeItem('prenotaNuova'); } catch (e) {}
+    if (!nuova) mostraTua();
   }
   function entraInModifica() {
     if (!mia) return;
@@ -944,6 +954,11 @@
     });
   });
   document.getElementById('btnRiprenota').addEventListener('click', () => location.reload());
+  // Dopo la conferma: nuova prenotazione (la pagina si riapre pulita, senza la scheda della prenotazione precedente).
+  document.getElementById('btnAltra').addEventListener('click', () => {
+    try { sessionStorage.setItem('prenotaNuova', '1'); } catch (e) {}
+    location.reload();
+  });
   // Il link personale, se premuto mentre la pagina è già aperta (es. subito dopo aver prenotato),
   // cambia solo la parte dopo il "#" e il browser non ricarica nulla: lo forzo io.
   document.getElementById('linkModifica').addEventListener('click', (e) => {
